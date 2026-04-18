@@ -1,0 +1,15 @@
+[package]
+name = "adoc-parser"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "AsciiDoc block and inline parser"
+
+[dependencies]
+adoc-core.workspace = true
+adoc-preprocessor.workspace = true
+thiserror.workspace = true
+unicode-segmentation.workspace = true
+tracing.workspace = true

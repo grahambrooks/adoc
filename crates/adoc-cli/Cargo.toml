@@ -1,0 +1,27 @@
+[package]
+name = "adoc-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "adoc: a Rust AsciiDoc processor"
+
+[[bin]]
+name = "adoc"
+path = "src/main.rs"
+
+[dependencies]
+adoc-core.workspace = true
+adoc-preprocessor.workspace = true
+adoc-parser.workspace = true
+adoc-convert-html5.workspace = true
+
+clap.workspace = true
+miette.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+camino.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

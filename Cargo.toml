@@ -1,0 +1,36 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/adoc-cli",
+    "crates/adoc-core",
+    "crates/adoc-preprocessor",
+    "crates/adoc-parser",
+    "crates/adoc-convert-html5",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "Apache-2.0"
+repository = "https://github.com/grahambrooks/adoc"
+
+[workspace.dependencies]
+adoc-core = { path = "crates/adoc-core" }
+adoc-preprocessor = { path = "crates/adoc-preprocessor" }
+adoc-parser = { path = "crates/adoc-parser" }
+adoc-convert-html5 = { path = "crates/adoc-convert-html5" }
+
+clap = { version = "4", features = ["derive"] }
+miette = { version = "7", features = ["fancy"] }
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+camino = { version = "1", features = ["serde1"] }
+unicode-segmentation = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[workspace.dependencies.insta]
+version = "1"
+features = ["json"]

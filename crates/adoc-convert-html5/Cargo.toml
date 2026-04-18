@@ -1,0 +1,11 @@
+[package]
+name = "adoc-convert-html5"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "HTML5 converter for the adoc AsciiDoc toolchain"
+
+[dependencies]
+adoc-core.workspace = true
