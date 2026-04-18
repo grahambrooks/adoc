@@ -1,0 +1,92 @@
+crates/adoc-parser/src/subs.rs
+  c43041aaa477b33b 1-53
+tests/fixtures/16_inline_macros.adoc
+  c43041aaa477b33b 1-11
+crates/adoc-core/src/lib.rs
+  c43041aaa477b33b 5-6,20,41,48-56,63,90,99,104-115,119,135-143,146,150-159,167-180,183,198-207
+tests/fixtures/10_quote_block.adoc
+  c43041aaa477b33b 1-5
+tests/fixtures/13_open_block.adoc
+  c43041aaa477b33b 1-5
+crates/adoc-convert-html5/src/lib.rs
+  c43041aaa477b33b 2-5,7-12,17-378,380
+crates/adoc-parser/src/cursor.rs
+  c43041aaa477b33b 1-56
+.gitignore
+  c43041aaa477b33b 7
+tests/fixtures/17_attribute_refs.adoc
+  c43041aaa477b33b 1-6
+crates/adoc-parser/src/inline.rs
+  c43041aaa477b33b 1-450
+tests/fixtures/05_ordered_list.adoc
+  c43041aaa477b33b 1-6
+crates/adoc-cli/src/main.rs
+  c43041aaa477b33b 4,84
+tests/fixtures/11_sidebar_block.adoc
+  c43041aaa477b33b 1-5
+tests/fixtures/02_header.adoc
+  c43041aaa477b33b 1-8
+tests/fixtures/06_description_list.adoc
+  c43041aaa477b33b 1-3
+crates/adoc-parser/Cargo.toml
+  c43041aaa477b33b 16-18
+tests/fixtures/18_replacements.adoc
+  c43041aaa477b33b 1-5
+tests/fixtures/12_passthrough_block.adoc
+  c43041aaa477b33b 1-3
+tests/fixtures/19_line_breaks.adoc
+  c43041aaa477b33b 1-5
+Makefile
+  c43041aaa477b33b 1-50
+crates/adoc-parser/src/block.rs
+  c43041aaa477b33b 1-496
+tests/fixtures/03_sections.adoc
+  c43041aaa477b33b 1-23
+tests/fixtures/04_unordered_list.adoc
+  c43041aaa477b33b 1-7
+tests/fixtures/07_listing_block.adoc
+  c43041aaa477b33b 1-9
+crates/adoc-parser/src/lib.rs
+  c43041aaa477b33b 4-14,19-20,27-31,33-35
+crates/adoc-parser/tests/fixtures.rs
+  c43041aaa477b33b 1-249
+tests/fixtures/01_paragraph.adoc
+  c43041aaa477b33b 1-5
+tests/fixtures/20_mixed.adoc
+  c43041aaa477b33b 1-32
+CLAUDE.md
+  c43041aaa477b33b 1-54
+crates/adoc-parser/src/header.rs
+  c43041aaa477b33b 1-196
+tests/fixtures/08_literal_block.adoc
+  c43041aaa477b33b 1-4
+tests/fixtures/09_example_block.adoc
+  c43041aaa477b33b 1-6
+tests/fixtures/14_table.adoc
+  c43041aaa477b33b 1-7
+crates/adoc-preprocessor/src/lib.rs
+  c43041aaa477b33b 3-6,8,22,32-58
+tests/fixtures/15_inline_quotes.adoc
+  c43041aaa477b33b 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "54ae66b08fc00ba53100fd57e87eda6eb2ad355e",
+  "prompts": {
+    "c43041aaa477b33b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c65bbd11-b6b3-4a8e-a518-51175869f1f2",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 2550,
+      "total_deletions": 33,
+      "accepted_lines": 2602,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/7ba9cae67b99341a55de4e7e35729362bc4fcaddc6cd92b31a2085b5667508d4"
+    }
+  }
+}
