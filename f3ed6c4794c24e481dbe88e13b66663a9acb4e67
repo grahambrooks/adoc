@@ -1,0 +1,48 @@
+crates/adoc-core/src/lib.rs
+  c43041aaa477b33b 1-155
+crates/adoc-parser/Cargo.toml
+  c43041aaa477b33b 1-15
+crates/adoc-convert-html5/Cargo.toml
+  c43041aaa477b33b 1-11
+crates/adoc-cli/Cargo.toml
+  c43041aaa477b33b 1-27
+crates/adoc-preprocessor/Cargo.toml
+  c43041aaa477b33b 1-14
+crates/adoc-preprocessor/src/lib.rs
+  c43041aaa477b33b 1-34
+.gitignore
+  c43041aaa477b33b 1-6
+DESIGN.md
+  c43041aaa477b33b 1-128
+crates/adoc-core/Cargo.toml
+  c43041aaa477b33b 1-13
+Cargo.toml
+  c43041aaa477b33b 1-36
+crates/adoc-convert-html5/src/lib.rs
+  c43041aaa477b33b 1-11
+crates/adoc-parser/src/lib.rs
+  c43041aaa477b33b 1-22
+crates/adoc-cli/src/main.rs
+  c43041aaa477b33b 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "f3ed6c4794c24e481dbe88e13b66663a9acb4e67",
+  "prompts": {
+    "c43041aaa477b33b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c65bbd11-b6b3-4a8e-a518-51175869f1f2",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 639,
+      "total_deletions": 0,
+      "accepted_lines": 639,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/1a8f832c4807be7fd2cedc1b6cee91e3f0674338eeeffde72394a44a4edb48fc"
+    }
+  }
+}
