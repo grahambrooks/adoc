@@ -1,0 +1,5 @@
+A simple paragraph of text.
+
+Another paragraph separated by a blank line.
+It continues across multiple lines
+until a blank line or block boundary.

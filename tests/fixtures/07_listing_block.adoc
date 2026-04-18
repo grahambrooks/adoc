@@ -1,0 +1,9 @@
+Here is a code listing:
+
+----
+fn main() {
+    println!("Hello, world!");
+}
+----
+
+Paragraph after listing.

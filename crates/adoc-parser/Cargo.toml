@@ -13,3 +13,6 @@ adoc-preprocessor.workspace = true
 thiserror.workspace = true
 unicode-segmentation.workspace = true
 tracing.workspace = true
+
+[dev-dependencies]
+adoc-convert-html5.workspace = true

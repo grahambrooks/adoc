@@ -55,6 +55,7 @@ dependencies = [
 name = "adoc-parser"
 version = "0.1.0"
 dependencies = [
+ "adoc-convert-html5",
  "adoc-core",
  "adoc-preprocessor",
  "thiserror",

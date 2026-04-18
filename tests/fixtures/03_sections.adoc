@@ -1,0 +1,23 @@
+= Document Title
+
+Preamble paragraph.
+
+== Level 1 Section
+
+Content in section one.
+
+=== Level 2 Subsection
+
+Nested content.
+
+==== Level 3
+
+Deeper.
+
+===== Level 4
+
+Deepest supported in the spec for regular sections.
+
+== Another Level 1
+
+Back up a level.

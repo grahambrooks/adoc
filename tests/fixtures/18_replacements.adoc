@@ -1,0 +1,5 @@
+(C) 2026 Company Name. (R) and (TM) too.
+
+Arrows: -> and => and <- and <=.
+
+Dashes -- and ellipsis ... and apostrophes.

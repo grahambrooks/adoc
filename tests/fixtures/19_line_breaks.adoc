@@ -1,0 +1,5 @@
+First line with a trailing break +
+Second line after forced break.
+
+Normal paragraph without breaks
+continues on the next line.

@@ -1,0 +1,11 @@
+Visit https://example.com for more info.
+
+An explicit link: link:https://example.com[Example Site].
+
+Mail me at mailto:alice@example.com[Alice].
+
+Cross reference to xref:intro[Introduction] or <<intro>>.
+
+Image: image:logo.png[Logo,100,50].
+
+Inline monospace with `code here`.

@@ -1,0 +1,7 @@
+This paragraph has *strong*, _emphasis_, and `monospace` text.
+
+You can also combine *_strong emphasis_* and `*strong mono*`.
+
+Unconstrained forms: **s**trong, __e__mphasis, ``m``onospace for mid-word.
+
+Special characters like 1 < 2 and AT&T should be escaped.

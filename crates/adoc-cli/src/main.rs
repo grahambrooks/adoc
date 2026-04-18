@@ -1,7 +1,7 @@
 //! `adoc` — AsciiDoc command-line processor.
 
 use adoc_convert_html5::Html5Converter;
-use adoc_core::{Attributes, Converter};
+use adoc_core::{Attributes, Converter, SourceId};
 use adoc_parser::parse;
 use adoc_preprocessor::Preprocessor;
 use camino::Utf8PathBuf;
@@ -81,7 +81,7 @@ fn main() -> miette::Result<()> {
 
     let preproc = Preprocessor::new(Attributes::new());
     let lines = preproc
-        .run(&source)
+        .run(&source, SourceId(0))
         .map_err(|e| miette::miette!("{e}"))?;
     let doc = parse(&lines).map_err(|e| miette::miette!("{e}"))?;
 

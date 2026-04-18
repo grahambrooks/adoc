@@ -1,11 +1,22 @@
 //! AsciiDoc parser.
 //!
 //! Consumes preprocessed lines and produces an [`adoc_core::Document`].
-//! Block parser is line-oriented recursive descent; inline parser applies
-//! the six-group substitution pipeline per block's declared `subs`.
+//! The block parser is hand-written recursive descent; the inline parser
+//! is a single-pass character walker implementing the spec's six substitution
+//! groups. Attributes accumulate through the document — header attribute
+//! entries become part of the document attribute context used to resolve
+//! `{name}` references in subsequent inline content.
+
+mod block;
+mod cursor;
+mod header;
+mod inline;
+mod subs;
 
 use adoc_core::{Attributes, Document};
 use adoc_preprocessor::PreprocessedLine;
+
+pub use subs::Subs;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ParseError {
@@ -13,10 +24,14 @@ pub enum ParseError {
     Message(String),
 }
 
-pub fn parse(_lines: &[PreprocessedLine]) -> Result<Document, ParseError> {
+pub fn parse(lines: &[PreprocessedLine]) -> Result<Document, ParseError> {
+    let mut cursor = cursor::Cursor::new(lines);
+    let mut attributes = Attributes::new();
+    let header = header::try_parse_header(&mut cursor, &mut attributes);
+    let blocks = block::parse_block_sequence(&mut cursor, &mut attributes, 0);
     Ok(Document {
-        header: None,
-        attributes: Attributes::new(),
-        blocks: Vec::new(),
+        header,
+        attributes,
+        blocks,
     })
 }

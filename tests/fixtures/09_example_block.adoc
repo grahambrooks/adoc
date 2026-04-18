@@ -1,0 +1,6 @@
+====
+An example block contains other blocks.
+
+* It can have lists.
+* And paragraphs.
+====

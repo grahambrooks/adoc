@@ -1,0 +1,6 @@
+:product: Adoc
+:version: 0.1.0
+
+Welcome to {product} version {version}.
+
+Undefined attribute renders as-is: {missing}.

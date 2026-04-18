@@ -1,0 +1,8 @@
+= Document Title
+Alice Author <alice@example.com>; Bob Writer <bob@example.com>
+v1.2.3, 2026-04-18: Initial release
+:toc:
+:sectnums:
+:source-highlighter: rouge
+
+Body paragraph after the header.

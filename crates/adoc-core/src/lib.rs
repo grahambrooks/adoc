@@ -2,13 +2,12 @@
 //!
 //! The AST produced by `adoc-parser` and consumed by converters lives here.
 //! Every node carries a [`Location`] so diagnostics can point back to source.
-//! Types derive `serde` so the AST can round-trip through stdio for future
-//! external filters.
+//! All types are `serde`-serializable: the JSON form is the contract for
+//! future stdio-based extensions.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// A parsed AsciiDoc document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Document {
     pub header: Option<Header>,
@@ -18,7 +17,7 @@ pub struct Document {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Header {
-    pub title: Option<Vec<Inline>>,
+    pub title: Vec<Inline>,
     pub authors: Vec<Author>,
     pub revision: Option<Revision>,
     pub location: Location,
@@ -39,11 +38,20 @@ pub struct Revision {
 
 pub type Attributes = BTreeMap<String, AttributeValue>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum AttributeValue {
     Bool(bool),
     String(String),
+}
+
+impl AttributeValue {
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            AttributeValue::String(s) => Some(s.as_str()),
+            AttributeValue::Bool(_) => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +60,7 @@ pub enum Block {
     Section(Section),
     Paragraph(Paragraph),
     List(List),
+    DescriptionList(DescriptionList),
     Delimited(DelimitedBlock),
     Table(Table),
 }
@@ -78,24 +87,36 @@ pub struct List {
     pub location: Location,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ListMarker {
     Unordered,
     Ordered,
-    Description,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListItem {
+    pub depth: u8,
     pub principal: Vec<Inline>,
     pub blocks: Vec<Block>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DescriptionList {
+    pub items: Vec<DescriptionListItem>,
+    pub location: Location,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DescriptionListItem {
+    pub term: Vec<Inline>,
+    pub description: Vec<Block>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DelimitedBlock {
     pub style: DelimitedStyle,
-    pub content: String,
+    pub content: DelimitedContent,
     pub location: Location,
 }
 
@@ -112,9 +133,28 @@ pub enum DelimitedStyle {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "form", rename_all = "snake_case")]
+pub enum DelimitedContent {
+    /// Raw text with substitutions suppressed (listing, literal, passthrough).
+    Raw { text: String },
+    /// Nested blocks (example, quote, sidebar, open).
+    Blocks { blocks: Vec<Block> },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Table {
-    pub rows: Vec<Vec<Vec<Block>>>,
+    pub rows: Vec<TableRow>,
     pub location: Location,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TableRow {
+    pub cells: Vec<TableCell>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TableCell {
+    pub inlines: Vec<Inline>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,13 +164,25 @@ pub enum Inline {
     Strong(Vec<Inline>),
     Emphasis(Vec<Inline>),
     Monospace(Vec<Inline>),
-    Link { href: String, text: Vec<Inline> },
-    Xref { target: String, text: Option<Vec<Inline>> },
+    Link {
+        href: String,
+        text: Vec<Inline>,
+    },
+    Xref {
+        target: String,
+        text: Option<Vec<Inline>>,
+    },
+    Image {
+        target: String,
+        alt: String,
+        width: Option<String>,
+        height: Option<String>,
+    },
     AttributeRef(String),
     LineBreak,
+    RawHtml(String),
 }
 
-/// Identifies a source file in a [`SourceMap`]. See [`Location`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SourceId(pub u32);
 
@@ -143,7 +195,18 @@ pub struct Location {
     pub column: u32,
 }
 
-/// Output backend trait. Implemented by each `adoc-convert-*` crate.
+impl Location {
+    pub fn synthetic() -> Self {
+        Self {
+            source: SourceId(0),
+            byte_start: 0,
+            byte_end: 0,
+            line: 0,
+            column: 0,
+        }
+    }
+}
+
 pub trait Converter {
     fn convert(&self, doc: &Document) -> Result<String, ConvertError>;
 }

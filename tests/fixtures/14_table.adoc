@@ -1,0 +1,7 @@
+|===
+| Name | Role | Location
+
+| Alice | Engineer | Remote
+| Bob | Designer | Office
+| Carol | Manager | Hybrid
+|===

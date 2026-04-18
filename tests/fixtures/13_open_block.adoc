@@ -1,0 +1,5 @@
+--
+Open block contents.
+
+Serves as a generic grouping block.
+--

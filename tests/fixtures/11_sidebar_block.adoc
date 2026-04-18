@@ -1,0 +1,5 @@
+****
+Sidebar content appears in a box.
+
+Useful for tangential commentary.
+****

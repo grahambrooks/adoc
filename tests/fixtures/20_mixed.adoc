@@ -1,0 +1,32 @@
+= The adoc User Guide
+Graham Brooks <graham@example.com>
+v0.1.0, 2026-04-18
+:toc:
+:icons: font
+
+A short *introduction* paragraph with a link to https://asciidoc.org.
+
+== Features
+
+adoc supports:
+
+* Sections and paragraphs
+* _Lists_ of every kind
+* `Code listings`:
++
+----
+println!("hello");
+----
+* Tables:
++
+|===
+| A | B
+| 1 | 2
+|===
+
+=== Subsection
+
+A nested section with xref:features[cross reference].
+
+[[features]]
+More features to come.
