@@ -1,0 +1,18 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: adoc
+  title: adoc
+  description: Rust command-line tool implementing the AsciiDoc Language specification with HTML5 output.
+  annotations:
+    github.com/project-slug: grahambrooks/adoc
+  tags:
+    - rust
+    - cli
+    - asciidoc
+    - html5
+spec:
+  type: cli
+  lifecycle: experimental
+  owner: user:default/grahambrooks
+
