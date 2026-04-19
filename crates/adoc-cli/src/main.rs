@@ -1,11 +1,17 @@
 //! `adoc` — AsciiDoc command-line processor.
 
-use adoc_convert_html5::Html5Converter;
-use adoc_core::{Attributes, Converter, SourceId};
-use adoc_parser::parse;
+use std::fs;
+use std::io::Write;
+
+use adoc_convert_html5::{
+    Html5Converter, Html5Options, Stylesheet, BUILTIN_CSS, BUILTIN_FILENAME,
+};
+use adoc_core::{AttributeValue, Attributes, Converter, SourceId};
+use adoc_parser::parse_with;
 use adoc_preprocessor::Preprocessor;
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, ValueEnum};
+use miette::{miette, IntoDiagnostic};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum Backend {
@@ -27,7 +33,7 @@ struct Cli {
     #[arg(required_unless_present = "from_ast")]
     inputs: Vec<Utf8PathBuf>,
 
-    /// Output file (default: stem + .html).
+    /// Output file (default: stem + .html, or stdout if neither -o nor -D).
     #[arg(short = 'o', long = "out")]
     out: Option<Utf8PathBuf>,
 
@@ -35,11 +41,11 @@ struct Cli {
     #[arg(short = 'b', long = "backend", default_value = "html5")]
     backend: Backend,
 
-    /// Set document attribute (repeatable). `NAME` or `NAME=VALUE`.
+    /// Set document attribute (repeatable). `NAME`, `NAME=VALUE`, `!NAME`, or `NAME!`.
     #[arg(short = 'a', long = "attribute")]
     attributes: Vec<String>,
 
-    /// Output directory.
+    /// Output directory. When set without -o, output is <stem>.html inside this dir.
     #[arg(short = 'D', long = "destination-dir")]
     destination_dir: Option<Utf8PathBuf>,
 
@@ -47,7 +53,7 @@ struct Cli {
     #[arg(long = "safe-mode", default_value = "safe")]
     safe_mode: SafeMode,
 
-    /// Base directory for includes.
+    /// Base directory for includes and stylesheet resolution (default: input's dir).
     #[arg(long = "base-dir")]
     base_dir: Option<Utf8PathBuf>,
 
@@ -72,27 +78,228 @@ fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     init_tracing(cli.verbose, cli.quiet);
 
-    let source = std::fs::read_to_string(
-        cli.inputs
-            .first()
-            .expect("clap enforces presence unless --from-ast"),
-    )
-    .map_err(|e| miette::miette!("failed to read input: {e}"))?;
+    let input = cli
+        .inputs
+        .first()
+        .expect("clap enforces presence unless --from-ast");
 
-    let preproc = Preprocessor::new(Attributes::new());
+    let source = fs::read_to_string(input.as_std_path())
+        .map_err(|e| miette!("failed to read {input}: {e}"))?;
+
+    let cli_attrs = parse_cli_attributes(&cli.attributes)?;
+
+    let preproc = Preprocessor::default();
     let lines = preproc
         .run(&source, SourceId(0))
-        .map_err(|e| miette::miette!("{e}"))?;
-    let doc = parse(&lines).map_err(|e| miette::miette!("{e}"))?;
+        .map_err(|e| miette!("{e}"))?;
+    let doc = parse_with(&lines, cli_attrs).map_err(|e| miette!("{e}"))?;
 
-    let output = match cli.backend {
-        Backend::Html5 => Html5Converter
-            .convert(&doc)
-            .map_err(|e| miette::miette!("{e}"))?,
+    let base_dir = cli.base_dir.clone().unwrap_or_else(|| {
+        input
+            .parent()
+            .map(Utf8PathBuf::from)
+            .unwrap_or_else(|| Utf8PathBuf::from("."))
+    });
+
+    let out_path = resolve_output_path(&cli, input);
+    let stylesheet =
+        resolve_stylesheet(&doc.attributes, &base_dir).map_err(|e| miette!("{e}"))?;
+
+    let output_html = match cli.backend {
+        Backend::Html5 => {
+            let converter = Html5Converter::with_options(Html5Options {
+                stylesheet: stylesheet.clone(),
+            });
+            converter.convert(&doc).map_err(|e| miette!("{e}"))?
+        }
     };
 
-    print!("{output}");
+    if let Some(path) = &out_path {
+        if let Some(parent) = path.parent() {
+            if !parent.as_str().is_empty() {
+                fs::create_dir_all(parent.as_std_path()).into_diagnostic()?;
+            }
+        }
+        fs::write(path.as_std_path(), &output_html).into_diagnostic()?;
+    } else {
+        let mut stdout = std::io::stdout().lock();
+        stdout.write_all(output_html.as_bytes()).into_diagnostic()?;
+    }
+
+    if is_truthy(doc.attributes.get("copycss")) {
+        copy_stylesheet(&stylesheet, &doc.attributes, &base_dir, out_path.as_deref())?;
+    }
+
     Ok(())
+}
+
+// --- attribute parsing -----------------------------------------------------
+
+fn parse_cli_attributes(raw: &[String]) -> miette::Result<Attributes> {
+    let mut attrs = Attributes::new();
+    for entry in raw {
+        let (name, value) = parse_one_cli_attribute(entry)
+            .ok_or_else(|| miette!("invalid -a attribute: {entry}"))?;
+        attrs.insert(name, value);
+    }
+    Ok(attrs)
+}
+
+fn parse_one_cli_attribute(raw: &str) -> Option<(String, AttributeValue)> {
+    // Strip leading `!` for negation.
+    let (name_part, value_part, negate) = if let Some(rest) = raw.strip_prefix('!') {
+        (rest, None, true)
+    } else if let Some((n, v)) = raw.split_once('=') {
+        if let Some(n) = n.strip_suffix('!') {
+            (n, Some(v), true)
+        } else {
+            (n, Some(v), false)
+        }
+    } else if let Some(n) = raw.strip_suffix('!') {
+        (n, None, true)
+    } else {
+        (raw, None, false)
+    };
+    if name_part.is_empty() {
+        return None;
+    }
+    let value = if negate {
+        AttributeValue::Bool(false)
+    } else {
+        match value_part {
+            None => AttributeValue::Bool(true),
+            Some(s) => AttributeValue::String(s.to_string()),
+        }
+    };
+    Some((name_part.to_string(), value))
+}
+
+// --- stylesheet resolution -------------------------------------------------
+
+fn resolve_stylesheet(
+    attrs: &Attributes,
+    base_dir: &Utf8Path,
+) -> std::io::Result<Stylesheet> {
+    // Treat `:stylesheet!:` or `:stylesheet:` empty as disabled.
+    match attrs.get("stylesheet") {
+        Some(AttributeValue::Bool(false)) => return Ok(Stylesheet::None),
+        Some(AttributeValue::String(s)) if s.is_empty() => return Ok(Stylesheet::None),
+        _ => {}
+    }
+    let linkcss = is_truthy(attrs.get("linkcss"));
+    let explicit_name = attrs
+        .get("stylesheet")
+        .and_then(AttributeValue::as_str)
+        .filter(|s| !s.is_empty());
+    let stylesdir = attrs.get("stylesdir").and_then(AttributeValue::as_str);
+
+    match (explicit_name, linkcss) {
+        (None, false) => Ok(Stylesheet::BuiltinEmbed),
+        (None, true) => {
+            let href = match stylesdir {
+                Some(dir) => format!("{}/{}", dir.trim_end_matches('/'), BUILTIN_FILENAME),
+                None => BUILTIN_FILENAME.to_string(),
+            };
+            Ok(Stylesheet::BuiltinLink { href })
+        }
+        (Some(name), false) => {
+            let path = resolve_style_path(base_dir, stylesdir, name);
+            let css = fs::read_to_string(path.as_std_path())?;
+            Ok(Stylesheet::CustomEmbed { css })
+        }
+        (Some(name), true) => {
+            let href = match stylesdir {
+                Some(dir) => format!("{}/{}", dir.trim_end_matches('/'), name),
+                None => name.to_string(),
+            };
+            Ok(Stylesheet::CustomLink { href })
+        }
+    }
+}
+
+fn resolve_style_path(
+    base_dir: &Utf8Path,
+    stylesdir: Option<&str>,
+    name: &str,
+) -> Utf8PathBuf {
+    let rel = match stylesdir {
+        Some(dir) => format!("{}/{}", dir.trim_end_matches('/'), name),
+        None => name.to_string(),
+    };
+    let rel_path = Utf8PathBuf::from(rel);
+    if rel_path.is_absolute() {
+        rel_path
+    } else {
+        base_dir.join(rel_path)
+    }
+}
+
+// --- copycss ---------------------------------------------------------------
+
+fn copy_stylesheet(
+    stylesheet: &Stylesheet,
+    attrs: &Attributes,
+    base_dir: &Utf8Path,
+    out_path: Option<&Utf8Path>,
+) -> miette::Result<()> {
+    let (contents, filename) = match stylesheet {
+        Stylesheet::None => return Ok(()),
+        Stylesheet::BuiltinEmbed | Stylesheet::BuiltinLink { .. } => {
+            (BUILTIN_CSS.to_string(), BUILTIN_FILENAME.to_string())
+        }
+        Stylesheet::CustomEmbed { css } => {
+            let name = attrs
+                .get("stylesheet")
+                .and_then(AttributeValue::as_str)
+                .unwrap_or(BUILTIN_FILENAME)
+                .to_string();
+            (css.clone(), leaf(&name))
+        }
+        Stylesheet::CustomLink { href } => {
+            let name = leaf(href);
+            let path = resolve_style_path(base_dir, None, href);
+            let css = fs::read_to_string(path.as_std_path())
+                .map_err(|e| miette!("reading custom stylesheet {path}: {e}"))?;
+            (css, name)
+        }
+    };
+
+    let target_dir: Utf8PathBuf = out_path
+        .and_then(Utf8Path::parent)
+        .map(Utf8PathBuf::from)
+        .unwrap_or_else(|| Utf8PathBuf::from("."));
+    fs::create_dir_all(target_dir.as_std_path()).into_diagnostic()?;
+    let target = target_dir.join(&filename);
+    fs::write(target.as_std_path(), contents).into_diagnostic()?;
+    Ok(())
+}
+
+fn leaf(path_like: &str) -> String {
+    Utf8Path::new(path_like)
+        .file_name()
+        .unwrap_or(path_like)
+        .to_string()
+}
+
+// --- output path -----------------------------------------------------------
+
+fn resolve_output_path(cli: &Cli, input: &Utf8Path) -> Option<Utf8PathBuf> {
+    match (&cli.out, &cli.destination_dir) {
+        (Some(out), Some(dir)) if out.is_relative() => Some(dir.join(out)),
+        (Some(out), _) => Some(out.clone()),
+        (None, Some(dir)) => {
+            let stem = input.file_stem().unwrap_or("out");
+            Some(dir.join(format!("{stem}.html")))
+        }
+        (None, None) => None,
+    }
+}
+
+// --- shared helpers --------------------------------------------------------
+
+fn is_truthy(v: Option<&AttributeValue>) -> bool {
+    matches!(v, Some(AttributeValue::Bool(true)))
+        || matches!(v, Some(AttributeValue::String(s)) if !s.is_empty() && !s.eq_ignore_ascii_case("false"))
 }
 
 fn init_tracing(verbose: u8, quiet: bool) {
@@ -107,7 +314,7 @@ fn init_tracing(verbose: u8, quiet: bool) {
             _ => "trace",
         }
     };
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(level));
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
     fmt().with_env_filter(filter).with_writer(std::io::stderr).init();
 }

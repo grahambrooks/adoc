@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Untitled</title>
+<style>
+/* adoc.css — default stylesheet for HTML5 output from the adoc processor.
+ *
+ * Theming uses CSS custom properties resolved with `light-dark()` gated on
+ * `color-scheme: light dark`. Browsers honour `prefers-color-scheme` out of
+ * the box; explicit override via `<html data-theme="light|dark">`.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --adoc-bg:              light-dark(#ffffff, #0d1117);
+  --adoc-fg:              light-dark(#1f2328, #e6edf3);
+  --adoc-muted:           light-dark(#57606a, #8b949e);
+  --adoc-accent:          light-dark(#0969da, #4493f8);
+  --adoc-accent-hover:    light-dark(#0860c7, #79b8ff);
+  --adoc-border:          light-dark(#d0d7de, #30363d);
+  --adoc-code-bg:         light-dark(#f6f8fa, #161b22);
+  --adoc-code-fg:         light-dark(#1f2328, #e6edf3);
+  --adoc-example-bg:      light-dark(#f6f8fa, #161b22);
+  --adoc-aside-bg:        light-dark(#fff8dc, #1f1b00);
+  --adoc-aside-border:    light-dark(#d1a72c, #a07b00);
+  --adoc-quote-border:    light-dark(#d0d7de, #30363d);
+  --adoc-quote-fg:        light-dark(#57606a, #8b949e);
+  --adoc-table-border:    light-dark(#d0d7de, #30363d);
+  --adoc-table-header-bg: light-dark(#f6f8fa, #161b22);
+  --adoc-selection:       light-dark(#b6e3ff, #264f78);
+
+  --adoc-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --adoc-font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+
+  --adoc-content-width: 48rem;
+  --adoc-radius: 6px;
+}
+
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"]  { color-scheme: dark;  }
+
+*, *::before, *::after { box-sizing: border-box; }
+
+::selection { background: var(--adoc-selection); }
+
+body {
+  margin: 0;
+  padding: 2.5rem 1.25rem 4rem;
+  font-family: var(--adoc-font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--adoc-fg);
+  background: var(--adoc-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body > * {
+  max-width: var(--adoc-content-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Document header */
+body > header {
+  border-bottom: 1px solid var(--adoc-border);
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+body > header h1 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+.authors, .revision {
+  color: var(--adoc-muted);
+  margin: 0.25rem 0;
+  font-size: 0.95rem;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.25;
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+h1 { font-size: 2rem; }
+h2 {
+  font-size: 1.5rem;
+  border-bottom: 1px solid var(--adoc-border);
+  padding-bottom: 0.3em;
+}
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.9rem; color: var(--adoc-muted); }
+
+/* Sections inherit content width from body > *; nested sections flow inline. */
+section > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 1.5em; }
+
+/* Paragraphs */
+p { margin: 0 0 1em; }
+
+/* Links */
+a {
+  color: var(--adoc-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 0.05em;
+  transition: color 120ms ease;
+}
+a:hover {
+  color: var(--adoc-accent-hover);
+  text-decoration-thickness: 0.1em;
+}
+
+/* Inline emphasis */
+strong { font-weight: 600; }
+em     { font-style: italic; }
+
+/* Lists */
+ul, ol { padding-left: 1.5em; margin: 0 0 1em; }
+li     { margin: 0.2em 0; }
+li > :is(ul, ol) { margin: 0.3em 0 0; }
+
+/* Description list */
+dl { margin: 0 0 1em; }
+dt { font-weight: 600; margin-top: 0.75em; }
+dd { margin: 0.25em 0 0 1.5em; }
+dd > p:first-child { margin-top: 0; }
+
+/* Inline code */
+code {
+  font-family: var(--adoc-font-mono);
+  font-size: 0.9em;
+  background: var(--adoc-code-bg);
+  color: var(--adoc-code-fg);
+  padding: 0.15em 0.35em;
+  border-radius: var(--adoc-radius);
+}
+
+/* Code blocks */
+pre {
+  font-family: var(--adoc-font-mono);
+  font-size: 0.9em;
+  background: var(--adoc-code-bg);
+  color: var(--adoc-code-fg);
+  padding: 1em 1.25em;
+  border: 1px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  overflow-x: auto;
+  line-height: 1.5;
+  margin: 0 0 1em;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+/* Blockquote */
+blockquote {
+  border-left: 0.25em solid var(--adoc-quote-border);
+  margin: 0 0 1em;
+  padding: 0 1em;
+  color: var(--adoc-quote-fg);
+}
+blockquote > :first-child { margin-top: 0; }
+blockquote > :last-child  { margin-bottom: 0; }
+
+/* Example block */
+.example {
+  background: var(--adoc-example-bg);
+  border: 1px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  padding: 1em 1.25em;
+  margin: 0 0 1em;
+}
+.example > :first-child { margin-top: 0; }
+.example > :last-child  { margin-bottom: 0; }
+
+/* Sidebar */
+aside {
+  background: var(--adoc-aside-bg);
+  border: 1px solid var(--adoc-aside-border);
+  border-left-width: 0.25em;
+  border-radius: var(--adoc-radius);
+  padding: 1em 1.25em;
+  margin: 0 0 1em;
+}
+aside > :first-child { margin-top: 0; }
+aside > :last-child  { margin-bottom: 0; }
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0 0 1em;
+  border: 1px solid var(--adoc-table-border);
+}
+th, td {
+  padding: 0.5em 0.75em;
+  border: 1px solid var(--adoc-table-border);
+  text-align: left;
+  vertical-align: top;
+}
+tr:first-child td {
+  background: var(--adoc-table-header-bg);
+  font-weight: 600;
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--adoc-radius);
+}
+
+/* Horizontal rule */
+hr {
+  border: 0;
+  border-top: 1px solid var(--adoc-border);
+  margin: 2em 0;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<p>Visit <a href="https://example.com">https://example.com</a> for more info.</p>
+<p>An explicit link: <a href="https://example.com">Example Site</a>.</p>
+<p>Mail me at <a href="mailto:alice@example.com">Alice</a>.</p>
+<p>Cross reference to <a href="#intro">Introduction</a> or <a href="#intro">intro</a>.</p>
+<p>Image: <img src="logo.png" alt="Logo" width="100" height="50">.</p>
+<p>Inline monospace with <code>code here</code>.</p>
+</body>
+</html>

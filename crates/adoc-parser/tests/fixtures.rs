@@ -24,7 +24,7 @@ fn render(name: &str) -> (adoc_core::Document, String) {
     let pre = Preprocessor::default();
     let lines = pre.run(&src, SourceId(0)).expect("preprocess");
     let doc = parse(&lines).expect("parse");
-    let html = Html5Converter.convert(&doc).expect("convert");
+    let html = Html5Converter::new().convert(&doc).expect("convert");
     (doc, html)
 }
 

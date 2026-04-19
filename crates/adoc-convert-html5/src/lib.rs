@@ -11,13 +11,61 @@ use adoc_core::{
     DescriptionList, Document, Inline, List, ListMarker, Paragraph, Section, Table,
 };
 
-pub struct Html5Converter;
+/// The built-in default stylesheet, compiled into the binary.
+pub const BUILTIN_CSS: &str = include_str!("assets/adoc.css");
+
+/// Default filename used when linking or copying the built-in stylesheet.
+pub const BUILTIN_FILENAME: &str = "adoc.css";
+
+/// How the stylesheet should appear in the generated HTML.
+///
+/// Mirrors Asciidoctor's attribute-driven model (`stylesheet`, `linkcss`,
+/// `stylesdir`). Resolution happens at the CLI boundary; the converter
+/// just renders what it's handed.
+#[derive(Debug, Clone, Default)]
+pub enum Stylesheet {
+    /// Inline the built-in stylesheet (default).
+    #[default]
+    BuiltinEmbed,
+    /// Emit `<link>` to the built-in stylesheet at `href`.
+    BuiltinLink { href: String },
+    /// Inline the supplied CSS content.
+    CustomEmbed { css: String },
+    /// Emit `<link>` to an arbitrary href.
+    CustomLink { href: String },
+    /// Emit no stylesheet at all.
+    None,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Html5Options {
+    pub stylesheet: Stylesheet,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Html5Converter {
+    pub options: Html5Options,
+}
+
+impl Html5Converter {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_options(options: Html5Options) -> Self {
+        Self { options }
+    }
+}
 
 impl Converter for Html5Converter {
     fn convert(&self, doc: &Document) -> Result<String, ConvertError> {
         let mut out = String::new();
-        out.push_str("<!doctype html>\n<html>\n<head>\n");
+        out.push_str("<!doctype html>\n<html lang=\"en\">\n<head>\n");
         out.push_str(r#"<meta charset="utf-8">"#);
+        out.push('\n');
+        out.push_str(
+            r#"<meta name="viewport" content="width=device-width, initial-scale=1">"#,
+        );
         out.push('\n');
         let title_text = doc
             .header
@@ -26,6 +74,7 @@ impl Converter for Html5Converter {
             .unwrap_or_else(|| "Untitled".to_string());
         write!(out, "<title>{}</title>\n", escape(&title_text))
             .map_err(|e| ConvertError::Message(e.to_string()))?;
+        render_stylesheet(&mut out, &self.options.stylesheet);
         out.push_str("</head>\n<body>\n");
 
         if let Some(header) = &doc.header {
@@ -78,6 +127,32 @@ impl Converter for Html5Converter {
 
         out.push_str("</body>\n</html>\n");
         Ok(out)
+    }
+}
+
+fn render_stylesheet(out: &mut String, stylesheet: &Stylesheet) {
+    match stylesheet {
+        Stylesheet::None => {}
+        Stylesheet::BuiltinEmbed => {
+            out.push_str("<style>\n");
+            out.push_str(BUILTIN_CSS);
+            out.push_str("</style>\n");
+        }
+        Stylesheet::CustomEmbed { css } => {
+            out.push_str("<style>\n");
+            out.push_str(css);
+            if !css.ends_with('\n') {
+                out.push('\n');
+            }
+            out.push_str("</style>\n");
+        }
+        Stylesheet::BuiltinLink { href } | Stylesheet::CustomLink { href } => {
+            let _ = write!(
+                out,
+                "<link rel=\"stylesheet\" href=\"{}\">\n",
+                escape_attr(href)
+            );
+        }
     }
 }
 

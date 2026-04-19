@@ -25,8 +25,18 @@ pub enum ParseError {
 }
 
 pub fn parse(lines: &[PreprocessedLine]) -> Result<Document, ParseError> {
+    parse_with(lines, Attributes::new())
+}
+
+/// Parse with a seeded attribute set (typically CLI-provided attributes).
+/// Document-level entries currently override seeded values — if we later
+/// need CLI-wins semantics, track provenance here.
+pub fn parse_with(
+    lines: &[PreprocessedLine],
+    initial: Attributes,
+) -> Result<Document, ParseError> {
     let mut cursor = cursor::Cursor::new(lines);
-    let mut attributes = Attributes::new();
+    let mut attributes = initial;
     let header = header::try_parse_header(&mut cursor, &mut attributes);
     let blocks = block::parse_block_sequence(&mut cursor, &mut attributes, 0);
     Ok(Document {
