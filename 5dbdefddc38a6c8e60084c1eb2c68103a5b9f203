@@ -1,0 +1,74 @@
+docs/examples/12_passthrough_block.html
+  c43041aaa477b33b 1,3-242
+docs/examples/02_header.html
+  c43041aaa477b33b 1,3-248
+docs/examples/01_paragraph.html
+  c43041aaa477b33b 1,3-243
+docs/examples/16_inline_macros.html
+  c43041aaa477b33b 1,3-247
+crates/adoc-convert-html5/tests/stylesheet.rs
+  c43041aaa477b33b 1-69
+docs/examples/18_replacements.html
+  c43041aaa477b33b 1,3-244
+docs/examples/09_example_block.html
+  c43041aaa477b33b 1,3-248
+docs/examples/03_sections.html
+  c43041aaa477b33b 1,3-265
+docs/examples/08_literal_block.html
+  c43041aaa477b33b 1,3-243
+docs/examples/06_description_list.html
+  c43041aaa477b33b 1,3-252
+docs/examples/04_unordered_list.html
+  c43041aaa477b33b 1,3-254
+docs/examples/11_sidebar_block.html
+  c43041aaa477b33b 1,3-245
+crates/adoc-cli/src/main.rs
+  c43041aaa477b33b 3-10,12,14,36,44,48,56,81-87,89-91,94-177,179-227,229-235,237-273,277-304,317-318
+docs/examples/15_inline_quotes.html
+  c43041aaa477b33b 1,3-245
+docs/examples/10_quote_block.html
+  c43041aaa477b33b 1,3-245
+docs/examples/07_listing_block.html
+  c43041aaa477b33b 1,3-246
+docs/examples/20_mixed.html
+  c43041aaa477b33b 1,3-270
+docs/examples/17_attribute_refs.html
+  c43041aaa477b33b 1,3-244
+docs/examples/05_ordered_list.html
+  c43041aaa477b33b 1,3-251
+docs/examples/13_open_block.html
+  c43041aaa477b33b 1,3-245
+docs/examples/19_line_breaks.html
+  c43041aaa477b33b 1,3-243
+crates/adoc-convert-html5/src/lib.rs
+  c43041aaa477b33b 14-58,63,66-69,77,133-158
+docs/examples/14_table.html
+  c43041aaa477b33b 1,3-247
+crates/adoc-convert-html5/src/assets/adoc.css
+  c43041aaa477b33b 1-229
+crates/adoc-parser/src/lib.rs
+  c43041aaa477b33b 28-37,39
+crates/adoc-parser/tests/fixtures.rs
+  c43041aaa477b33b 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "5dbdefddc38a6c8e60084c1eb2c68103a5b9f203",
+  "prompts": {
+    "c43041aaa477b33b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c65bbd11-b6b3-4a8e-a518-51175869f1f2",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 626,
+      "total_deletions": 36,
+      "accepted_lines": 927,
+      "overriden_lines": 20,
+      "messages_url": "https://usegitai.com/cas/1be1cfb2d2109cab6c8ed83930d6a928521dcb4866a74376eeaaf79bda15705c"
+    }
+  }
+}
