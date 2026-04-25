@@ -703,6 +703,54 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
 }
 
+fn render_src(src: &str) -> String {
+    let mut pre = adoc::preprocessor::Preprocessor::default();
+    let lines = pre.run(src, Utf8Path::new("<input>")).expect("preprocess");
+    let doc = adoc::parser::parse(&lines).expect("parse");
+    Html5Converter::new().convert(&doc).expect("convert")
+}
+
+#[test]
+fn source_highlighter_prism_emits_link_and_scripts() {
+    let html = render_src(":source-highlighter: prism\n\nhi\n");
+    assert!(html.contains("prismjs@1/themes/prism.min.css"));
+    assert!(html.contains("prismjs@1/prism.min.js"));
+    assert!(html.contains("prism-autoloader.min.js"));
+    let link = html.find("prism.min.css").unwrap();
+    let script = html.find("prism.min.js").unwrap();
+    assert!(link < script, "link must appear in <head> before scripts");
+}
+
+#[test]
+fn source_highlighter_prism_theme_attribute_overrides_default() {
+    let html = render_src(":source-highlighter: prism\n:prism-theme: prism-tomorrow\n\nhi\n");
+    assert!(html.contains("themes/prism-tomorrow.min.css"));
+    assert!(!html.contains("themes/prism.min.css"));
+}
+
+#[test]
+fn source_highlighter_highlightjs_emits_link_and_scripts() {
+    let html = render_src(":source-highlighter: highlightjs\n\nhi\n");
+    assert!(html.contains("highlight.js@11/styles/default.min.css"));
+    assert!(html.contains("highlight.js@11/lib/common.min.js"));
+    assert!(html.contains("hljs.highlightAll()"));
+}
+
+#[test]
+fn source_highlighter_unknown_value_emits_nothing() {
+    let html = render_src(":source-highlighter: rouge\n\nhi\n");
+    assert!(!html.contains("prism"));
+    assert!(!html.contains("highlight.js"));
+    assert!(!html.contains("hljs"));
+}
+
+#[test]
+fn source_highlighter_unset_emits_nothing() {
+    let html = render_src("hi\n");
+    assert!(!html.contains("prism"));
+    assert!(!html.contains("highlight.js"));
+}
+
 #[test]
 fn delimited_style_roundtrip() {
     // Quick check that every DelimitedStyle variant exercised by fixtures

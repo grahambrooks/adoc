@@ -354,6 +354,7 @@ sub, sup { font-size: 0.78em; line-height: 0; }
   * { transition: none !important; }
 }
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.min.css">
 </head>
 <body>
 <header>
@@ -399,7 +400,7 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 </section>
 <section id="inline-macros">
 <h2><a class="anchor" href="#inline-macros"></a><span class="sectnum">4</span> Inline macros: links, xrefs, images</h2>
-<p>Visit the <a href="{homepage}">{product} homepage</a> or <a href="mailto:alice@example.com">email Alice</a>. Bare URLs autolink: <a href="https://docs.asciidoctor.org/asciidoc/latest/">https://docs.asciidoctor.org/asciidoc/latest/</a>. Cross-references use either <code>xref:</code> or the shorthand <code><a href="#id">id</a></code> — <a href="#lists">jump to lists</a> or <a href="#tables">jump to tables</a>.</p>
+<p>Visit the <a href="https://github.com/grahambrooks/adoc">adoc on GitHub</a> or <a href="mailto:alice@example.com">email Alice</a>. Bare URLs autolink: <a href="https://docs.asciidoctor.org/asciidoc/latest/">https://docs.asciidoctor.org/asciidoc/latest/</a>. Cross-references use either an <code>xref:</code> macro or the angle-bracket shorthand — <a href="#lists">jump to lists</a> or <a href="#tables">jump to tables</a>.</p>
 <p>Inline images embed with <code>image:</code> and accept named attributes:</p>
 <p><img src="https://placehold.co/64x64?text=A" alt="Avatar" width="64" height="64"> <img src="https://placehold.co/64x64?text=B" alt="width=64" width="height=64"></p>
 </section>
@@ -554,11 +555,11 @@ Rendered as a passthrough — the markup goes to the output untouched.
 <tr><td>™</td><td>8482</td><td>2122</td></tr>
 </tbody>
 </table>
-<div class="title">Cell formatters: monospace, strong, emphasis, literal, header-in-body</div>
+<div class="title">Cell formatters: monospace, strong, emphasis, literal</div>
 <table>
 <tbody>
 <tr><td>plain</td><td><strong>strong cell</strong></td><td><em>emphasised cell</em></td></tr>
-<tr><td>keyword</td><td><code>monospace text</code></td><td><pre>literal *not strong*</pre></td><th>forced th in body row</th></tr>
+<tr><td>keyword</td><td><code>monospace text</code></td><td><pre>literal *not strong*</pre></td></tr>
 </tbody>
 </table>
 </section>
@@ -608,6 +609,8 @@ adoc --emit-ast docs/showcase.adoc \
 <p>© 2026 The adoc Authors. All rights reserved ®. "<code>Smart quotes</code>" and 'curly apostrophes' aren't in scope yet, so they render as ASCII — which is intentional, not an oversight.</p>
 <p>If something here doesn't render the way the https://github.com/grahambrooks/adoc[AsciiDoc Language specification] says it should, please open an issue — the spec is the oracle, this document is just the proof.</p>
 </section>
-<!-- attributes: description=A single AsciiDoc document exercising every feature the adoc processor implements today.; edition=2; homepage=https://github.com/grahambrooks/adoc; keywords=asciidoc, adoc, html5, showcase; lang=en; product=adoc; product-version=0.1.0; sectanchors=true; sectnums=true; source-highlighter=rouge; toc=true; -->
+<!-- attributes: description=A single AsciiDoc document exercising every feature the adoc processor implements today.; edition=2; homepage=https://github.com/grahambrooks/adoc; keywords=asciidoc, adoc, html5, showcase; lang=en; prism-theme=prism; product=adoc; product-version=0.1.0; sectanchors=true; sectnums=true; source-highlighter=prism; toc=true; -->
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js"></script>
 </body>
 </html>

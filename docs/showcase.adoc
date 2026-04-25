@@ -11,7 +11,8 @@ v1.0.0, 2026-04-25: First public showcase
 :toc:
 :sectnums:
 :sectanchors:
-:source-highlighter: rouge
+:source-highlighter: prism
+:prism-theme: prism
 
 This document is the canonical demonstration of what the `{product}` processor
 can render.
@@ -69,11 +70,11 @@ footnote:fn-spec[The AsciiDoc Language specification at https://docs.asciidoctor
 [#inline-macros]
 == Inline macros: links, xrefs, images
 
-Visit the link:{homepage}[{product} homepage] or
+Visit the link:https://github.com/grahambrooks/adoc[adoc on GitHub] or
 mailto:alice@example.com[email Alice].
 Bare URLs autolink: https://docs.asciidoctor.org/asciidoc/latest/.
-Cross-references use either `xref:` or the shorthand `<<id>>` —
-xref:lists[jump to lists] or <<tables, jump to tables>>.
+Cross-references use either an `xref:` macro or the angle-bracket
+shorthand — xref:lists[jump to lists] or <<tables, jump to tables>>.
 
 Inline images embed with `image:` and accept named attributes:
 
@@ -230,10 +231,10 @@ adoc --emit-ast doc.adoc | jq '.blocks[0]' | adoc --from-ast -o filtered.html
 | (TM) | 8482 | 2122
 |===
 
-.Cell formatters: monospace, strong, emphasis, literal, header-in-body
+.Cell formatters: monospace, strong, emphasis, literal
 |===
-| plain    s| strong cell    e| emphasised cell
-| keyword m| monospace text  l| literal *not strong* h| forced th in body row
+| plain   s| strong cell        e| emphasised cell
+| keyword m| monospace text     l| literal *not strong*
 |===
 
 [#metadata]

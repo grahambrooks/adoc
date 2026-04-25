@@ -76,6 +76,7 @@ impl Converter for Html5Converter {
         write!(out, "<title>{}</title>\n", escape(&title_text))
             .map_err(|e| ConvertError::Message(e.to_string()))?;
         render_stylesheet(&mut out, &self.options.stylesheet);
+        render_highlighter_head(&mut out, doc);
         out.push_str("</head>\n<body>\n");
 
         if let Some(header) = &doc.header {
@@ -130,8 +131,74 @@ impl Converter for Html5Converter {
             out.push_str("-->\n");
         }
 
+        render_highlighter_body(&mut out, doc);
         out.push_str("</body>\n</html>\n");
         Ok(out)
+    }
+}
+
+/// Pick a recognised `:source-highlighter:` value, normalised to lowercase.
+/// Returns `None` for unset, empty, or unsupported (e.g. `rouge`, `pygments`)
+/// values — those need toolchains we don't bundle.
+fn source_highlighter(doc: &Document) -> Option<&'static str> {
+    let raw = doc
+        .attributes
+        .get("source-highlighter")
+        .and_then(AttributeValue::as_str)?;
+    match raw.to_ascii_lowercase().as_str() {
+        "prism" | "prismjs" => Some("prism"),
+        "highlightjs" | "highlight.js" => Some("highlightjs"),
+        _ => None,
+    }
+}
+
+fn highlighter_attr<'a>(doc: &'a Document, name: &str, default: &'a str) -> &'a str {
+    doc.attributes
+        .get(name)
+        .and_then(AttributeValue::as_str)
+        .filter(|s| !s.is_empty())
+        .unwrap_or(default)
+}
+
+fn render_highlighter_head(out: &mut String, doc: &Document) {
+    match source_highlighter(doc) {
+        Some("prism") => {
+            let theme = highlighter_attr(doc, "prism-theme", "prism");
+            let _ = write!(
+                out,
+                "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/prismjs@1/themes/{}.min.css\">\n",
+                escape_attr(theme)
+            );
+        }
+        Some("highlightjs") => {
+            let theme = highlighter_attr(doc, "highlightjs-theme", "default");
+            let _ = write!(
+                out,
+                "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/highlight.js@11/styles/{}.min.css\">\n",
+                escape_attr(theme)
+            );
+        }
+        _ => {}
+    }
+}
+
+fn render_highlighter_body(out: &mut String, doc: &Document) {
+    match source_highlighter(doc) {
+        Some("prism") => {
+            out.push_str(
+                "<script src=\"https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js\"></script>\n",
+            );
+            out.push_str(
+                "<script src=\"https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js\"></script>\n",
+            );
+        }
+        Some("highlightjs") => {
+            out.push_str(
+                "<script src=\"https://cdn.jsdelivr.net/npm/highlight.js@11/lib/common.min.js\"></script>\n",
+            );
+            out.push_str("<script>hljs.highlightAll();</script>\n");
+        }
+        _ => {}
     }
 }
 
