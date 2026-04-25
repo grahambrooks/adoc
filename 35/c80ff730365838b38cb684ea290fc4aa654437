@@ -1,0 +1,34 @@
+tests/fixtures/23_include_args_part.adoc
+  27508cabf0243d73 1-11
+README.md
+  27508cabf0243d73 84-86,93
+src/preprocessor.rs
+  27508cabf0243d73 49-58,62,241,245,278,289-301,315-318,322,327-345,382,412,479-762,1120-1287
+tests/fixtures/23_include_args.adoc
+  27508cabf0243d73 1-13
+tests/fixtures.rs
+  27508cabf0243d73 371-395
+DESIGN.md
+  27508cabf0243d73 158-161,196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "35c80ff730365838b38cb684ea290fc4aa654437",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 590,
+      "total_deletions": 40,
+      "accepted_lines": 1641,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/9ac62220149bfd61a9038a4310deaa9e5fbc9b5cf942df8d8297434bdf1790f5"
+    }
+  }
+}
