@@ -1,0 +1,28 @@
+= AsciiDoc Cells and Cell Span
+
+== a| AsciiDoc cells
+
+The `a|` prefix on a row makes that cell's content parse recursively as
+nested AsciiDoc blocks instead of a flat run of inlines.
+
+|===
+| plain cell
+a| An *AsciiDoc* cell with `inline code` and _emphasis_.
+|===
+
+== Column span
+
+[cols="1,1,1"]
+|===
+| A  | B  | C
+2+| spans columns 1 and 2 | end
+| x  | y  | z
+|===
+
+== Column span at end of row
+
+[cols="1,1,1"]
+|===
+| top-left | top-mid | top-right
+| only one 2+| spans the last two columns
+|===

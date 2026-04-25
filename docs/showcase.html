@@ -603,6 +603,31 @@ Rendered as a passthrough — the markup goes to the output untouched.
 <tr><td class="halign-left">A</td><td class="halign-center">B</td><td class="halign-right">C</td></tr>
 </tbody>
 </table>
+<div class="title">AsciiDoc cells (<code>a|</code>) parse content recursively</div>
+<table>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<tbody>
+<tr><td>Plain cell</td><td><p>An <strong>AsciiDoc</strong> cell with <code>inline code</code>, <em>emphasis</em>, and a <code><kbd>Ctrl</kbd></code>-style passthrough.</p>
+</td></tr>
+<tr><td>Another</td><td>Plain again.</td></tr>
+</tbody>
+</table>
+<div class="title">Column span with <code>2+|</code></div>
+<table>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+</colgroup>
+<tbody>
+<tr><td>A</td><td>B</td><td>C</td></tr>
+<tr><td colspan="2">spans two columns</td><td>end</td></tr>
+<tr><td>x</td><td>y</td><td>z</td></tr>
+</tbody>
+</table>
 </section>
 <section id="metadata">
 <h2><a class="anchor" href="#metadata"></a><span class="sectnum">10</span> Block metadata and titles</h2>

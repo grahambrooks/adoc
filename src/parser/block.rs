@@ -682,8 +682,26 @@ fn parse_table_rows(lines: &[String], attrs: &Attributes, meta: &BlockMeta) -> V
             continue;
         }
         // A row line starts with `|`; cells follow.
-        if let Some(rest) = trimmed.strip_prefix('|') {
-            let cells: Vec<TableCell> = split_table_cells(rest)
+        if let Some((leading_prefix, rest)) = match_row_start(trimmed) {
+            // Merge the row-leading formatter into cell 0's prefix BEFORE
+            // building cells, so a| / m| / etc. picks the right code path
+            // (recursive parse for a|, no-subs for l|, …).
+            let mut splits = split_table_cells(rest);
+            if let Some((prefix0, _)) = splits.first_mut() {
+                if prefix0.style.is_none() {
+                    prefix0.style = leading_prefix.style;
+                }
+                if prefix0.h_align.is_none() {
+                    prefix0.h_align = leading_prefix.h_align;
+                }
+                if prefix0.colspan == 1 {
+                    prefix0.colspan = leading_prefix.colspan;
+                }
+                if prefix0.rowspan == 1 {
+                    prefix0.rowspan = leading_prefix.rowspan;
+                }
+            }
+            let cells: Vec<TableCell> = splits
                 .into_iter()
                 .map(|(prefix, src)| build_cell(prefix, src.trim(), attrs))
                 .collect();
@@ -716,24 +734,81 @@ fn parse_table_rows(lines: &[String], attrs: &Attributes, meta: &BlockMeta) -> V
 }
 
 fn build_cell(prefix: CellPrefix, src: &str, attrs: &Attributes) -> TableCell {
-    let inlines = match prefix.style {
+    let (inlines, blocks) = match prefix.style {
         // Literal cells: verbatim text, no inline subs.
-        Some(CellStyle::Literal) => vec![Inline::Text {
-            value: src.to_string(),
-        }],
-        _ => inline::parse(src, attrs, Subs::NORMAL),
+        Some(CellStyle::Literal) => (
+            vec![Inline::Text {
+                value: src.to_string(),
+            }],
+            Vec::new(),
+        ),
+        // AsciiDoc cells: recursively parse the cell's text as nested
+        // blocks. Inline-substitution attributes are passed through so
+        // attribute references still resolve, but attribute *entries*
+        // inside the cell don't bleed back to the outer document.
+        Some(CellStyle::AsciiDoc) => (Vec::new(), parse_asciidoc_cell(src, attrs)),
+        _ => (inline::parse(src, attrs, Subs::NORMAL), Vec::new()),
     };
     TableCell {
         inlines,
+        blocks,
         style: prefix.style,
         h_align: prefix.h_align,
+        colspan: prefix.colspan,
+        rowspan: prefix.rowspan,
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+/// Recognise the start of a table row: either a literal `|` or a
+/// `<formatter>|` prefix where `<formatter>` is anything `parse_cell_format`
+/// accepts (span, h-align, style, in any combination). Returns the
+/// formatter (default for the literal-`|` case) and the slice that
+/// follows the `|`. None ⇒ this line doesn't open a row.
+fn match_row_start(line: &str) -> Option<(CellPrefix, &str)> {
+    if let Some(rest) = line.strip_prefix('|') {
+        return Some((CellPrefix::default(), rest));
+    }
+    let pipe_pos = line.find('|')?;
+    let prefix_str = line[..pipe_pos].trim();
+    if prefix_str.is_empty() {
+        return None;
+    }
+    let prefix = parse_cell_format(prefix_str)?;
+    Some((prefix, &line[pipe_pos + 1..]))
+}
+
+fn parse_asciidoc_cell(src: &str, attrs: &Attributes) -> Vec<Block> {
+    use crate::preprocessor::PreprocessedLine;
+    let location = Location::synthetic();
+    let lines: Vec<PreprocessedLine> = src
+        .split('\n')
+        .map(|line| PreprocessedLine {
+            text: line.to_string(),
+            location: location.clone(),
+        })
+        .collect();
+    let mut cursor = Cursor::new(&lines);
+    let mut local_attrs = attrs.clone();
+    parse_blocks(&mut cursor, &mut local_attrs, 0)
+}
+
+#[derive(Debug, Clone, Copy)]
 struct CellPrefix {
     h_align: Option<HAlign>,
     style: Option<CellStyle>,
+    colspan: u32,
+    rowspan: u32,
+}
+
+impl Default for CellPrefix {
+    fn default() -> Self {
+        Self {
+            h_align: None,
+            style: None,
+            colspan: 1,
+            rowspan: 1,
+        }
+    }
 }
 
 fn split_table_cells(row: &str) -> Vec<(CellPrefix, String)> {
@@ -767,53 +842,118 @@ fn split_table_cells(row: &str) -> Vec<(CellPrefix, String)> {
 }
 
 /// Strip a trailing cell-formatter from `s` (the content of the *previous*
-/// cell). The formatter sits at the very end of `s`, optionally followed
-/// by trailing whitespace, and must itself be preceded by whitespace or
-/// the start of the string. Grammar: `[<>^][aemshl]` — h-align then style
-/// letter, either or both optional.
+/// cell). The formatter region is delimited on the left by whitespace (or
+/// the start of the string) and parsed as
+/// `[span][halign][style]` where:
+///
+/// * `span`   = `[colspan_digits][.rowspan_digits]+` — the `+` is required
+///   when span is present; without it, leading digits are not part of the
+///   formatter and we back off.
+/// * `halign` = one of `<`, `^`, `>`.
+/// * `style`  = one of `a`, `e`, `h`, `l`, `m`, `s`.
+///
+/// Returns `Default` (no prefix; doesn't touch `s`) when nothing matches.
 fn peel_trailing_formatter(s: &mut String) -> CellPrefix {
     let trimmed_end_len = s.trim_end_matches(|c: char| c.is_whitespace()).len();
     let trimmed = &s[..trimmed_end_len];
     if trimmed.is_empty() {
         return CellPrefix::default();
     }
-    // Walk back from the end, collecting at most one h-align and one style
-    // letter. Stop as soon as a non-formatter char is hit.
-    let mut style: Option<CellStyle> = None;
-    let mut h_align: Option<HAlign> = None;
-    let mut consumed_bytes = 0usize;
-    let mut chars: Vec<(usize, char)> = trimmed.char_indices().collect();
-    while let Some(&(idx, ch)) = chars.last() {
-        if style.is_none() {
-            if let Some(s) = letter_to_style(ch) {
-                style = Some(s);
-                consumed_bytes = trimmed.len() - idx;
-                chars.pop();
-                continue;
-            }
-        }
-        if h_align.is_none() {
-            if let Some(a) = align_char(ch) {
-                h_align = Some(a);
-                consumed_bytes = trimmed.len() - idx;
-                chars.pop();
-            }
-        }
-        break;
-    }
-    if style.is_none() && h_align.is_none() {
+    let candidate_start = trimmed
+        .rfind(|c: char| c.is_whitespace())
+        .map(|p| p + 1)
+        .unwrap_or(0);
+    let candidate = &trimmed[candidate_start..];
+    let Some(prefix) = parse_cell_format(candidate) else {
         return CellPrefix::default();
+    };
+    s.truncate(candidate_start);
+    prefix
+}
+
+/// Forward-parse a cell-formatter region. Returns `None` when the input
+/// does not match the grammar exactly (any leftover bytes ⇒ reject).
+fn parse_cell_format(s: &str) -> Option<CellPrefix> {
+    if s.is_empty() {
+        return None;
     }
-    // The formatter region must be preceded by whitespace or the start
-    // of the source — otherwise it's ordinary cell text that happens to
-    // end with a formatter-shaped suffix.
-    let preceded_by_ws = chars.last().map(|(_, c)| c.is_whitespace()).unwrap_or(true);
-    if !preceded_by_ws {
-        return CellPrefix::default();
+    let bytes = s.as_bytes();
+    let mut i = 0usize;
+
+    // span: [digits][.digits]+
+    let mut colspan: u32 = 1;
+    let mut rowspan: u32 = 1;
+    let span_start = i;
+    let mut col_str = String::new();
+    while i < bytes.len() && bytes[i].is_ascii_digit() {
+        col_str.push(bytes[i] as char);
+        i += 1;
     }
-    let new_len = trimmed.len() - consumed_bytes;
-    s.truncate(new_len);
-    CellPrefix { h_align, style }
+    let mut row_str = String::new();
+    let mut had_dot = false;
+    if i < bytes.len() && bytes[i] == b'.' {
+        had_dot = true;
+        i += 1;
+        while i < bytes.len() && bytes[i].is_ascii_digit() {
+            row_str.push(bytes[i] as char);
+            i += 1;
+        }
+    }
+    let had_span_digits = !col_str.is_empty() || had_dot;
+    if had_span_digits && i < bytes.len() && bytes[i] == b'+' {
+        i += 1;
+        if !col_str.is_empty() {
+            colspan = col_str.parse::<u32>().unwrap_or(1).max(1);
+        }
+        if !row_str.is_empty() {
+            rowspan = row_str.parse::<u32>().unwrap_or(1).max(1);
+        }
+    } else {
+        // No `+` ⇒ the leading digits aren't a span. Reset.
+        i = span_start;
+    }
+
+    // h-align
+    let mut h_align = None;
+    if i < bytes.len() {
+        match bytes[i] {
+            b'<' => {
+                h_align = Some(HAlign::Left);
+                i += 1;
+            }
+            b'^' => {
+                h_align = Some(HAlign::Center);
+                i += 1;
+            }
+            b'>' => {
+                h_align = Some(HAlign::Right);
+                i += 1;
+            }
+            _ => {}
+        }
+    }
+
+    // style letter
+    let mut style = None;
+    if i < bytes.len() {
+        if let Some(st) = letter_to_style(bytes[i] as char) {
+            style = Some(st);
+            i += 1;
+        }
+    }
+
+    if i != bytes.len() {
+        return None;
+    }
+    if colspan == 1 && rowspan == 1 && h_align.is_none() && style.is_none() {
+        return None;
+    }
+    Some(CellPrefix {
+        h_align,
+        style,
+        colspan,
+        rowspan,
+    })
 }
 
 fn letter_to_style(c: char) -> Option<CellStyle> {
@@ -824,15 +964,6 @@ fn letter_to_style(c: char) -> Option<CellStyle> {
         'e' => CellStyle::Emphasis,
         'h' => CellStyle::Header,
         'l' => CellStyle::Literal,
-        _ => return None,
-    })
-}
-
-fn align_char(c: char) -> Option<HAlign> {
-    Some(match c {
-        '<' => HAlign::Left,
-        '^' => HAlign::Center,
-        '>' => HAlign::Right,
         _ => return None,
     })
 }

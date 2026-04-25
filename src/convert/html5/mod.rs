@@ -400,7 +400,7 @@ fn render_block(out: &mut String, block: &Block, ctx: &RenderCtx) -> Result<(), 
         Block::List(l) => render_list(out, l, ctx),
         Block::DescriptionList(d) => render_description_list(out, d, ctx),
         Block::Delimited(d) => render_delimited(out, d, ctx),
-        Block::Table(t) => render_table(out, t),
+        Block::Table(t) => render_table(out, t, ctx),
         Block::Colist(c) => {
             render_colist(out, c);
             Ok(())
@@ -614,7 +614,7 @@ fn render_delimited(
     }
 }
 
-fn render_table(out: &mut String, t: &Table) -> Result<(), ConvertError> {
+fn render_table(out: &mut String, t: &Table, ctx: &RenderCtx) -> Result<(), ConvertError> {
     render_block_title(out, &t.meta);
     writeln!(out, "<table{}>", meta_attrs(&t.meta))
         .map_err(|e| ConvertError::Message(e.to_string()))?;
@@ -638,7 +638,7 @@ fn render_table(out: &mut String, t: &Table) -> Result<(), ConvertError> {
             out.push_str("<tr>");
             for (idx, cell) in row.cells.iter().enumerate() {
                 let col = t.cols.get(idx);
-                render_table_cell(out, cell, kind, col)?;
+                render_table_cell(out, cell, kind, col, ctx)?;
             }
             out.push_str("</tr>\n");
         }
@@ -684,6 +684,7 @@ fn render_table_cell(
     cell: &TableCell,
     row_kind: RowKind,
     col: Option<&crate::ast::ColumnSpec>,
+    ctx: &RenderCtx,
 ) -> Result<(), ConvertError> {
     // Forced header style or header rows always use <th>.
     let force_th = matches!(cell.style, Some(CellStyle::Header)) || row_kind == RowKind::Header;
@@ -691,34 +692,52 @@ fn render_table_cell(
 
     // Effective alignment: cell-level wins, otherwise column-level, otherwise none.
     let effective_align = cell.h_align.or_else(|| col.and_then(|c| c.h_align));
-    let align_attr = match effective_align {
-        Some(a) => format!(r#" class="{}""#, h_align_class(a)),
-        None => String::new(),
+    let mut classes: Vec<&str> = Vec::new();
+    if let Some(a) = effective_align {
+        classes.push(h_align_class(a));
+    }
+    let class_attr = if classes.is_empty() {
+        String::new()
+    } else {
+        format!(r#" class="{}""#, classes.join(" "))
     };
 
-    let body = match cell.style {
-        // Effective `cell.style` is dispatched here. Header rows lose the
-        // wrapping (the <th> already conveys the role).
-        Some(CellStyle::Monospace) if !force_th => {
-            format!("<code>{}</code>", render_inlines(&cell.inlines))
+    let mut span_attrs = String::new();
+    if cell.colspan > 1 {
+        let _ = write!(span_attrs, r#" colspan="{}""#, cell.colspan);
+    }
+    if cell.rowspan > 1 {
+        let _ = write!(span_attrs, r#" rowspan="{}""#, cell.rowspan);
+    }
+
+    // AsciiDoc cells render their pre-parsed nested blocks; everything
+    // else uses the cell's flat inline list.
+    let body = if matches!(cell.style, Some(CellStyle::AsciiDoc)) {
+        let mut buf = String::new();
+        for b in &cell.blocks {
+            render_block(&mut buf, b, ctx)?;
         }
-        Some(CellStyle::Strong) if !force_th => {
-            format!("<strong>{}</strong>", render_inlines(&cell.inlines))
+        buf
+    } else {
+        match cell.style {
+            Some(CellStyle::Monospace) if !force_th => {
+                format!("<code>{}</code>", render_inlines(&cell.inlines))
+            }
+            Some(CellStyle::Strong) if !force_th => {
+                format!("<strong>{}</strong>", render_inlines(&cell.inlines))
+            }
+            Some(CellStyle::Emphasis) if !force_th => {
+                format!("<em>{}</em>", render_inlines(&cell.inlines))
+            }
+            Some(CellStyle::Literal) => {
+                let plain = inlines_to_plain(&cell.inlines);
+                format!("<pre>{}</pre>", escape(&plain))
+            }
+            _ => render_inlines(&cell.inlines),
         }
-        Some(CellStyle::Emphasis) if !force_th => {
-            format!("<em>{}</em>", render_inlines(&cell.inlines))
-        }
-        Some(CellStyle::Literal) => {
-            // Literal cells: <pre>-wrapped, content already verbatim text.
-            let plain = inlines_to_plain(&cell.inlines);
-            format!("<pre>{}</pre>", escape(&plain))
-        }
-        // AsciiDoc cells are accepted in the AST but not yet recursively
-        // parsed; treat as default for now.
-        _ => render_inlines(&cell.inlines),
     };
 
-    write!(out, "<{tag}{align_attr}>{body}</{tag}>")
+    write!(out, "<{tag}{span_attrs}{class_attr}>{body}</{tag}>")
         .map_err(|e| ConvertError::Message(e.to_string()))
 }
 

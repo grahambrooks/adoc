@@ -257,6 +257,21 @@ fn main() {
 | A    | B                       | C
 |===
 
+.AsciiDoc cells (`a|`) parse content recursively
+[cols="1,2"]
+|===
+| Plain cell  a| An *AsciiDoc* cell with `inline code`, _emphasis_, and a `pass:[<kbd>Ctrl</kbd>]`-style passthrough.
+| Another     | Plain again.
+|===
+
+.Column span with `2+|`
+[cols="1,1,1"]
+|===
+| A | B | C
+2+| spans two columns | end
+| x | y | z
+|===
+
 [#metadata]
 == Block metadata and titles
 

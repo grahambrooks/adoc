@@ -275,6 +275,11 @@ impl RowKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TableCell {
     pub inlines: Vec<Inline>,
+    /// Recursively-parsed blocks for `a|` (AsciiDoc) cells. Empty for any
+    /// other cell style. When non-empty, renderers should ignore `inlines`
+    /// and walk this list instead.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub blocks: Vec<Block>,
     /// Style override from a cell-formatter prefix (`a|`, `m|`, etc.).
     /// `None` means default rendering — plain inline content in a `<td>`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -284,6 +289,19 @@ pub struct TableCell {
     /// from `cols=`, which itself defaults to left.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub h_align: Option<HAlign>,
+    /// Column span from a `N+|` cell-formatter prefix. Default is 1.
+    #[serde(default = "one_u32", skip_serializing_if = "is_one_u32")]
+    pub colspan: u32,
+    /// Row span from a `.N+|` (or `M.N+|`) cell-formatter prefix. Default is 1.
+    #[serde(default = "one_u32", skip_serializing_if = "is_one_u32")]
+    pub rowspan: u32,
+}
+
+fn one_u32() -> u32 {
+    1
+}
+fn is_one_u32(n: &u32) -> bool {
+    *n == 1
 }
 
 /// Cell style from a formatter prefix on the `|` cell separator.

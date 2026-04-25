@@ -467,6 +467,7 @@ fn ast_roundtrips_through_serde_json() {
         "28_tables_header_formatters.adoc",
         "29_callouts.adoc",
         "30_table_cols.adoc",
+        "31_asciidoc_cells_and_span.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -703,6 +704,54 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn asciidoc_cells_and_colspan() {
+    let (doc, html) = render("31_asciidoc_cells_and_span.adoc");
+
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // a| cell content parses recursively: it's wrapped in <p>...</p> and
+    // every inline formatter inside survives.
+    assert!(body.contains(
+        "<td><p>An <strong>AsciiDoc</strong> cell with <code>inline code</code> and <em>emphasis</em>.</p>"
+    ));
+
+    // Colspan attribute on `<td>`.
+    assert!(body.contains(r#"<td colspan="2">spans columns 1 and 2</td>"#));
+    assert!(body.contains(r#"<td colspan="2">spans the last two columns</td>"#));
+
+    // AST shape: a| cell carries blocks, not inlines.
+    let first_table: &adoc::ast::Table = doc
+        .blocks
+        .iter()
+        .flat_map(|b| match b {
+            Block::Section(s) => s
+                .blocks
+                .iter()
+                .filter_map(|b| match b {
+                    Block::Table(t) => Some(t),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+            _ => Vec::new(),
+        })
+        .next()
+        .expect("first table");
+    let asciidoc_cell = &first_table.rows[1].cells[0];
+    assert_eq!(asciidoc_cell.style, Some(adoc::ast::CellStyle::AsciiDoc));
+    assert!(
+        asciidoc_cell.inlines.is_empty(),
+        "a| cells use blocks, not inlines"
+    );
+    assert!(
+        !asciidoc_cell.blocks.is_empty(),
+        "a| cell should have parsed blocks"
+    );
+    assert!(matches!(asciidoc_cell.blocks[0], Block::Paragraph(_)));
 }
 
 #[test]
