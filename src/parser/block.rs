@@ -205,7 +205,9 @@ pub fn parse_inlines_multiline(text: &str, attrs: &Attributes, subs: Subs) -> Ve
     let mut out: Vec<Inline> = Vec::new();
     for (idx, line) in text.split('\n').enumerate() {
         if idx > 0 {
-            out.push(Inline::Text(" ".to_string()));
+            out.push(Inline::Text {
+                value: " ".to_string(),
+            });
         }
         let parsed = inline::parse(line, attrs, subs);
         out.extend(parsed);
@@ -217,7 +219,7 @@ fn merge_adjacent_text(inlines: Vec<Inline>) -> Vec<Inline> {
     let mut out: Vec<Inline> = Vec::with_capacity(inlines.len());
     for item in inlines {
         match (out.last_mut(), item) {
-            (Some(Inline::Text(a)), Inline::Text(b)) => a.push_str(&b),
+            (Some(Inline::Text { value: a }), Inline::Text { value: b }) => a.push_str(&b),
             (_, other) => out.push(other),
         }
     }

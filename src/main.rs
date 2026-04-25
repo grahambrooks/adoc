@@ -3,7 +3,9 @@
 use std::fs;
 use std::io::Write;
 
-use adoc::ast::{AttributeValue, Attributes, Converter};
+use std::io::Read;
+
+use adoc::ast::{AttributeValue, Attributes, Converter, Document};
 use adoc::convert::html5::{
     Html5Converter, Html5Options, Stylesheet, BUILTIN_CSS, BUILTIN_FILENAME,
 };
@@ -78,32 +80,38 @@ fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     init_tracing(cli.verbose, cli.quiet);
 
-    let input = cli
-        .inputs
-        .first()
-        .expect("clap enforces presence unless --from-ast");
-
-    let source = fs::read_to_string(input.as_std_path())
-        .map_err(|e| miette!("failed to read {input}: {e}"))?;
-
     let cli_attrs = parse_cli_attributes(&cli.attributes)?;
+    let input_ref: Option<&Utf8Path> = cli.inputs.first().map(Utf8PathBuf::as_path);
 
-    let base_dir = cli.base_dir.clone().unwrap_or_else(|| {
-        input
-            .parent()
-            .map(Utf8PathBuf::from)
-            .unwrap_or_else(|| Utf8PathBuf::from("."))
-    });
+    // Build the AST either by parsing source or by deserializing JSON.
+    let doc: Document = if cli.from_ast {
+        load_ast_input(input_ref)?
+    } else {
+        let input = input_ref.ok_or_else(|| miette!("input required"))?;
+        let source = fs::read_to_string(input.as_std_path())
+            .map_err(|e| miette!("failed to read {input}: {e}"))?;
+        let base_dir = preprocessor_base_dir(&cli, Some(input));
+        let mut preproc = Preprocessor::with_attributes(cli_attrs.clone())
+            .with_base_dir(base_dir)
+            .with_safe_mode(map_safe_mode(cli.safe_mode));
+        let lines = preproc.run(&source, input).map_err(|e| miette!("{e}"))?;
+        parse_with(&lines, cli_attrs.clone()).map_err(|e| miette!("{e}"))?
+    };
 
-    let mut preproc = Preprocessor::with_attributes(cli_attrs.clone())
-        .with_base_dir(base_dir.clone())
-        .with_safe_mode(map_safe_mode(cli.safe_mode));
-    let lines = preproc
-        .run(&source, input.as_path())
-        .map_err(|e| miette!("{e}"))?;
-    let doc = parse_with(&lines, cli_attrs).map_err(|e| miette!("{e}"))?;
+    let out_path = resolve_output_path(&cli, input_ref);
 
-    let out_path = resolve_output_path(&cli, input);
+    // `--emit-ast` short-circuits the converter and writes JSON.
+    if cli.emit_ast {
+        let json =
+            serde_json::to_string_pretty(&doc).map_err(|e| miette!("AST serialize failed: {e}"))?;
+        return write_output(
+            out_path.as_deref(),
+            json.as_bytes(),
+            /*trailing_newline=*/ true,
+        );
+    }
+
+    let base_dir = preprocessor_base_dir(&cli, input_ref);
     let stylesheet = resolve_stylesheet(&doc.attributes, &base_dir).map_err(|e| miette!("{e}"))?;
 
     let output_html = match cli.backend {
@@ -115,22 +123,70 @@ fn main() -> miette::Result<()> {
         }
     };
 
-    if let Some(path) = &out_path {
-        if let Some(parent) = path.parent() {
-            if !parent.as_str().is_empty() {
-                fs::create_dir_all(parent.as_std_path()).into_diagnostic()?;
-            }
-        }
-        fs::write(path.as_std_path(), &output_html).into_diagnostic()?;
-    } else {
-        let mut stdout = std::io::stdout().lock();
-        stdout.write_all(output_html.as_bytes()).into_diagnostic()?;
-    }
+    write_output(out_path.as_deref(), output_html.as_bytes(), false)?;
 
     if is_truthy(doc.attributes.get("copycss")) {
         copy_stylesheet(&stylesheet, &doc.attributes, &base_dir, out_path.as_deref())?;
     }
 
+    Ok(())
+}
+
+/// Read a serialized [`Document`] from `path` if given, otherwise from stdin.
+fn load_ast_input(path: Option<&Utf8Path>) -> miette::Result<Document> {
+    let json = match path {
+        Some(p) => fs::read_to_string(p.as_std_path())
+            .map_err(|e| miette!("failed to read AST {p}: {e}"))?,
+        None => {
+            let mut buf = String::new();
+            std::io::stdin()
+                .read_to_string(&mut buf)
+                .map_err(|e| miette!("failed to read AST from stdin: {e}"))?;
+            buf
+        }
+    };
+    serde_json::from_str(&json).map_err(|e| miette!("AST deserialize failed: {e}"))
+}
+
+fn preprocessor_base_dir(cli: &Cli, input: Option<&Utf8Path>) -> Utf8PathBuf {
+    cli.base_dir.clone().unwrap_or_else(|| {
+        input
+            .and_then(Utf8Path::parent)
+            .map(Utf8PathBuf::from)
+            .unwrap_or_else(|| Utf8PathBuf::from("."))
+    })
+}
+
+fn write_output(
+    out_path: Option<&Utf8Path>,
+    bytes: &[u8],
+    add_trailing_newline: bool,
+) -> miette::Result<()> {
+    if let Some(path) = out_path {
+        if let Some(parent) = path.parent() {
+            if !parent.as_str().is_empty() {
+                fs::create_dir_all(parent.as_std_path()).into_diagnostic()?;
+            }
+        }
+        fs::write(path.as_std_path(), bytes).into_diagnostic()?;
+        if add_trailing_newline {
+            // The fs::write above replaces; append a newline only when writing
+            // raw text (e.g. AST JSON) to keep line-oriented tools happy.
+            if !bytes.ends_with(b"\n") {
+                fs::OpenOptions::new()
+                    .append(true)
+                    .open(path.as_std_path())
+                    .and_then(|mut f| std::io::Write::write_all(&mut f, b"\n"))
+                    .into_diagnostic()?;
+            }
+        }
+    } else {
+        let mut stdout = std::io::stdout().lock();
+        stdout.write_all(bytes).into_diagnostic()?;
+        if add_trailing_newline && !bytes.ends_with(b"\n") {
+            stdout.write_all(b"\n").into_diagnostic()?;
+        }
+    }
     Ok(())
 }
 
@@ -286,12 +342,12 @@ fn leaf(path_like: &str) -> String {
 
 // --- output path -----------------------------------------------------------
 
-fn resolve_output_path(cli: &Cli, input: &Utf8Path) -> Option<Utf8PathBuf> {
+fn resolve_output_path(cli: &Cli, input: Option<&Utf8Path>) -> Option<Utf8PathBuf> {
     match (&cli.out, &cli.destination_dir) {
         (Some(out), Some(dir)) if out.is_relative() => Some(dir.join(out)),
         (Some(out), _) => Some(out.clone()),
         (None, Some(dir)) => {
-            let stem = input.file_stem().unwrap_or("out");
+            let stem = input.and_then(Utf8Path::file_stem).unwrap_or("out");
             Some(dir.join(format!("{stem}.html")))
         }
         (None, None) => None,

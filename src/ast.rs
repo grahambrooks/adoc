@@ -210,19 +210,39 @@ pub struct TableCell {
     pub inlines: Vec<Inline>,
 }
 
+/// Inline content node.
+///
+/// All variants are struct-shaped so the AST round-trips cleanly through
+/// internally-tagged JSON (`{"kind": "text", "value": "..."}`) — serde
+/// requires struct or unit variants for that tagging mode, since the tag
+/// is merged into the variant's serialized object.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Inline {
-    Text(String),
-    Strong(Vec<Inline>),
-    Emphasis(Vec<Inline>),
-    Monospace(Vec<Inline>),
+    Text {
+        value: String,
+    },
+    Strong {
+        children: Vec<Inline>,
+    },
+    Emphasis {
+        children: Vec<Inline>,
+    },
+    Monospace {
+        children: Vec<Inline>,
+    },
     /// `~text~` — renders as `<sub>`.
-    Subscript(Vec<Inline>),
+    Subscript {
+        children: Vec<Inline>,
+    },
     /// `^text^` — renders as `<sup>`.
-    Superscript(Vec<Inline>),
+    Superscript {
+        children: Vec<Inline>,
+    },
     /// `#text#` (constrained) or `##text##` (unconstrained) — renders as `<mark>`.
-    Highlight(Vec<Inline>),
+    Highlight {
+        children: Vec<Inline>,
+    },
     Link {
         href: String,
         text: Vec<Inline>,
@@ -245,14 +265,20 @@ pub enum Inline {
         id: Option<String>,
         text: Vec<Inline>,
     },
-    AttributeRef(String),
+    AttributeRef {
+        name: String,
+    },
     LineBreak,
     /// `+text+` (constrained) or `++text++` (unconstrained) — emits the
     /// text with HTML special-character escaping but no further inline
     /// substitutions applied.
-    Passthrough(String),
+    Passthrough {
+        value: String,
+    },
     /// `pass:[text]` — emitted verbatim, no escaping. Use to inject raw HTML.
-    RawHtml(String),
+    RawHtml {
+        value: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

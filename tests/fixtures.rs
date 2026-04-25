@@ -248,7 +248,9 @@ fn block_metadata_attaches_to_following_block() {
         .expect("paragraph #first");
     assert_eq!(first.meta.roles, vec!["lead".to_string()]);
     let title = first.meta.title.as_ref().expect("title");
-    assert!(matches!(title.first(), Some(adoc::ast::Inline::Text(t)) if t == "A titled paragraph"));
+    assert!(
+        matches!(title.first(), Some(adoc::ast::Inline::Text { value }) if value == "A titled paragraph")
+    );
 
     // [NOTE] paragraph: style is captured.
     let note = doc
@@ -356,7 +358,7 @@ fn preprocessor_conditionals_and_include() {
         .expect("included section");
     assert!(matches!(
         included.title.first(),
-        Some(adoc::ast::Inline::Text(t)) if t == "Included Section"
+        Some(adoc::ast::Inline::Text { value }) if value == "Included Section"
     ));
 
     // Inline ifdef inside the included file emitted on the same line, so
@@ -365,6 +367,42 @@ fn preprocessor_conditionals_and_include() {
 
     // The closing literal paragraph is present.
     assert!(html.contains("The end."));
+}
+
+#[test]
+fn ast_roundtrips_through_serde_json() {
+    // For every existing fixture, render → JSON → parse-back → render, and
+    // assert the two HTML outputs are byte-identical. This pins the AST
+    // serde format as a public contract.
+    let fixtures = [
+        "01_paragraph.adoc",
+        "02_header.adoc",
+        "03_sections.adoc",
+        "04_unordered_list.adoc",
+        "06_description_list.adoc",
+        "07_listing_block.adoc",
+        "14_table.adoc",
+        "15_inline_quotes.adoc",
+        "16_inline_macros.adoc",
+        "20_mixed.adoc",
+        "21_block_metadata.adoc",
+        "24_section_ids.adoc",
+        "25_admonitions_source.adoc",
+        "26_inline_extras.adoc",
+        "27_toc_sectnums.adoc",
+    ];
+    for name in fixtures {
+        let (doc, html_a) = render(name);
+        let json = serde_json::to_string(&doc).expect("serialize");
+        let doc2: adoc::ast::Document = serde_json::from_str(&json).expect("deserialize");
+        let html_b = Html5Converter::new()
+            .convert(&doc2)
+            .expect("convert roundtrip");
+        assert_eq!(
+            html_a, html_b,
+            "AST roundtrip diverges for {name}\n--- direct ---\n{html_a}\n--- roundtrip ---\n{html_b}",
+        );
+    }
 }
 
 #[test]

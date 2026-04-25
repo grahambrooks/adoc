@@ -700,43 +700,43 @@ fn render_inlines(inlines: &[Inline]) -> String {
 
 fn render_inline(out: &mut String, i: &Inline) {
     match i {
-        Inline::Text(s) => out.push_str(&escape(s)),
-        Inline::Strong(children) => {
+        Inline::Text { value } => out.push_str(&escape(value)),
+        Inline::Strong { children } => {
             out.push_str("<strong>");
             for c in children {
                 render_inline(out, c);
             }
             out.push_str("</strong>");
         }
-        Inline::Emphasis(children) => {
+        Inline::Emphasis { children } => {
             out.push_str("<em>");
             for c in children {
                 render_inline(out, c);
             }
             out.push_str("</em>");
         }
-        Inline::Monospace(children) => {
+        Inline::Monospace { children } => {
             out.push_str("<code>");
             for c in children {
                 render_inline(out, c);
             }
             out.push_str("</code>");
         }
-        Inline::Subscript(children) => {
+        Inline::Subscript { children } => {
             out.push_str("<sub>");
             for c in children {
                 render_inline(out, c);
             }
             out.push_str("</sub>");
         }
-        Inline::Superscript(children) => {
+        Inline::Superscript { children } => {
             out.push_str("<sup>");
             for c in children {
                 render_inline(out, c);
             }
             out.push_str("</sup>");
         }
-        Inline::Highlight(children) => {
+        Inline::Highlight { children } => {
             out.push_str("<mark>");
             for c in children {
                 render_inline(out, c);
@@ -755,7 +755,7 @@ fn render_inline(out: &mut String, i: &Inline) {
             }
             out.push_str("</span>");
         }
-        Inline::Passthrough(text) => out.push_str(&escape(text)),
+        Inline::Passthrough { value } => out.push_str(&escape(value)),
         Inline::Link { href, text } => {
             let _ = write!(out, r#"<a href="{}">"#, escape_attr(href));
             for c in text {
@@ -795,11 +795,11 @@ fn render_inline(out: &mut String, i: &Inline) {
             }
             out.push_str(">");
         }
-        Inline::AttributeRef(name) => {
+        Inline::AttributeRef { name } => {
             let _ = write!(out, "{{{name}}}");
         }
         Inline::LineBreak => out.push_str("<br>"),
-        Inline::RawHtml(html) => out.push_str(html),
+        Inline::RawHtml { value } => out.push_str(value),
     }
 }
 
@@ -813,14 +813,14 @@ fn inlines_to_plain(inlines: &[Inline]) -> String {
 
 fn inline_to_plain(out: &mut String, i: &Inline) {
     match i {
-        Inline::Text(s) => out.push_str(s),
-        Inline::Strong(c)
-        | Inline::Emphasis(c)
-        | Inline::Monospace(c)
-        | Inline::Subscript(c)
-        | Inline::Superscript(c)
-        | Inline::Highlight(c) => {
-            for child in c {
+        Inline::Text { value } => out.push_str(value),
+        Inline::Strong { children }
+        | Inline::Emphasis { children }
+        | Inline::Monospace { children }
+        | Inline::Subscript { children }
+        | Inline::Superscript { children }
+        | Inline::Highlight { children } => {
+            for child in children {
                 inline_to_plain(out, child);
             }
         }
@@ -829,7 +829,7 @@ fn inline_to_plain(out: &mut String, i: &Inline) {
                 inline_to_plain(out, child);
             }
         }
-        Inline::Passthrough(s) => out.push_str(s),
+        Inline::Passthrough { value } => out.push_str(value),
         Inline::Link { text, .. } => {
             for child in text {
                 inline_to_plain(out, child);
@@ -845,11 +845,11 @@ fn inline_to_plain(out: &mut String, i: &Inline) {
             }
         }
         Inline::Image { alt, .. } => out.push_str(alt),
-        Inline::AttributeRef(name) => {
+        Inline::AttributeRef { name } => {
             let _ = write!(out, "{{{name}}}");
         }
         Inline::LineBreak => out.push(' '),
-        Inline::RawHtml(_) => {}
+        Inline::RawHtml { .. } => {}
     }
 }
 

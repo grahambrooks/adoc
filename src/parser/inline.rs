@@ -152,15 +152,15 @@ impl<'a> InlineParser<'a> {
         // greedily match a single `+`.
         if rem.starts_with("++") {
             if let Some(inner_len) = find_closing(rem, "++", 2, false) {
-                let text = rem[2..2 + inner_len].to_string();
-                return Some((Inline::Passthrough(text), 2 + inner_len + 2));
+                let value = rem[2..2 + inner_len].to_string();
+                return Some((Inline::Passthrough { value }, 2 + inner_len + 2));
             }
         }
         // Constrained `+text+` — single `+` with word-boundary rule.
         if rem.starts_with('+') && !rem.starts_with("++") && is_constrained_open(rem, "+", buf) {
             if let Some(inner_len) = find_closing(rem, "+", 1, true) {
-                let text = rem[1..1 + inner_len].to_string();
-                return Some((Inline::Passthrough(text), 1 + inner_len + 1));
+                let value = rem[1..1 + inner_len].to_string();
+                return Some((Inline::Passthrough { value }, 1 + inner_len + 1));
             }
         }
         None
@@ -180,7 +180,7 @@ impl<'a> InlineParser<'a> {
                     return Some((
                         Inline::Link {
                             href: text.clone(),
-                            text: vec![Inline::Text(text)],
+                            text: vec![Inline::Text { value: text }],
                         },
                         trimmed.len(),
                     ));
@@ -252,7 +252,9 @@ impl<'a> InlineParser<'a> {
 
 fn flush(buf: &mut String, out: &mut Vec<Inline>) {
     if !buf.is_empty() {
-        out.push(Inline::Text(std::mem::take(buf)));
+        out.push(Inline::Text {
+            value: std::mem::take(buf),
+        });
     }
 }
 
@@ -267,10 +269,10 @@ fn is_attribute_name(s: &str) -> bool {
 
 // Constrained quotes: single-char markers, require word boundary at edges.
 const CONSTRAINED_QUOTES: &[(&str, fn(Vec<Inline>) -> Inline)] = &[
-    ("*", Inline::Strong),
-    ("_", Inline::Emphasis),
-    ("`", Inline::Monospace),
-    ("#", Inline::Highlight),
+    ("*", make_strong),
+    ("_", make_emphasis),
+    ("`", make_monospace),
+    ("#", make_highlight),
 ];
 
 // Unconstrained quotes: longer (or marker-class-specific) markers, with
@@ -278,13 +280,35 @@ const CONSTRAINED_QUOTES: &[(&str, fn(Vec<Inline>) -> Inline)] = &[
 // Subscript (`~`) and superscript (`^`) are single-char but unconstrained
 // per spec, so they live here.
 const UNCONSTRAINED_QUOTES: &[(&str, fn(Vec<Inline>) -> Inline)] = &[
-    ("**", Inline::Strong),
-    ("__", Inline::Emphasis),
-    ("``", Inline::Monospace),
-    ("##", Inline::Highlight),
-    ("~", Inline::Subscript),
-    ("^", Inline::Superscript),
+    ("**", make_strong),
+    ("__", make_emphasis),
+    ("``", make_monospace),
+    ("##", make_highlight),
+    ("~", make_subscript),
+    ("^", make_superscript),
 ];
+
+// Variant ctors named so they can be used as `fn` pointers in const
+// tables — the struct-shaped variants can't be referenced directly the
+// way tuple variants can.
+fn make_strong(children: Vec<Inline>) -> Inline {
+    Inline::Strong { children }
+}
+fn make_emphasis(children: Vec<Inline>) -> Inline {
+    Inline::Emphasis { children }
+}
+fn make_monospace(children: Vec<Inline>) -> Inline {
+    Inline::Monospace { children }
+}
+fn make_highlight(children: Vec<Inline>) -> Inline {
+    Inline::Highlight { children }
+}
+fn make_subscript(children: Vec<Inline>) -> Inline {
+    Inline::Subscript { children }
+}
+fn make_superscript(children: Vec<Inline>) -> Inline {
+    Inline::Superscript { children }
+}
 
 fn is_constrained_open(rem: &str, marker: &str, buf: &str) -> bool {
     if !rem.starts_with(marker) {
@@ -385,9 +409,13 @@ fn parse_prefix_macro(rem: &str, prefix: &str) -> Option<(Inline, usize)> {
     };
     let text_src = attrs_str.split(',').next().unwrap_or("").trim();
     let text = if text_src.is_empty() {
-        vec![Inline::Text(target.to_string())]
+        vec![Inline::Text {
+            value: target.to_string(),
+        }]
     } else {
-        vec![Inline::Text(text_src.to_string())]
+        vec![Inline::Text {
+            value: text_src.to_string(),
+        }]
     };
     Some((Inline::Link { href, text }, consumed))
 }
@@ -523,7 +551,12 @@ fn parse_pass_macro(rem: &str) -> Option<(Inline, usize)> {
     let attrs_end = find_unescaped(&after[bracket..], ']')?;
     let inner = &after[bracket + 1..bracket + attrs_end];
     let consumed = prefix.len() + bracket + attrs_end + 1;
-    Some((Inline::RawHtml(inner.to_string()), consumed))
+    Some((
+        Inline::RawHtml {
+            value: inner.to_string(),
+        },
+        consumed,
+    ))
 }
 
 fn find_unescaped(s: &str, needle: char) -> Option<usize> {

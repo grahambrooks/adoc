@@ -58,8 +58,8 @@ Options:
   -D, --destination-dir <DIR>   Output directory
       --safe-mode <MODE>        unsafe|safe|server|secure  (default: safe)
       --base-dir <DIR>          Base directory for includes
-      --emit-ast                Emit serialized AST (JSON) to stdout  [planned]
-      --from-ast                Read serialized AST from stdin         [planned]
+      --emit-ast                Emit serialized AST (JSON) to stdout
+      --from-ast                Read serialized AST from stdin or input file
   -v, --verbose                 Increase log verbosity (repeatable)
   -q, --quiet                   Suppress warnings
   -h, --help
@@ -89,6 +89,11 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - Source blocks with language — `[source,LANG]` on a `----` listing emits `<pre><code class="language-LANG">…</code></pre>` so downstream highlighters (Prism, Highlight.js, Rouge) can take over without conflict.
 - Inline extras — subscript `~text~`, superscript `^text^`, highlight `#text#` / `##text##`, constrained passthrough `+text+` and unconstrained `++text++` (HTML-escaped, no inline subs), `pass:[…]` macro (raw HTML), and inline footnotes `footnote:[…]` / `footnote:id[…]` (rendered inline as `<span class="footnote">`; numbered end-of-doc section is queued).
 - TOC, sectnums, sectanchors — `:toc:` emits a nested `<div id="toc">` with title links above the body; `:sectnums:` prepends `1.2.3` numbering to section headings (and TOC entries); `:sectanchors:` adds a hover-revealed `<a class="anchor">` next to each heading. All three are computed in a single pre-walk.
+- `--emit-ast` / `--from-ast` — the AST round-trips through `serde_json`, locking in the JSON shape as a public contract. The stdio extension model now works:
+  ```
+  adoc --emit-ast doc.adoc | jq … | adoc --from-ast -o out.html
+  ```
+  Variants are internally tagged: `{"kind": "text", "value": "hi"}`, `{"kind": "section", "level": 1, "title": [...], …}`, etc. Unit variants serialize as `{"kind": "line_break"}`.
 
 ## What's missing
 

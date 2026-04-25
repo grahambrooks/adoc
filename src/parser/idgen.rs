@@ -110,14 +110,14 @@ pub fn inlines_to_plain(inlines: &[Inline]) -> String {
 
 fn write_plain(out: &mut String, inline: &Inline) {
     match inline {
-        Inline::Text(s) => out.push_str(s),
-        Inline::Strong(c)
-        | Inline::Emphasis(c)
-        | Inline::Monospace(c)
-        | Inline::Subscript(c)
-        | Inline::Superscript(c)
-        | Inline::Highlight(c) => {
-            for child in c {
+        Inline::Text { value } => out.push_str(value),
+        Inline::Strong { children }
+        | Inline::Emphasis { children }
+        | Inline::Monospace { children }
+        | Inline::Subscript { children }
+        | Inline::Superscript { children }
+        | Inline::Highlight { children } => {
+            for child in children {
                 write_plain(out, child);
             }
         }
@@ -145,14 +145,14 @@ fn write_plain(out: &mut String, inline: &Inline) {
                 write_plain(out, child);
             }
         }
-        Inline::AttributeRef(name) => {
+        Inline::AttributeRef { name } => {
             out.push('{');
             out.push_str(name);
             out.push('}');
         }
         Inline::LineBreak => out.push(' '),
-        Inline::Passthrough(s) => out.push_str(s),
-        Inline::RawHtml(_) => {}
+        Inline::Passthrough { value } => out.push_str(value),
+        Inline::RawHtml { .. } => {}
     }
 }
 
@@ -206,9 +206,15 @@ mod tests {
     #[test]
     fn inline_to_plain_strips_formatting() {
         let title = vec![
-            Inline::Text("API ".into()),
-            Inline::Strong(vec![Inline::Text("v2".into())]),
-            Inline::Text(" Reference".into()),
+            Inline::Text {
+                value: "API ".into(),
+            },
+            Inline::Strong {
+                children: vec![Inline::Text { value: "v2".into() }],
+            },
+            Inline::Text {
+                value: " Reference".into(),
+            },
         ];
         assert_eq!(inlines_to_plain(&title), "API v2 Reference");
     }

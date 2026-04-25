@@ -136,11 +136,12 @@ Options:
 
 Exit codes: `0` success, `1` usage error, `2` parse/convert error, `3` I/O error.
 
-Status: flags are parsed and the happy path renders to file or stdout. The following are accepted but not yet honoured by the pipeline:
-
-- `--emit-ast` / `--from-ast` — the binary always parses from disk and always renders.
-- `--safe-mode` — parsed; no enforcement applied.
-- Multiple input files — accepted; only the first is processed.
+Status: the happy path renders to file or stdout; `--emit-ast` and
+`--from-ast` are wired (round-trip is exercised by the integration
+suite); `--safe-mode` is enforced for `include::` (`safe`/`server`
+reject path escapes, `secure` disables includes entirely). Multiple
+input files are accepted at the CLI but only the first is processed —
+queued behind the diagnostics phase.
 
 ## Implementation status
 
@@ -173,7 +174,7 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Inline subscript/superscript/highlight (`~x~`, `^x^`, `#x#`), inline passthroughs (`+text+`, `pass:[]`), inline footnotes, inline anchors, bibliography entries | **not started** |
 | TOC generation, discrete headings, `sectnums`/`sectanchors` honoured | **not started** |
 | `doctype` (article/book/manpage/inline) influencing output | **not started** |
-| `--emit-ast` / `--from-ast` wiring in `src/main.rs` | **not started** |
+| `--emit-ast` / `--from-ast` wiring in `src/main.rs`; AST roundtrips through `serde_json` (verified by an integration test that renders → JSON → parse-back → render and asserts byte-identical HTML for 15 fixtures) | done |
 | Real `miette::Diagnostic` errors with span pointers (locations exist; error types don't carry them yet) | **not started** |
 | Conformance suite under `tests/conformance/` (expected AST + HTML5 per spec example) | **not started** — `tests/fixtures/` covers the v1 surface in the meantime |
 
@@ -188,9 +189,7 @@ The current `adoc::ast` types cover what the parser produces. Several spec const
 
 ## CLI / pipeline gaps
 
-- `--emit-ast` should emit `serde_json::to_string_pretty(&doc)` and exit before the converter runs. `--from-ast` should bypass the preprocessor and parser entirely and `serde_json::from_reader(stdin)`.
 - Multi-input handling: either iterate (one output per input) or document that only the first input is processed and reject the rest at parse time.
-- Safe modes need a real implementation: `unsafe` permits arbitrary include paths; `safe` rejects absolute paths; `server` additionally rejects `..`; `secure` disables `include::` and any macro that touches the filesystem.
 
 ## Phasing (revised)
 
