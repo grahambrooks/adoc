@@ -46,13 +46,20 @@ pub enum PreprocessError {
 }
 
 /// Mirrors the CLI safe-mode flag enough to gate filesystem-touching
-/// constructs. Only `Secure` (which disables `include::`) is enforced
-/// today; `Safe` and `Server` are accepted but otherwise treated as
-/// permissive — full enforcement is queued behind diagnostics work.
+/// constructs.
+///
+/// - `Unsafe` (library default): no path checks.
+/// - `Safe` / `Server`: `include::` paths must be relative AND must resolve
+///   under [`Preprocessor::with_base_dir`] after canonicalisation.
+/// - `Secure`: `include::` is disabled entirely.
+///
+/// The library defaults to `Unsafe` because a library can't know the
+/// caller's threat model; the CLI defaults to `Safe` and explicitly
+/// threads its choice through [`Preprocessor::with_safe_mode`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SafeMode {
-    Unsafe,
     #[default]
+    Unsafe,
     Safe,
     Server,
     Secure,
@@ -231,11 +238,11 @@ impl Preprocessor {
                 state.cond_stack.pop();
                 Ok(())
             }
-            Directive::Include { target } => {
+            Directive::Include { target, args } => {
                 if !state.emitting() {
                     return Ok(());
                 }
-                self.handle_include(&target, source_path, state, output)
+                self.handle_include(&target, &args, source_path, state, output)
             }
         }
     }
@@ -268,6 +275,7 @@ impl Preprocessor {
     fn handle_include(
         &mut self,
         target: &str,
+        args: &str,
         current_path: &Utf8Path,
         state: &mut ProcessState,
         output: &mut Vec<PreprocessedLine>,
@@ -278,7 +286,19 @@ impl Preprocessor {
             ));
         }
 
-        let resolved = self.resolve_include_path(target.trim(), current_path);
+        let target = target.trim();
+        let raw_target = Utf8PathBuf::from(target);
+        if matches!(self.safe_mode, SafeMode::Safe | SafeMode::Server) && raw_target.is_absolute() {
+            return Err(PreprocessError::Message(format!(
+                "absolute include path {raw_target} rejected in safe mode"
+            )));
+        }
+
+        let resolved = self.resolve_include_path(target, current_path);
+
+        if matches!(self.safe_mode, SafeMode::Safe | SafeMode::Server) {
+            self.ensure_under_base_dir(&resolved)?;
+        }
 
         if state.include_chain.iter().any(|p| p == &resolved) {
             return Err(PreprocessError::Message(format!(
@@ -292,12 +312,34 @@ impl Preprocessor {
             )));
         }
 
-        let source = read_file(&resolved)?;
+        let raw_source = read_file(&resolved)?;
+        let parsed_args = parse_include_args(args);
+        let filtered = apply_include_args(&raw_source, &parsed_args);
+
         let source_id = self.register_source(resolved.clone());
         state.include_chain.push(resolved.clone());
         let owned = resolved;
-        self.process_source(&source, source_id, &owned, state, output)?;
+        self.process_source(&filtered, source_id, &owned, state, output)?;
         state.include_chain.pop();
+        Ok(())
+    }
+
+    fn ensure_under_base_dir(&self, resolved: &Utf8Path) -> Result<(), PreprocessError> {
+        let base_canon = self.base_dir.canonicalize_utf8().map_err(|e| {
+            PreprocessError::Message(format!("base_dir {} not accessible: {e}", self.base_dir))
+        })?;
+        let resolved_canon =
+            resolved
+                .canonicalize_utf8()
+                .map_err(|source| PreprocessError::Io {
+                    path: resolved.to_string(),
+                    source,
+                })?;
+        if !resolved_canon.starts_with(&base_canon) {
+            return Err(PreprocessError::Message(format!(
+                "include path {resolved_canon} escapes base_dir {base_canon} (safe mode)"
+            )));
+        }
         Ok(())
     }
 
@@ -337,6 +379,7 @@ impl ProcessState {
 enum Directive {
     Include {
         target: String,
+        args: String,
     },
     Ifdef {
         test: AttrTest,
@@ -366,6 +409,7 @@ fn parse_directive(text: &str) -> Option<Directive> {
             return Some(match prefix {
                 "include::" => Directive::Include {
                     target: head.to_string(),
+                    args: body.to_string(),
                 },
                 "ifdef::" => Directive::Ifdef {
                     test: parse_attr_test(head)?,
@@ -430,6 +474,290 @@ fn nonempty(s: &str) -> Option<String> {
     } else {
         Some(s.to_string())
     }
+}
+
+// --- include arguments ----------------------------------------------------
+
+#[derive(Debug, Default)]
+struct IncludeArgs {
+    /// Inclusive 1-based line ranges. `-1` means "last line"; an `end` of
+    /// `-1` (after resolution) means "to end of file". Multiple ranges are
+    /// unioned.
+    lines: Option<Vec<LineRange>>,
+    tags: Option<TagSelector>,
+    /// Signed offset added to every section header level in the included
+    /// content. Final level is clamped to `1..=6`.
+    leveloffset: Option<i32>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct LineRange {
+    start: i64,
+    end: i64,
+}
+
+#[derive(Debug, Default)]
+struct TagSelector {
+    include: Vec<String>,
+    exclude: Vec<String>,
+}
+
+fn parse_include_args(s: &str) -> IncludeArgs {
+    let mut args = IncludeArgs::default();
+    for part in split_attrlist_top_level(s) {
+        let part = part.trim();
+        if part.is_empty() {
+            continue;
+        }
+        let Some((name, value)) = split_attr_pair(part) else {
+            continue;
+        };
+        let v = strip_quotes(value);
+        match name {
+            "lines" => args.lines = Some(parse_line_ranges(v)),
+            "tag" | "tags" => args.tags = Some(parse_tag_selector(v)),
+            "leveloffset" => args.leveloffset = parse_leveloffset(v),
+            _ => {}
+        }
+    }
+    args
+}
+
+fn apply_include_args(source: &str, args: &IncludeArgs) -> String {
+    let mut current = if let Some(ref tags) = args.tags {
+        apply_tags_filter(source, tags)
+    } else if let Some(ref ranges) = args.lines {
+        apply_lines_filter(source, ranges)
+    } else {
+        source.to_string()
+    };
+    if let Some(delta) = args.leveloffset {
+        if delta != 0 {
+            current = apply_leveloffset(&current, delta);
+        }
+    }
+    current
+}
+
+/// Split a comma-separated attrlist body, treating commas inside double
+/// quotes as literal. Mirrors `parser::meta::split_top_level_commas` but
+/// kept private to avoid coupling the two modules.
+fn split_attrlist_top_level(s: &str) -> Vec<String> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut in_quote = false;
+    let mut escape = false;
+    for ch in s.chars() {
+        if escape {
+            current.push(ch);
+            escape = false;
+            continue;
+        }
+        match ch {
+            '\\' => escape = true,
+            '"' => {
+                in_quote = !in_quote;
+                current.push(ch);
+            }
+            ',' if !in_quote => parts.push(std::mem::take(&mut current)),
+            _ => current.push(ch),
+        }
+    }
+    parts.push(current);
+    parts
+}
+
+fn split_attr_pair(part: &str) -> Option<(&str, &str)> {
+    let eq = part.find('=')?;
+    let name = part[..eq].trim();
+    if !is_attr_name(name) {
+        return None;
+    }
+    Some((name, part[eq + 1..].trim()))
+}
+
+fn strip_quotes(s: &str) -> &str {
+    let s = s.trim();
+    if s.len() >= 2 && s.starts_with('"') && s.ends_with('"') {
+        &s[1..s.len() - 1]
+    } else {
+        s
+    }
+}
+
+fn parse_line_ranges(s: &str) -> Vec<LineRange> {
+    s.split([';', ','])
+        .filter_map(|piece| parse_one_line_range(piece.trim()))
+        .collect()
+}
+
+fn parse_one_line_range(s: &str) -> Option<LineRange> {
+    if s.is_empty() {
+        return None;
+    }
+    if let Some(idx) = s.find("..") {
+        let lo = s[..idx].trim();
+        let hi = s[idx + 2..].trim();
+        let start = lo.parse::<i64>().ok()?;
+        let end = hi.parse::<i64>().ok()?;
+        Some(LineRange { start, end })
+    } else {
+        let n = s.parse::<i64>().ok()?;
+        Some(LineRange { start: n, end: n })
+    }
+}
+
+fn apply_lines_filter(source: &str, ranges: &[LineRange]) -> String {
+    let mut lines: Vec<&str> = source.split('\n').collect();
+    // A source ending in '\n' produces a trailing empty element; treat it
+    // as the file's terminating newline rather than a numbered line.
+    let trailing_newline = lines.last() == Some(&"");
+    if trailing_newline {
+        lines.pop();
+    }
+    let total = lines.len() as i64;
+    let resolve = |n: i64| -> i64 {
+        if n < 0 {
+            total + n + 1
+        } else {
+            n
+        }
+    };
+    let mut keep = vec![false; lines.len()];
+    for r in ranges {
+        let start = resolve(r.start).max(1);
+        let end = if r.end == -1 { total } else { resolve(r.end) };
+        if end < start {
+            continue;
+        }
+        for i in start..=end {
+            if (1..=total).contains(&i) {
+                keep[(i - 1) as usize] = true;
+            }
+        }
+    }
+    let kept: Vec<&str> = lines
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| keep[*i])
+        .map(|(_, l)| *l)
+        .collect();
+    let mut result = kept.join("\n");
+    if trailing_newline && !result.is_empty() {
+        result.push('\n');
+    }
+    result
+}
+
+fn parse_tag_selector(s: &str) -> TagSelector {
+    let mut sel = TagSelector::default();
+    for piece in s.split([';', ',']) {
+        let piece = piece.trim();
+        if piece.is_empty() {
+            continue;
+        }
+        if let Some(rest) = piece.strip_prefix('!') {
+            let name = rest.trim();
+            if !name.is_empty() {
+                sel.exclude.push(name.to_string());
+            }
+        } else {
+            sel.include.push(piece.to_string());
+        }
+    }
+    sel
+}
+
+fn apply_tags_filter(source: &str, selector: &TagSelector) -> String {
+    let mut active: Vec<String> = Vec::new();
+    let mut out_lines: Vec<&str> = Vec::new();
+    let lines: Vec<&str> = source.split('\n').collect();
+    let trailing_newline = lines.last() == Some(&"");
+
+    for (idx, line) in lines.iter().enumerate() {
+        if trailing_newline && idx == lines.len() - 1 {
+            // Skip the trailing empty pseudo-line; restored at the end.
+            continue;
+        }
+        if let Some(name) = parse_tag_marker(line, "tag::") {
+            active.push(name.to_string());
+            continue;
+        }
+        if let Some(name) = parse_tag_marker(line, "end::") {
+            if let Some(pos) = active.iter().rposition(|n| n == name) {
+                active.remove(pos);
+            }
+            continue;
+        }
+        let any_excluded = active
+            .iter()
+            .any(|a| selector.exclude.iter().any(|e| e == a));
+        if any_excluded {
+            continue;
+        }
+        let any_included = active
+            .iter()
+            .any(|a| selector.include.iter().any(|i| i == a));
+        if any_included {
+            out_lines.push(line);
+        }
+    }
+    let mut result = out_lines.join("\n");
+    if trailing_newline && !result.is_empty() {
+        result.push('\n');
+    }
+    result
+}
+
+fn parse_tag_marker<'a>(line: &'a str, kw: &str) -> Option<&'a str> {
+    let start = line.find(kw)?;
+    if start > 0 {
+        let prev = line[..start].chars().last()?;
+        if prev.is_alphanumeric() || prev == '_' {
+            return None;
+        }
+    }
+    let after = &line[start + kw.len()..];
+    let bracket = after.find('[')?;
+    if !after[bracket..].starts_with("[]") {
+        return None;
+    }
+    let name = after[..bracket].trim();
+    if name.is_empty() {
+        return None;
+    }
+    Some(name)
+}
+
+fn parse_leveloffset(s: &str) -> Option<i32> {
+    s.trim().parse::<i32>().ok()
+}
+
+fn apply_leveloffset(source: &str, delta: i32) -> String {
+    let mut out = String::with_capacity(source.len());
+    let mut first = true;
+    for line in source.split('\n') {
+        if !first {
+            out.push('\n');
+        }
+        first = false;
+        let bytes = line.as_bytes();
+        let mut eq_count = 0;
+        while eq_count < bytes.len() && bytes[eq_count] == b'=' {
+            eq_count += 1;
+        }
+        let is_section_header = (1..=6).contains(&eq_count) && bytes.get(eq_count) == Some(&b' ');
+        if is_section_header {
+            let new_count = (eq_count as i32 + delta).clamp(1, 6) as usize;
+            for _ in 0..new_count {
+                out.push('=');
+            }
+            out.push_str(&line[eq_count..]);
+        } else {
+            out.push_str(line);
+        }
+    }
+    out
 }
 
 // --- attribute entries ----------------------------------------------------
@@ -787,6 +1115,174 @@ mod tests {
         let mut p = Preprocessor::default().with_safe_mode(SafeMode::Secure);
         let err = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap_err();
         assert!(matches!(err, PreprocessError::Message(m) if m.contains("secure")));
+    }
+
+    #[test]
+    fn include_lines_range_filters_content() {
+        let dir = tempdir();
+        let part = dir.join("part.adoc");
+        std::fs::write(&part, "one\ntwo\nthree\nfour\nfive\n").unwrap();
+        let top = dir.join("top.adoc");
+        std::fs::write(&top, "include::part.adoc[lines=2..4]\n").unwrap();
+        let mut p = Preprocessor::default();
+        let lines = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap();
+        let texts: Vec<_> = lines.iter().map(|l| l.text.as_str()).collect();
+        assert_eq!(texts, vec!["two", "three", "four", "", ""]);
+    }
+
+    #[test]
+    fn include_lines_supports_open_ended_and_multiple_ranges() {
+        let dir = tempdir();
+        let part = dir.join("part.adoc");
+        std::fs::write(&part, "1\n2\n3\n4\n5\n6\n").unwrap();
+        let top = dir.join("top.adoc");
+        std::fs::write(&top, "include::part.adoc[lines=1;3..-1]\n").unwrap();
+        let mut p = Preprocessor::default();
+        let lines = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap();
+        let texts: Vec<_> = lines.iter().map(|l| l.text.as_str()).collect();
+        assert_eq!(texts, vec!["1", "3", "4", "5", "6", "", ""]);
+    }
+
+    #[test]
+    fn include_tag_selects_marked_region() {
+        let dir = tempdir();
+        let part = dir.join("part.adoc");
+        std::fs::write(
+            &part,
+            "outside\n// tag::keep[]\ninside\n// end::keep[]\nafter\n",
+        )
+        .unwrap();
+        let top = dir.join("top.adoc");
+        std::fs::write(&top, "include::part.adoc[tag=keep]\n").unwrap();
+        let mut p = Preprocessor::default();
+        let lines = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap();
+        let texts: Vec<_> = lines.iter().map(|l| l.text.as_str()).collect();
+        assert_eq!(texts, vec!["inside", "", ""]);
+    }
+
+    #[test]
+    fn include_tags_supports_multiple_and_negation() {
+        let dir = tempdir();
+        let part = dir.join("part.adoc");
+        std::fs::write(
+            &part,
+            "// tag::a[]\nA\n// end::a[]\n// tag::b[]\nB\n// end::b[]\n// tag::c[]\nC\n// end::c[]\n",
+        )
+        .unwrap();
+        let top = dir.join("top.adoc");
+        std::fs::write(&top, "include::part.adoc[tags=a;b;!b]\n").unwrap();
+        let mut p = Preprocessor::default();
+        let lines = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap();
+        let texts: Vec<_> = lines.iter().map(|l| l.text.as_str()).collect();
+        assert_eq!(texts, vec!["A", "", ""]);
+    }
+
+    #[test]
+    fn include_leveloffset_shifts_section_levels() {
+        let dir = tempdir();
+        let part = dir.join("part.adoc");
+        std::fs::write(&part, "= Top\n== Sub\n=== SubSub\n").unwrap();
+        let top = dir.join("top.adoc");
+        std::fs::write(&top, "include::part.adoc[leveloffset=+1]\n").unwrap();
+        let mut p = Preprocessor::default();
+        let lines = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap();
+        let texts: Vec<_> = lines.iter().map(|l| l.text.as_str()).collect();
+        assert_eq!(texts, vec!["== Top", "=== Sub", "==== SubSub", "", ""]);
+    }
+
+    #[test]
+    fn include_leveloffset_clamps_to_six() {
+        let dir = tempdir();
+        let part = dir.join("part.adoc");
+        std::fs::write(&part, "===== Five\n").unwrap();
+        let top = dir.join("top.adoc");
+        std::fs::write(&top, "include::part.adoc[leveloffset=+5]\n").unwrap();
+        let mut p = Preprocessor::default();
+        let lines = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap();
+        assert_eq!(lines[0].text, "====== Five");
+    }
+
+    #[test]
+    fn safe_mode_rejects_absolute_include() {
+        let dir = tempdir();
+        let part = dir.join("part.adoc");
+        std::fs::write(&part, "x\n").unwrap();
+        let top = dir.join("top.adoc");
+        // Use the absolute path of part.adoc as the include target.
+        let abs = part.canonicalize().unwrap();
+        let abs_str = Utf8Path::from_path(&abs).unwrap().to_string();
+        std::fs::write(&top, format!("include::{abs_str}[]\n")).unwrap();
+        let mut p = Preprocessor::default().with_safe_mode(SafeMode::Safe);
+        let err = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap_err();
+        assert!(
+            matches!(&err, PreprocessError::Message(m) if m.contains("absolute") || m.contains("escapes")),
+            "{err:?}",
+        );
+    }
+
+    #[test]
+    fn safe_mode_rejects_path_escaping_base_dir() {
+        // Layout: <root>/inside/{top.adoc, ok.adoc} and <root>/outside/leak.adoc.
+        // base_dir is <root>/inside. include::../outside/leak.adoc[] must error.
+        let root = tempdir();
+        let inside = root.join("inside");
+        let outside = root.join("outside");
+        std::fs::create_dir_all(&inside).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        let leak = outside.join("leak.adoc");
+        std::fs::write(&leak, "leaked\n").unwrap();
+        let top = inside.join("top.adoc");
+        std::fs::write(&top, "include::../outside/leak.adoc[]\n").unwrap();
+
+        let mut p = Preprocessor::default()
+            .with_base_dir(Utf8Path::from_path(&inside).unwrap().to_owned())
+            .with_safe_mode(SafeMode::Safe);
+        let err = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap_err();
+        assert!(
+            matches!(&err, PreprocessError::Message(m) if m.contains("escapes")),
+            "{err:?}",
+        );
+    }
+
+    #[test]
+    fn safe_mode_allows_include_within_base_dir() {
+        let root = tempdir();
+        let inside = root.join("inside");
+        std::fs::create_dir_all(&inside).unwrap();
+        let part = inside.join("part.adoc");
+        std::fs::write(&part, "ok\n").unwrap();
+        let top = inside.join("top.adoc");
+        std::fs::write(&top, "include::part.adoc[]\n").unwrap();
+
+        let mut p = Preprocessor::default()
+            .with_base_dir(Utf8Path::from_path(&inside).unwrap().to_owned())
+            .with_safe_mode(SafeMode::Safe);
+        let lines = p
+            .run_file(Utf8Path::from_path(&top).unwrap())
+            .expect("safe-mode should allow in-tree include");
+        let texts: Vec<_> = lines.iter().map(|l| l.text.as_str()).collect();
+        assert_eq!(texts, vec!["ok", "", ""]);
+    }
+
+    #[test]
+    fn line_range_resolves_negative_indices() {
+        assert_eq!(parse_one_line_range("1..-1").unwrap().end, -1);
+        let r = parse_one_line_range("3..5").unwrap();
+        assert_eq!((r.start, r.end), (3, 5));
+        let single = parse_one_line_range("7").unwrap();
+        assert_eq!((single.start, single.end), (7, 7));
+    }
+
+    #[test]
+    fn tag_marker_recognises_common_comment_leaders() {
+        assert_eq!(parse_tag_marker("// tag::foo[]", "tag::"), Some("foo"));
+        assert_eq!(parse_tag_marker("# tag::foo[]", "tag::"), Some("foo"));
+        assert_eq!(
+            parse_tag_marker("<!-- tag::foo[] -->", "tag::"),
+            Some("foo")
+        );
+        // Adjacent alphanumeric prefix → not a marker.
+        assert!(parse_tag_marker("subtag::foo[]", "tag::").is_none());
     }
 
     /// Tiny ad-hoc tempdir helper to avoid pulling in `tempfile` for tests.

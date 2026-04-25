@@ -1,0 +1,13 @@
+= Include Argument Showcase
+
+== Lines selector
+
+include::23_include_args_part.adoc[lines=2..4]
+
+== Tag selector
+
+include::23_include_args_part.adoc[tag=keep]
+
+== Level offset
+
+include::23_include_args_part.adoc[lines=9..10,leveloffset=+1]

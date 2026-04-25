@@ -368,6 +368,32 @@ fn preprocessor_conditionals_and_include() {
 }
 
 #[test]
+fn preprocessor_include_arguments() {
+    let (_doc, html) = render("23_include_args.adoc");
+
+    // Slice out the document body so substring assertions don't trip on the
+    // embedded stylesheet (which contains `:first-child` etc.).
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // lines=2..4 keeps "second", "third", "fourth"; rest is filtered out.
+    assert!(body.contains("<p>second third fourth</p>"));
+    assert!(!body.contains("first"));
+    assert!(!body.contains("fifth"));
+
+    // tag=keep selects only the marked region; markers themselves are stripped.
+    assert!(body.contains("<p>selected by tag</p>"));
+    assert!(!body.contains("tag::keep"));
+    assert!(!body.contains("end::keep"));
+
+    // leveloffset=+1 lifts `== Section Two` to `=== Section Two`; the
+    // converter then renders level-2 sections as <h3>.
+    assert!(body.contains("<h3>Section Two</h3>"));
+    assert!(body.contains("content under section two"));
+}
+
+#[test]
 fn block_metadata_orphaned_by_blank_line_is_dropped() {
     let src = "[#orphan]\n\nplain paragraph\n";
     let mut pre = adoc::preprocessor::Preprocessor::default();
