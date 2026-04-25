@@ -1,0 +1,26 @@
+DESIGN.md
+  27508cabf0243d73 35-36,38,43,47-48,70-72,76-78,84-100,107-111,113,137,139-141,143,145-198,203-207
+README.md
+  27508cabf0243d73 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7c674eef407bce6f5d063d0b51f1ab937a36d030",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 264,
+      "total_deletions": 36,
+      "accepted_lines": 256,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/31ff7b3582d67c043947a526a69e191ce45f361bfc3212e229f3cdcfdbf54637"
+    }
+  }
+}
