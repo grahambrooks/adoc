@@ -466,6 +466,7 @@ fn ast_roundtrips_through_serde_json() {
         "27_toc_sectnums.adoc",
         "28_tables_header_formatters.adoc",
         "29_callouts.adoc",
+        "30_table_cols.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -702,6 +703,75 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn table_cols_widths_and_alignment() {
+    let (doc, html) = render("30_table_cols.adoc");
+
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    let tables: Vec<&adoc::ast::Table> = doc
+        .blocks
+        .iter()
+        .flat_map(|b| match b {
+            Block::Section(s) => s
+                .blocks
+                .iter()
+                .filter_map(|b| match b {
+                    Block::Table(t) => Some(t),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+            _ => Vec::new(),
+        })
+        .collect();
+    assert_eq!(tables.len(), 5);
+
+    // Widths: 1,3,1 → [1, 3, 1]
+    assert_eq!(tables[0].cols.len(), 3);
+    assert_eq!(tables[0].cols[0].width, 1);
+    assert_eq!(tables[0].cols[1].width, 3);
+    assert_eq!(tables[0].cols[2].width, 1);
+
+    // Alignments: <,^,>
+    assert_eq!(tables[1].cols.len(), 3);
+    assert_eq!(tables[1].cols[0].h_align, Some(adoc::ast::HAlign::Left));
+    assert_eq!(tables[1].cols[1].h_align, Some(adoc::ast::HAlign::Center));
+    assert_eq!(tables[1].cols[2].h_align, Some(adoc::ast::HAlign::Right));
+
+    // Width + alignment combined
+    assert_eq!(tables[2].cols[0].width, 2);
+    assert_eq!(tables[2].cols[0].h_align, Some(adoc::ast::HAlign::Left));
+    assert_eq!(tables[2].cols[1].width, 1);
+    assert_eq!(tables[2].cols[1].h_align, Some(adoc::ast::HAlign::Center));
+
+    // Repeat: 3*< → 3 columns, all left
+    assert_eq!(tables[3].cols.len(), 3);
+    for col in &tables[3].cols {
+        assert_eq!(col.h_align, Some(adoc::ast::HAlign::Left));
+    }
+
+    // HTML: colgroup with width percentages
+    assert!(body.contains("<colgroup>"));
+    assert!(body.contains(r#"<col style="width: 20.0000%;">"#));
+    assert!(body.contains(r#"<col style="width: 60.0000%;">"#));
+
+    // HTML: alignment classes
+    assert!(body.contains(r#"<td class="halign-left">left</td>"#));
+    assert!(body.contains(r#"<td class="halign-center">centre</td>"#));
+    assert!(body.contains(r#"<td class="halign-right">right</td>"#));
+
+    // Per-cell alignment overrides column-level alignment.
+    assert!(
+        body.contains(r#"<td class="halign-center">centred override</td>"#),
+        "expected per-cell centre override in body:\n{body}"
+    );
+    assert!(body.contains(r#"<td class="halign-right">right override</td>"#));
+    // The column default (left) wins on the next row.
+    assert!(body.contains(r#"<td class="halign-left">col-default</td>"#));
 }
 
 #[test]

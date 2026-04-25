@@ -1,3 +1,10 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tables: cols= and Cell Alignment</title>
+<style>
 /* adoc.css — default stylesheet for HTML5 output from the adoc processor.
  *
  * Theming uses CSS custom properties resolved with `light-dark()` gated on
@@ -364,3 +371,81 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+</style>
+</head>
+<body>
+<header>
+<h1>Tables: cols= and Cell Alignment</h1>
+</header>
+<section id="_width_only_cols">
+<h2>Width-only cols</h2>
+<table>
+<colgroup>
+<col style="width: 20.0000%;">
+<col style="width: 60.0000%;">
+<col style="width: 20.0000%;">
+</colgroup>
+<tbody>
+<tr><td>Narrow</td><td>Wide centre that gets the lion's share</td><td>Narrow</td></tr>
+<tr><td>A</td><td>B</td><td>C</td></tr>
+</tbody>
+</table>
+</section>
+<section id="_alignment_per_column">
+<h2>Alignment per column</h2>
+<table>
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr><td class="halign-left">left</td><td class="halign-center">centre</td><td class="halign-right">right</td></tr>
+<tr><td class="halign-left">1</td><td class="halign-center">2</td><td class="halign-right">3</td></tr>
+</tbody>
+</table>
+</section>
+<section id="_width_alignment">
+<h2>Width + alignment</h2>
+<table>
+<colgroup>
+<col style="width: 50.0000%;">
+<col style="width: 25.0000%;">
+<col style="width: 25.0000%;">
+</colgroup>
+<tbody>
+<tr><td class="halign-left">Mostly text</td><td class="halign-center">Mid</td><td class="halign-right">End</td></tr>
+<tr><td class="halign-left">more text over here</td><td class="halign-center">x</td><td class="halign-right">y</td></tr>
+</tbody>
+</table>
+</section>
+<section id="_repeat_shorthand_3">
+<h2>Repeat shorthand <code>3*&lt;</code></h2>
+<table>
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr><td class="halign-left">one</td><td class="halign-left">two</td><td class="halign-left">three</td></tr>
+<tr><td class="halign-left">1</td><td class="halign-left">2</td><td class="halign-left">3</td></tr>
+</tbody>
+</table>
+</section>
+<section id="_per_cell_alignment_overrides_column">
+<h2>Per-cell alignment overrides column</h2>
+<table>
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr><td class="halign-left">col-default</td><td class="halign-center">centred override</td><td class="halign-right">right override</td></tr>
+<tr><td class="halign-left">col-default</td><td class="halign-left">col-default</td><td class="halign-left">col-default</td></tr>
+</tbody>
+</table>
+</section>
+</body>
+</html>

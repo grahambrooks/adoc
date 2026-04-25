@@ -224,6 +224,9 @@ td > pre, th > pre {
   font-family: var(--adoc-font-mono, ui-monospace, SFMono-Regular, monospace);
   font-size: 0.9em;
 }
+td.halign-left,   th.halign-left   { text-align: left; }
+td.halign-center, th.halign-center { text-align: center; }
+td.halign-right,  th.halign-right  { text-align: right; }
 
 /* Images */
 img {
@@ -585,6 +588,19 @@ Rendered as a passthrough — the markup goes to the output untouched.
 <tbody>
 <tr><td>plain</td><td><strong>strong cell</strong></td><td><em>emphasised cell</em></td></tr>
 <tr><td>keyword</td><td><code>monospace text</code></td><td><pre>literal *not strong*</pre></td></tr>
+</tbody>
+</table>
+<div class="title">cols= widths and per-column alignment</div>
+<table>
+<colgroup>
+<col style="width: 25.0000%;">
+<col style="width: 50.0000%;">
+<col style="width: 25.0000%;">
+</colgroup>
+<tbody>
+<tr><td class="halign-left">left</td><td class="halign-center">centre takes most space</td><td class="halign-right">right</td></tr>
+<tr><td class="halign-left">1</td><td class="halign-center">2</td><td class="halign-right">3</td></tr>
+<tr><td class="halign-left">A</td><td class="halign-center">B</td><td class="halign-right">C</td></tr>
 </tbody>
 </table>
 </section>

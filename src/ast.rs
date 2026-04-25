@@ -196,9 +196,37 @@ pub enum DelimitedContent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Table {
     pub rows: Vec<TableRow>,
+    /// Column specifications parsed from `cols="…"` on the block-attribute
+    /// line. Empty when no `cols=` was supplied — the renderer then falls
+    /// back to equal column widths, no alignment override.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cols: Vec<ColumnSpec>,
     pub location: Location,
     #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
     pub meta: BlockMeta,
+}
+
+/// One entry in the `cols=` spec. A spec like `"1,2,<3"` produces three of
+/// these — the width number is a relative weight (0 ⇒ unspecified) and
+/// `h_align` carries the optional `<`/`^`/`>` from the spec.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ColumnSpec {
+    #[serde(default, skip_serializing_if = "is_zero_u32")]
+    pub width: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub h_align: Option<HAlign>,
+}
+
+fn is_zero_u32(n: &u32) -> bool {
+    *n == 0
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HAlign {
+    Left,
+    Center,
+    Right,
 }
 
 /// Callout list — the `<N> description` siblings of a `[source]` / listing /
@@ -251,6 +279,11 @@ pub struct TableCell {
     /// `None` means default rendering — plain inline content in a `<td>`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style: Option<CellStyle>,
+    /// Per-cell horizontal alignment from the `<`/`^`/`>` formatter prefix
+    /// (e.g. `<m|content`). `None` falls back to the column-level alignment
+    /// from `cols=`, which itself defaults to left.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub h_align: Option<HAlign>,
 }
 
 /// Cell style from a formatter prefix on the `|` cell separator.

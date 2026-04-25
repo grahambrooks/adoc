@@ -249,6 +249,14 @@ fn main() {
 | keyword m| monospace text     l| literal *not strong*
 |===
 
+.cols= widths and per-column alignment
+[cols="<1,^2,>1"]
+|===
+| left | centre takes most space | right
+| 1    | 2                       | 3
+| A    | B                       | C
+|===
+
 [#metadata]
 == Block metadata and titles
 

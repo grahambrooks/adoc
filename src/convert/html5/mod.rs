@@ -9,8 +9,8 @@ use std::fmt::Write;
 
 use crate::ast::{
     AttributeValue, Block, BlockMeta, CellStyle, Colist, ConvertError, Converter, DelimitedContent,
-    DelimitedStyle, DescriptionList, Document, Inline, List, ListMarker, Paragraph, RowKind,
-    Section, Table, TableCell,
+    DelimitedStyle, DescriptionList, Document, HAlign, Inline, List, ListMarker, Paragraph,
+    RowKind, Section, Table, TableCell,
 };
 
 /// The built-in default stylesheet, compiled into the binary.
@@ -618,6 +618,7 @@ fn render_table(out: &mut String, t: &Table) -> Result<(), ConvertError> {
     render_block_title(out, &t.meta);
     writeln!(out, "<table{}>", meta_attrs(&t.meta))
         .map_err(|e| ConvertError::Message(e.to_string()))?;
+    render_colgroup(out, t);
 
     // Group rows by kind so we can emit <thead>/<tbody>/<tfoot> sections.
     let mut i = 0;
@@ -635,8 +636,9 @@ fn render_table(out: &mut String, t: &Table) -> Result<(), ConvertError> {
         out.push_str(open);
         for row in &t.rows[i..j] {
             out.push_str("<tr>");
-            for cell in &row.cells {
-                render_table_cell(out, cell, kind)?;
+            for (idx, cell) in row.cells.iter().enumerate() {
+                let col = t.cols.get(idx);
+                render_table_cell(out, cell, kind, col)?;
             }
             out.push_str("</tr>\n");
         }
@@ -648,14 +650,51 @@ fn render_table(out: &mut String, t: &Table) -> Result<(), ConvertError> {
     Ok(())
 }
 
+/// Emit a `<colgroup>` based on `cols=` widths. The widths are relative
+/// weights; we normalise them to percentages so the renderer doesn't have
+/// to know the table's container width. Skipped when no `cols=` was given
+/// or when every entry has width 0.
+fn render_colgroup(out: &mut String, t: &Table) {
+    if t.cols.is_empty() {
+        return;
+    }
+    let total: u32 = t.cols.iter().map(|c| c.width).sum();
+    out.push_str("<colgroup>\n");
+    for col in &t.cols {
+        if total > 0 && col.width > 0 {
+            let pct = (col.width as f64) * 100.0 / (total as f64);
+            let _ = writeln!(out, r#"<col style="width: {pct:.4}%;">"#);
+        } else {
+            out.push_str("<col>\n");
+        }
+    }
+    out.push_str("</colgroup>\n");
+}
+
+fn h_align_class(a: HAlign) -> &'static str {
+    match a {
+        HAlign::Left => "halign-left",
+        HAlign::Center => "halign-center",
+        HAlign::Right => "halign-right",
+    }
+}
+
 fn render_table_cell(
     out: &mut String,
     cell: &TableCell,
     row_kind: RowKind,
+    col: Option<&crate::ast::ColumnSpec>,
 ) -> Result<(), ConvertError> {
     // Forced header style or header rows always use <th>.
     let force_th = matches!(cell.style, Some(CellStyle::Header)) || row_kind == RowKind::Header;
     let tag = if force_th { "th" } else { "td" };
+
+    // Effective alignment: cell-level wins, otherwise column-level, otherwise none.
+    let effective_align = cell.h_align.or_else(|| col.and_then(|c| c.h_align));
+    let align_attr = match effective_align {
+        Some(a) => format!(r#" class="{}""#, h_align_class(a)),
+        None => String::new(),
+    };
 
     let body = match cell.style {
         // Effective `cell.style` is dispatched here. Header rows lose the
@@ -679,7 +718,8 @@ fn render_table_cell(
         _ => render_inlines(&cell.inlines),
     };
 
-    write!(out, "<{tag}>{body}</{tag}>").map_err(|e| ConvertError::Message(e.to_string()))
+    write!(out, "<{tag}{align_attr}>{body}</{tag}>")
+        .map_err(|e| ConvertError::Message(e.to_string()))
 }
 
 // --- block metadata rendering ---------------------------------------------

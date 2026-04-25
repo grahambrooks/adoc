@@ -5,9 +5,9 @@
 //! blocks is resolved immediately using the accumulated attribute context.
 
 use crate::ast::{
-    Attributes, Block, BlockMeta, CellStyle, Colist, ColistItem, DelimitedBlock, DelimitedContent,
-    DelimitedStyle, DescriptionList, DescriptionListItem, Inline, List, ListItem, ListMarker,
-    Location, Paragraph, RowKind, Section, Table, TableCell, TableRow,
+    Attributes, Block, BlockMeta, CellStyle, Colist, ColistItem, ColumnSpec, DelimitedBlock,
+    DelimitedContent, DelimitedStyle, DescriptionList, DescriptionListItem, HAlign, Inline, List,
+    ListItem, ListMarker, Location, Paragraph, RowKind, Section, Table, TableCell, TableRow,
 };
 
 use super::cursor::Cursor;
@@ -573,12 +573,100 @@ fn parse_table(cursor: &mut Cursor, attrs: &Attributes, meta: BlockMeta) -> Tabl
         lines.push(line.text.clone());
         cursor.advance();
     }
+    let cols = parse_cols_spec(meta.named.get("cols").map(String::as_str));
     let rows = parse_table_rows(&lines, attrs, &meta);
     Table {
         rows,
+        cols,
         location,
         meta,
     }
+}
+
+/// Parse a `cols="…"` value. Each comma-separated segment is matched as
+/// `[N*][<>^][digits][styleletter]` — multiplier expands the entry across
+/// N columns, the alignment maps to [`HAlign`], digits set the relative
+/// width, and the trailing letter (a default style) is consumed but
+/// ignored at the AST level for now (per-column default styles are
+/// queued behind cell-level style support).
+fn parse_cols_spec(spec: Option<&str>) -> Vec<ColumnSpec> {
+    let Some(spec) = spec else {
+        return Vec::new();
+    };
+    let spec = spec.trim();
+    if spec.is_empty() {
+        return Vec::new();
+    }
+    let mut cols = Vec::new();
+    for raw in spec.split(',') {
+        let s = raw.trim();
+        if s.is_empty() {
+            continue;
+        }
+        let mut chars = s.chars().peekable();
+        // Optional multiplier `N*`
+        let mut multiplier: u32 = 1;
+        let mut digits = String::new();
+        while let Some(&c) = chars.peek() {
+            if c.is_ascii_digit() {
+                digits.push(c);
+                chars.next();
+            } else {
+                break;
+            }
+        }
+        if chars.peek() == Some(&'*') {
+            multiplier = digits.parse().unwrap_or(1).max(1);
+            chars.next();
+            digits.clear();
+        }
+        // Optional h-align
+        let h_align = match chars.peek() {
+            Some(&'<') => {
+                chars.next();
+                Some(HAlign::Left)
+            }
+            Some(&'^') => {
+                chars.next();
+                Some(HAlign::Center)
+            }
+            Some(&'>') => {
+                chars.next();
+                Some(HAlign::Right)
+            }
+            _ => None,
+        };
+        // Optional width digits (only if we didn't already consume them as a multiplier base)
+        if digits.is_empty() {
+            while let Some(&c) = chars.peek() {
+                if c.is_ascii_digit() {
+                    digits.push(c);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+        } else if multiplier == 1 {
+            // The leading digits weren't followed by `*` so they are the width.
+            // (Already in `digits`.)
+        }
+        // Optional style letter — consume but ignore.
+        if let Some(&c) = chars.peek() {
+            if matches!(c, 'a' | 'd' | 'e' | 'h' | 'l' | 'm' | 's') {
+                chars.next();
+            }
+        }
+        // Trailing junk — skip the segment rather than producing garbage.
+        if chars.next().is_some() {
+            continue;
+        }
+        let width: u32 = digits.parse().unwrap_or(0);
+        let spec = ColumnSpec { width, h_align };
+        for _ in 0..multiplier {
+            cols.push(spec.clone());
+        }
+    }
+    cols
 }
 
 fn parse_table_rows(lines: &[String], attrs: &Attributes, meta: &BlockMeta) -> Vec<TableRow> {
@@ -597,7 +685,7 @@ fn parse_table_rows(lines: &[String], attrs: &Attributes, meta: &BlockMeta) -> V
         if let Some(rest) = trimmed.strip_prefix('|') {
             let cells: Vec<TableCell> = split_table_cells(rest)
                 .into_iter()
-                .map(|(style, src)| build_cell(style, src.trim(), attrs))
+                .map(|(prefix, src)| build_cell(prefix, src.trim(), attrs))
                 .collect();
             rows.push((
                 TableRow {
@@ -627,24 +715,34 @@ fn parse_table_rows(lines: &[String], attrs: &Attributes, meta: &BlockMeta) -> V
     rows.into_iter().map(|(row, _)| row).collect()
 }
 
-fn build_cell(style: Option<CellStyle>, src: &str, attrs: &Attributes) -> TableCell {
-    let inlines = match style {
+fn build_cell(prefix: CellPrefix, src: &str, attrs: &Attributes) -> TableCell {
+    let inlines = match prefix.style {
         // Literal cells: verbatim text, no inline subs.
         Some(CellStyle::Literal) => vec![Inline::Text {
             value: src.to_string(),
         }],
         _ => inline::parse(src, attrs, Subs::NORMAL),
     };
-    TableCell { inlines, style }
+    TableCell {
+        inlines,
+        style: prefix.style,
+        h_align: prefix.h_align,
+    }
 }
 
-fn split_table_cells(row: &str) -> Vec<(Option<CellStyle>, String)> {
+#[derive(Debug, Clone, Copy, Default)]
+struct CellPrefix {
+    h_align: Option<HAlign>,
+    style: Option<CellStyle>,
+}
+
+fn split_table_cells(row: &str) -> Vec<(CellPrefix, String)> {
     // Split on unescaped `|`, peeling off any cell-formatter prefix glued
     // to the `|` that opens each cell. The formatter applies to the *next*
     // cell, not the one whose content it sits inside.
-    let mut cells: Vec<(Option<CellStyle>, String)> = Vec::new();
+    let mut cells: Vec<(CellPrefix, String)> = Vec::new();
     let mut current = String::new();
-    let mut next_style: Option<CellStyle> = None;
+    let mut next_prefix = CellPrefix::default();
     let mut escape = false;
     for ch in row.chars() {
         if escape {
@@ -657,29 +755,69 @@ fn split_table_cells(row: &str) -> Vec<(Option<CellStyle>, String)> {
             continue;
         }
         if ch == '|' {
-            // The formatter (if any) sits on the tail of `current`,
-            // immediately before the `|` we just hit. Peel it off and
-            // hand it to the next cell.
             let extracted = peel_trailing_formatter(&mut current);
-            cells.push((next_style, std::mem::take(&mut current)));
-            next_style = extracted;
+            cells.push((next_prefix, std::mem::take(&mut current)));
+            next_prefix = extracted;
             continue;
         }
         current.push(ch);
     }
-    cells.push((next_style, current));
+    cells.push((next_prefix, current));
     cells
 }
 
-/// If `s` ends with `<ws><formatter>` (or `<formatter>` at start of `s`),
-/// strip the formatter letter and return the corresponding [`CellStyle`].
-fn peel_trailing_formatter(s: &mut String) -> Option<CellStyle> {
-    let trimmed = s.trim_end();
+/// Strip a trailing cell-formatter from `s` (the content of the *previous*
+/// cell). The formatter sits at the very end of `s`, optionally followed
+/// by trailing whitespace, and must itself be preceded by whitespace or
+/// the start of the string. Grammar: `[<>^][aemshl]` — h-align then style
+/// letter, either or both optional.
+fn peel_trailing_formatter(s: &mut String) -> CellPrefix {
+    let trimmed_end_len = s.trim_end_matches(|c: char| c.is_whitespace()).len();
+    let trimmed = &s[..trimmed_end_len];
     if trimmed.is_empty() {
-        return None;
+        return CellPrefix::default();
     }
-    let last = trimmed.chars().last()?;
-    let style = match last {
+    // Walk back from the end, collecting at most one h-align and one style
+    // letter. Stop as soon as a non-formatter char is hit.
+    let mut style: Option<CellStyle> = None;
+    let mut h_align: Option<HAlign> = None;
+    let mut consumed_bytes = 0usize;
+    let mut chars: Vec<(usize, char)> = trimmed.char_indices().collect();
+    while let Some(&(idx, ch)) = chars.last() {
+        if style.is_none() {
+            if let Some(s) = letter_to_style(ch) {
+                style = Some(s);
+                consumed_bytes = trimmed.len() - idx;
+                chars.pop();
+                continue;
+            }
+        }
+        if h_align.is_none() {
+            if let Some(a) = align_char(ch) {
+                h_align = Some(a);
+                consumed_bytes = trimmed.len() - idx;
+                chars.pop();
+            }
+        }
+        break;
+    }
+    if style.is_none() && h_align.is_none() {
+        return CellPrefix::default();
+    }
+    // The formatter region must be preceded by whitespace or the start
+    // of the source — otherwise it's ordinary cell text that happens to
+    // end with a formatter-shaped suffix.
+    let preceded_by_ws = chars.last().map(|(_, c)| c.is_whitespace()).unwrap_or(true);
+    if !preceded_by_ws {
+        return CellPrefix::default();
+    }
+    let new_len = trimmed.len() - consumed_bytes;
+    s.truncate(new_len);
+    CellPrefix { h_align, style }
+}
+
+fn letter_to_style(c: char) -> Option<CellStyle> {
+    Some(match c {
         'a' => CellStyle::AsciiDoc,
         'm' => CellStyle::Monospace,
         's' => CellStyle::Strong,
@@ -687,19 +825,16 @@ fn peel_trailing_formatter(s: &mut String) -> Option<CellStyle> {
         'h' => CellStyle::Header,
         'l' => CellStyle::Literal,
         _ => return None,
-    };
-    let before = &trimmed[..trimmed.len() - 1];
-    let preceded_by_ws = before.is_empty()
-        || before
-            .chars()
-            .last()
-            .map(|c| c.is_whitespace())
-            .unwrap_or(true);
-    if !preceded_by_ws {
-        return None;
-    }
-    s.truncate(before.len());
-    Some(style)
+    })
+}
+
+fn align_char(c: char) -> Option<HAlign> {
+    Some(match c {
+        '<' => HAlign::Left,
+        '^' => HAlign::Center,
+        '>' => HAlign::Right,
+        _ => return None,
+    })
 }
 
 // Re-export for crate root use.

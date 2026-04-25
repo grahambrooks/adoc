@@ -1,0 +1,41 @@
+= Tables: cols= and Cell Alignment
+
+== Width-only cols
+
+[cols="1,3,1"]
+|===
+| Narrow | Wide centre that gets the lion's share | Narrow
+| A | B | C
+|===
+
+== Alignment per column
+
+[cols="<,^,>"]
+|===
+| left | centre | right
+| 1    | 2      | 3
+|===
+
+== Width + alignment
+
+[cols="<2,^1,>1"]
+|===
+| Mostly text         | Mid | End
+| more text over here | x   | y
+|===
+
+== Repeat shorthand `3*<`
+
+[cols="3*<"]
+|===
+| one | two | three
+| 1   | 2   | 3
+|===
+
+== Per-cell alignment overrides column
+
+[cols="<,<,<"]
+|===
+| col-default     ^| centred override     >| right override
+| col-default     | col-default           | col-default
+|===
