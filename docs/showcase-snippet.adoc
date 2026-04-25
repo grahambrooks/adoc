@@ -1,0 +1,10 @@
+// tag::intro[]
+This paragraph is pulled in from a separate file via `include::`.
+It lives in `docs/showcase-snippet.adoc` and is selected by the
+`tags=intro` argument on the include directive.
+// end::intro[]
+
+// tag::trailing[]
+And this trailing paragraph is selected by `tags=trailing` so the
+showcase can demonstrate selecting two regions from the same file.
+// end::trailing[]

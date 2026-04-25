@@ -6,7 +6,7 @@ EXAMPLES_DIR := docs/examples
 FIXTURES := $(wildcard $(FIXTURE_DIR)/*.adoc)
 EXAMPLES := $(patsubst $(FIXTURE_DIR)/%.adoc,$(EXAMPLES_DIR)/%.html,$(FIXTURES))
 
-.PHONY: help build release check test lint fmt fmt-check examples clean ci
+.PHONY: help build release check test lint fmt fmt-check examples showcase clean ci
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "; printf "Usage: make <target>\n\nTargets:\n"} \
@@ -35,6 +35,11 @@ fmt-check: ## Verify formatting without rewriting files
 
 examples: $(EXAMPLES) ## Render tests/fixtures/*.adoc into docs/examples/*.html
 
+showcase: docs/showcase.html ## Render the full-feature showcase to docs/showcase.html
+
+docs/showcase.html: docs/showcase.adoc docs/showcase-snippet.adoc | $(ADOC_BIN)
+	$(ADOC_BIN) $< -o $@
+
 $(EXAMPLES_DIR)/%.html: $(FIXTURE_DIR)/%.adoc | $(ADOC_BIN) $(EXAMPLES_DIR)
 	$(ADOC_BIN) $< > $@
 
@@ -46,5 +51,6 @@ $(EXAMPLES_DIR):
 clean: ## Remove build artefacts and generated examples
 	cargo clean
 	rm -rf $(EXAMPLES_DIR)
+	rm -f docs/showcase.html
 
 ci: fmt-check lint test ## Run the checks expected to pass in CI

@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preprocessor Showcase</title>
+<style>
+/* adoc.css — default stylesheet for HTML5 output from the adoc processor.
+ *
+ * Theming uses CSS custom properties resolved with `light-dark()` gated on
+ * `color-scheme: light dark`. Browsers honour `prefers-color-scheme` out of
+ * the box; explicit override via `<html data-theme="light|dark">`.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --adoc-bg:              light-dark(#ffffff, #0d1117);
+  --adoc-fg:              light-dark(#1f2328, #e6edf3);
+  --adoc-muted:           light-dark(#57606a, #8b949e);
+  --adoc-accent:          light-dark(#0969da, #4493f8);
+  --adoc-accent-hover:    light-dark(#0860c7, #79b8ff);
+  --adoc-border:          light-dark(#d0d7de, #30363d);
+  --adoc-code-bg:         light-dark(#f6f8fa, #161b22);
+  --adoc-code-fg:         light-dark(#1f2328, #e6edf3);
+  --adoc-example-bg:      light-dark(#f6f8fa, #161b22);
+  --adoc-aside-bg:        light-dark(#fff8dc, #1f1b00);
+  --adoc-aside-border:    light-dark(#d1a72c, #a07b00);
+  --adoc-quote-border:    light-dark(#d0d7de, #30363d);
+  --adoc-quote-fg:        light-dark(#57606a, #8b949e);
+  --adoc-table-border:    light-dark(#d0d7de, #30363d);
+  --adoc-table-header-bg: light-dark(#f6f8fa, #161b22);
+  --adoc-selection:       light-dark(#b6e3ff, #264f78);
+
+  --adoc-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --adoc-font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+
+  --adoc-content-width: 48rem;
+  --adoc-radius: 6px;
+}
+
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"]  { color-scheme: dark;  }
+
+*, *::before, *::after { box-sizing: border-box; }
+
+::selection { background: var(--adoc-selection); }
+
+body {
+  margin: 0;
+  padding: 2.5rem 1.25rem 4rem;
+  font-family: var(--adoc-font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--adoc-fg);
+  background: var(--adoc-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body > * {
+  max-width: var(--adoc-content-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Document header */
+body > header {
+  border-bottom: 1px solid var(--adoc-border);
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+body > header h1 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+.authors, .revision {
+  color: var(--adoc-muted);
+  margin: 0.25rem 0;
+  font-size: 0.95rem;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.25;
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+h1 { font-size: 2rem; }
+h2 {
+  font-size: 1.5rem;
+  border-bottom: 1px solid var(--adoc-border);
+  padding-bottom: 0.3em;
+}
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.9rem; color: var(--adoc-muted); }
+
+/* Sections inherit content width from body > *; nested sections flow inline. */
+section > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 1.5em; }
+
+/* Paragraphs */
+p { margin: 0 0 1em; }
+
+/* Links */
+a {
+  color: var(--adoc-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 0.05em;
+  transition: color 120ms ease;
+}
+a:hover {
+  color: var(--adoc-accent-hover);
+  text-decoration-thickness: 0.1em;
+}
+
+/* Inline emphasis */
+strong { font-weight: 600; }
+em     { font-style: italic; }
+
+/* Lists */
+ul, ol { padding-left: 1.5em; margin: 0 0 1em; }
+li     { margin: 0.2em 0; }
+li > :is(ul, ol) { margin: 0.3em 0 0; }
+
+/* Description list */
+dl { margin: 0 0 1em; }
+dt { font-weight: 600; margin-top: 0.75em; }
+dd { margin: 0.25em 0 0 1.5em; }
+dd > p:first-child { margin-top: 0; }
+
+/* Inline code */
+code {
+  font-family: var(--adoc-font-mono);
+  font-size: 0.9em;
+  background: var(--adoc-code-bg);
+  color: var(--adoc-code-fg);
+  padding: 0.15em 0.35em;
+  border-radius: var(--adoc-radius);
+}
+
+/* Code blocks */
+pre {
+  font-family: var(--adoc-font-mono);
+  font-size: 0.9em;
+  background: var(--adoc-code-bg);
+  color: var(--adoc-code-fg);
+  padding: 1em 1.25em;
+  border: 1px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  overflow-x: auto;
+  line-height: 1.5;
+  margin: 0 0 1em;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+/* Blockquote */
+blockquote {
+  border-left: 0.25em solid var(--adoc-quote-border);
+  margin: 0 0 1em;
+  padding: 0 1em;
+  color: var(--adoc-quote-fg);
+}
+blockquote > :first-child { margin-top: 0; }
+blockquote > :last-child  { margin-bottom: 0; }
+
+/* Example block */
+.example {
+  background: var(--adoc-example-bg);
+  border: 1px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  padding: 1em 1.25em;
+  margin: 0 0 1em;
+}
+.example > :first-child { margin-top: 0; }
+.example > :last-child  { margin-bottom: 0; }
+
+/* Sidebar */
+aside {
+  background: var(--adoc-aside-bg);
+  border: 1px solid var(--adoc-aside-border);
+  border-left-width: 0.25em;
+  border-radius: var(--adoc-radius);
+  padding: 1em 1.25em;
+  margin: 0 0 1em;
+}
+aside > :first-child { margin-top: 0; }
+aside > :last-child  { margin-bottom: 0; }
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0 0 1em;
+  border: 1px solid var(--adoc-table-border);
+}
+th, td {
+  padding: 0.5em 0.75em;
+  border: 1px solid var(--adoc-table-border);
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  background: var(--adoc-table-header-bg);
+  font-weight: 600;
+}
+/* Literal cells preserve whitespace and use the same code background as
+   inline <code>. */
+td > pre, th > pre {
+  margin: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--adoc-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 0.9em;
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--adoc-radius);
+}
+
+/* Horizontal rule */
+hr {
+  border: 0;
+  border-top: 1px solid var(--adoc-border);
+  margin: 2em 0;
+}
+
+/* Admonitions */
+.admonitionblock {
+  margin: 1.25em 0;
+  padding: 0.75em 1em;
+  border-left: 4px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  background: light-dark(#f6f8fa, #161b22);
+}
+.admonitionblock > .label,
+.admonitionblock > .title {
+  margin: 0 0 0.5em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.85em;
+}
+.admonitionblock > .content > :first-child { margin-top: 0; }
+.admonitionblock > .content > :last-child  { margin-bottom: 0; }
+.admonitionblock.note      { border-left-color: light-dark(#0969da, #58a6ff); }
+.admonitionblock.tip       { border-left-color: light-dark(#1a7f37, #3fb950); }
+.admonitionblock.important { border-left-color: light-dark(#9a6700, #d29922); }
+.admonitionblock.warning   { border-left-color: light-dark(#bc4c00, #db6d28); }
+.admonitionblock.caution   { border-left-color: light-dark(#cf222e, #f85149); }
+
+/* Source-block language hint. We don't ship a highlighter; this just
+   surfaces the language as a small label so downstream CSS / Prism /
+   Highlight.js can take over without conflict. */
+pre > code[class^="language-"]::before {
+  content: attr(class) " ";
+  display: block;
+  font-size: 0.75em;
+  color: var(--adoc-muted);
+  margin-bottom: 0.4em;
+  text-transform: lowercase;
+}
+
+/* Table of Contents */
+#toc {
+  margin: 1.5em 0 2em;
+  padding: 1em 1.25em;
+  border-left: 3px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  background: light-dark(#f6f8fa, #161b22);
+}
+#toc .toc-title {
+  font-weight: 600;
+  margin-bottom: 0.5em;
+  color: var(--adoc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.85em;
+}
+#toc ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.25em 0;
+}
+#toc ul ul { padding-left: 1.25em; }
+#toc li { margin: 0.15em 0; }
+#toc a { color: var(--adoc-fg); }
+
+/* Section numbers and anchor links */
+.sectnum {
+  color: var(--adoc-muted);
+  margin-right: 0.4em;
+  font-variant-numeric: tabular-nums;
+}
+h1 > .anchor, h2 > .anchor, h3 > .anchor,
+h4 > .anchor, h5 > .anchor, h6 > .anchor {
+  display: inline-block;
+  width: 0;
+  margin-left: -0.9em;
+  padding-right: 0.4em;
+  text-decoration: none;
+  color: var(--adoc-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+h1:hover > .anchor, h2:hover > .anchor, h3:hover > .anchor,
+h4:hover > .anchor, h5:hover > .anchor, h6:hover > .anchor {
+  opacity: 1;
+}
+h1 > .anchor::before, h2 > .anchor::before, h3 > .anchor::before,
+h4 > .anchor::before, h5 > .anchor::before, h6 > .anchor::before {
+  content: "#";
+}
+
+/* Inline highlighting */
+mark {
+  background: light-dark(#fff8c5, #4d3800);
+  color: inherit;
+  padding: 0 0.2em;
+  border-radius: 0.2em;
+}
+
+/* Subscript / superscript get a tiny size bump so they read cleanly */
+sub, sup { font-size: 0.78em; line-height: 0; }
+
+/* Inline footnote — surfaced as a parenthesised aside until we grow a
+   proper end-of-doc footnote section. */
+.footnote {
+  font-size: 0.85em;
+  color: var(--adoc-muted);
+  vertical-align: super;
+  line-height: 0;
+  margin: 0 0.15em;
+}
+.footnote::before { content: "["; }
+.footnote::after  { content: "]"; }
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header>
+<h1>Preprocessor Showcase</h1>
+</header>
+<p>Hello, this content is gated by a defined attribute.</p>
+<p>This is shown because <code>missing</code> is not set.</p>
+<p>We are on edition 2 or later.</p>
+<p>Localised paragraph for English.</p>
+<section id="_included_section">
+<h2>Included Section</h2>
+<p>A paragraph that lives in a separate file but ends up in the same document.</p>
+<p>Edition number 2.</p>
+<p>The end.</p>
+</section>
+<!-- attributes: edition=2; lang=en; -->
+</body>
+</html>

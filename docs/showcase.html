@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The adoc Showcase: Every Supported Feature in One Document</title>
+<style>
+/* adoc.css — default stylesheet for HTML5 output from the adoc processor.
+ *
+ * Theming uses CSS custom properties resolved with `light-dark()` gated on
+ * `color-scheme: light dark`. Browsers honour `prefers-color-scheme` out of
+ * the box; explicit override via `<html data-theme="light|dark">`.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --adoc-bg:              light-dark(#ffffff, #0d1117);
+  --adoc-fg:              light-dark(#1f2328, #e6edf3);
+  --adoc-muted:           light-dark(#57606a, #8b949e);
+  --adoc-accent:          light-dark(#0969da, #4493f8);
+  --adoc-accent-hover:    light-dark(#0860c7, #79b8ff);
+  --adoc-border:          light-dark(#d0d7de, #30363d);
+  --adoc-code-bg:         light-dark(#f6f8fa, #161b22);
+  --adoc-code-fg:         light-dark(#1f2328, #e6edf3);
+  --adoc-example-bg:      light-dark(#f6f8fa, #161b22);
+  --adoc-aside-bg:        light-dark(#fff8dc, #1f1b00);
+  --adoc-aside-border:    light-dark(#d1a72c, #a07b00);
+  --adoc-quote-border:    light-dark(#d0d7de, #30363d);
+  --adoc-quote-fg:        light-dark(#57606a, #8b949e);
+  --adoc-table-border:    light-dark(#d0d7de, #30363d);
+  --adoc-table-header-bg: light-dark(#f6f8fa, #161b22);
+  --adoc-selection:       light-dark(#b6e3ff, #264f78);
+
+  --adoc-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --adoc-font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+
+  --adoc-content-width: 48rem;
+  --adoc-radius: 6px;
+}
+
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"]  { color-scheme: dark;  }
+
+*, *::before, *::after { box-sizing: border-box; }
+
+::selection { background: var(--adoc-selection); }
+
+body {
+  margin: 0;
+  padding: 2.5rem 1.25rem 4rem;
+  font-family: var(--adoc-font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--adoc-fg);
+  background: var(--adoc-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body > * {
+  max-width: var(--adoc-content-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Document header */
+body > header {
+  border-bottom: 1px solid var(--adoc-border);
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+body > header h1 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+.authors, .revision {
+  color: var(--adoc-muted);
+  margin: 0.25rem 0;
+  font-size: 0.95rem;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.25;
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+h1 { font-size: 2rem; }
+h2 {
+  font-size: 1.5rem;
+  border-bottom: 1px solid var(--adoc-border);
+  padding-bottom: 0.3em;
+}
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.9rem; color: var(--adoc-muted); }
+
+/* Sections inherit content width from body > *; nested sections flow inline. */
+section > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 1.5em; }
+
+/* Paragraphs */
+p { margin: 0 0 1em; }
+
+/* Links */
+a {
+  color: var(--adoc-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 0.05em;
+  transition: color 120ms ease;
+}
+a:hover {
+  color: var(--adoc-accent-hover);
+  text-decoration-thickness: 0.1em;
+}
+
+/* Inline emphasis */
+strong { font-weight: 600; }
+em     { font-style: italic; }
+
+/* Lists */
+ul, ol { padding-left: 1.5em; margin: 0 0 1em; }
+li     { margin: 0.2em 0; }
+li > :is(ul, ol) { margin: 0.3em 0 0; }
+
+/* Description list */
+dl { margin: 0 0 1em; }
+dt { font-weight: 600; margin-top: 0.75em; }
+dd { margin: 0.25em 0 0 1.5em; }
+dd > p:first-child { margin-top: 0; }
+
+/* Inline code */
+code {
+  font-family: var(--adoc-font-mono);
+  font-size: 0.9em;
+  background: var(--adoc-code-bg);
+  color: var(--adoc-code-fg);
+  padding: 0.15em 0.35em;
+  border-radius: var(--adoc-radius);
+}
+
+/* Code blocks */
+pre {
+  font-family: var(--adoc-font-mono);
+  font-size: 0.9em;
+  background: var(--adoc-code-bg);
+  color: var(--adoc-code-fg);
+  padding: 1em 1.25em;
+  border: 1px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  overflow-x: auto;
+  line-height: 1.5;
+  margin: 0 0 1em;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+/* Blockquote */
+blockquote {
+  border-left: 0.25em solid var(--adoc-quote-border);
+  margin: 0 0 1em;
+  padding: 0 1em;
+  color: var(--adoc-quote-fg);
+}
+blockquote > :first-child { margin-top: 0; }
+blockquote > :last-child  { margin-bottom: 0; }
+
+/* Example block */
+.example {
+  background: var(--adoc-example-bg);
+  border: 1px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  padding: 1em 1.25em;
+  margin: 0 0 1em;
+}
+.example > :first-child { margin-top: 0; }
+.example > :last-child  { margin-bottom: 0; }
+
+/* Sidebar */
+aside {
+  background: var(--adoc-aside-bg);
+  border: 1px solid var(--adoc-aside-border);
+  border-left-width: 0.25em;
+  border-radius: var(--adoc-radius);
+  padding: 1em 1.25em;
+  margin: 0 0 1em;
+}
+aside > :first-child { margin-top: 0; }
+aside > :last-child  { margin-bottom: 0; }
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0 0 1em;
+  border: 1px solid var(--adoc-table-border);
+}
+th, td {
+  padding: 0.5em 0.75em;
+  border: 1px solid var(--adoc-table-border);
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  background: var(--adoc-table-header-bg);
+  font-weight: 600;
+}
+/* Literal cells preserve whitespace and use the same code background as
+   inline <code>. */
+td > pre, th > pre {
+  margin: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--adoc-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 0.9em;
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--adoc-radius);
+}
+
+/* Horizontal rule */
+hr {
+  border: 0;
+  border-top: 1px solid var(--adoc-border);
+  margin: 2em 0;
+}
+
+/* Admonitions */
+.admonitionblock {
+  margin: 1.25em 0;
+  padding: 0.75em 1em;
+  border-left: 4px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  background: light-dark(#f6f8fa, #161b22);
+}
+.admonitionblock > .label,
+.admonitionblock > .title {
+  margin: 0 0 0.5em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.85em;
+}
+.admonitionblock > .content > :first-child { margin-top: 0; }
+.admonitionblock > .content > :last-child  { margin-bottom: 0; }
+.admonitionblock.note      { border-left-color: light-dark(#0969da, #58a6ff); }
+.admonitionblock.tip       { border-left-color: light-dark(#1a7f37, #3fb950); }
+.admonitionblock.important { border-left-color: light-dark(#9a6700, #d29922); }
+.admonitionblock.warning   { border-left-color: light-dark(#bc4c00, #db6d28); }
+.admonitionblock.caution   { border-left-color: light-dark(#cf222e, #f85149); }
+
+/* Source-block language hint. We don't ship a highlighter; this just
+   surfaces the language as a small label so downstream CSS / Prism /
+   Highlight.js can take over without conflict. */
+pre > code[class^="language-"]::before {
+  content: attr(class) " ";
+  display: block;
+  font-size: 0.75em;
+  color: var(--adoc-muted);
+  margin-bottom: 0.4em;
+  text-transform: lowercase;
+}
+
+/* Table of Contents */
+#toc {
+  margin: 1.5em 0 2em;
+  padding: 1em 1.25em;
+  border-left: 3px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  background: light-dark(#f6f8fa, #161b22);
+}
+#toc .toc-title {
+  font-weight: 600;
+  margin-bottom: 0.5em;
+  color: var(--adoc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.85em;
+}
+#toc ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.25em 0;
+}
+#toc ul ul { padding-left: 1.25em; }
+#toc li { margin: 0.15em 0; }
+#toc a { color: var(--adoc-fg); }
+
+/* Section numbers and anchor links */
+.sectnum {
+  color: var(--adoc-muted);
+  margin-right: 0.4em;
+  font-variant-numeric: tabular-nums;
+}
+h1 > .anchor, h2 > .anchor, h3 > .anchor,
+h4 > .anchor, h5 > .anchor, h6 > .anchor {
+  display: inline-block;
+  width: 0;
+  margin-left: -0.9em;
+  padding-right: 0.4em;
+  text-decoration: none;
+  color: var(--adoc-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+h1:hover > .anchor, h2:hover > .anchor, h3:hover > .anchor,
+h4:hover > .anchor, h5:hover > .anchor, h6:hover > .anchor {
+  opacity: 1;
+}
+h1 > .anchor::before, h2 > .anchor::before, h3 > .anchor::before,
+h4 > .anchor::before, h5 > .anchor::before, h6 > .anchor::before {
+  content: "#";
+}
+
+/* Inline highlighting */
+mark {
+  background: light-dark(#fff8c5, #4d3800);
+  color: inherit;
+  padding: 0 0.2em;
+  border-radius: 0.2em;
+}
+
+/* Subscript / superscript get a tiny size bump so they read cleanly */
+sub, sup { font-size: 0.78em; line-height: 0; }
+
+/* Inline footnote — surfaced as a parenthesised aside until we grow a
+   proper end-of-doc footnote section. */
+.footnote {
+  font-size: 0.85em;
+  color: var(--adoc-muted);
+  vertical-align: super;
+  line-height: 0;
+  margin: 0 0.15em;
+}
+.footnote::before { content: "["; }
+.footnote::after  { content: "]"; }
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header>
+<h1>The adoc Showcase: Every Supported Feature in One Document</h1>
+<p class="authors">Alice Author, Bob Builder</p>
+<p class="revision">v1.0.0 · 2026-04-25 · First public showcase</p>
+</header>
+<div id="toc" class="toc">
+<div class="toc-title">Table of Contents</div>
+<ul>
+<li><a href="#intro"><span class="sectnum">1</span> Document header and metadata</a></li>
+<li><a href="#_paragraphs_line_breaks_and_inline_quoting"><span class="sectnum">2</span> Paragraphs, line breaks, and inline quoting</a></li>
+<li><a href="#inline-extras"><span class="sectnum">3</span> Inline extras: subscript, superscript, highlight, passthroughs, footnotes</a></li>
+<li><a href="#inline-macros"><span class="sectnum">4</span> Inline macros: links, xrefs, images</a></li>
+<li><a href="#lists"><span class="sectnum">5</span> Lists: unordered, ordered, description, with continuation</a></li>
+<li><a href="#delimited"><span class="sectnum">6</span> Delimited blocks: every style</a></li>
+<li><a href="#admonitions"><span class="sectnum">7</span> Admonitions</a></li>
+<li><a href="#source"><span class="sectnum">8</span> Source blocks with language</a></li>
+<li><a href="#tables"><span class="sectnum">9</span> Tables: headers, cell formatters</a></li>
+<li><a href="#metadata"><span class="sectnum">10</span> Block metadata and titles</a></li>
+<li><a href="#preprocessor"><span class="sectnum">11</span> Preprocessor: includes, conditionals</a></li>
+<li><a href="#cli"><span class="sectnum">12</span> Stdio extension model</a></li>
+<li><a href="#_footnotes_character_pairs_and_a_final_word"><span class="sectnum">13</span> Footnotes, character pairs, and a final word</a></li>
+</ul>
+</div>
+<p>This document is the canonical demonstration of what the <code>adoc</code> processor can render. Every feature in the README's <em>What works today</em> section appears below, in roughly the order a reader is likely to meet them. The whole file is rendered with <code>adoc docs/showcase.adoc</code> and the result lives at <code>docs/showcase.html</code>.</p>
+<section id="intro">
+<h2><a class="anchor" href="#intro"></a><span class="sectnum">1</span> Document header and metadata</h2>
+<p>The header above carries a title, two authors with email addresses, a revision line (<code>v1.0.0, 2026-04-25: First public showcase</code>), and a block of attribute entries. Attributes are referenced inline with curly braces — for example, you are reading version 0.1.0 of adoc, and the homepage is https://github.com/grahambrooks/adoc.</p>
+<p>A <code>:toc:</code> attribute placed in the header pulls a Table of Contents above this introduction; <code>:sectnums:</code> numbers every heading; <code>:sectanchors:</code> adds a small hover anchor next to each heading so headings can be linked directly.</p>
+</section>
+<section id="_paragraphs_line_breaks_and_inline_quoting">
+<h2><a class="anchor" href="#_paragraphs_line_breaks_and_inline_quoting"></a><span class="sectnum">2</span> Paragraphs, line breaks, and inline quoting</h2>
+<p>Paragraphs are separated by blank lines. A trailing space-plus (` +`) at the end of a line forces a hard<br> break, so the second half of this sentence starts on its own line.</p>
+<p>Inline quoting uses constrained pairs around a word — <strong>strong</strong>, <em>emphasis</em>, and <code>monospace</code> — or unconstrained pairs that work mid-word: <strong>bo</strong>ld, <em>it</em>alic, <code>mo</code>no. Combinations nest naturally: <strong><em>strong emphasis</em></strong>, <strong><code>bold mono</code></strong>. Specialchars are escaped automatically, so <code>1 &lt; 2 &amp;&amp; 3 &gt; 2</code> survives as literal text without breaking the HTML.</p>
+<p>Character replacements turn ©, ®, ™, …, — and → into typographic forms; arrows fire in both directions (←, ⇐, ⇒).</p>
+</section>
+<section id="inline-extras">
+<h2><a class="anchor" href="#inline-extras"></a><span class="sectnum">3</span> Inline extras: subscript, superscript, highlight, passthroughs, footnotes</h2>
+<p>Water is H<sub>2</sub>O, Einstein had E=mc<sup>2</sup>, and you can <mark>highlight a phrase</mark> inline with hashes (or with <mark>unconstrained</mark> pairs mid-word).</p>
+<p>A constrained passthrough keeps *stars* and {attrs} literal, while the unconstrained **double stars** also survive verbatim. The <code>...</code> macro emits raw HTML — <kbd>Ctrl</kbd>+<kbd>C</kbd> renders as keyboard keys.</p>
+<p>Footnotes attach inline.footnote:[Here is an anonymous footnote with <em>emphasis</em> inside it.] You can also id a footnote so it can be referenced later: <span class="footnote" id="fn-spec">The AsciiDoc Language specification at <a href="https://docs.asciidoctor.org/asciidoc/latest/">https://docs.asciidoctor.org/asciidoc/latest/</a></span>.</p>
+</section>
+<section id="inline-macros">
+<h2><a class="anchor" href="#inline-macros"></a><span class="sectnum">4</span> Inline macros: links, xrefs, images</h2>
+<p>Visit the <a href="{homepage}">{product} homepage</a> or <a href="mailto:alice@example.com">email Alice</a>. Bare URLs autolink: <a href="https://docs.asciidoctor.org/asciidoc/latest/">https://docs.asciidoctor.org/asciidoc/latest/</a>. Cross-references use either <code>xref:</code> or the shorthand <code><a href="#id">id</a></code> — <a href="#lists">jump to lists</a> or <a href="#tables">jump to tables</a>.</p>
+<p>Inline images embed with <code>image:</code> and accept named attributes:</p>
+<p><img src="https://placehold.co/64x64?text=A" alt="Avatar" width="64" height="64"> <img src="https://placehold.co/64x64?text=B" alt="width=64" width="height=64"></p>
+</section>
+<section id="lists">
+<h2><a class="anchor" href="#lists"></a><span class="sectnum">5</span> Lists: unordered, ordered, description, with continuation</h2>
+<div class="title">Unordered list with depth</div>
+<ul>
+<li>First level</li>
+<li>Still first level</li>
+<ul>
+<li>Nested second level</li>
+<li>Another second-level item</li>
+<ul>
+<li>Third level</li>
+</ul>
+</ul>
+<li>Back to the top</li>
+</ul>
+<div class="title">Ordered list</div>
+<ol>
+<li>Boil the kettle</li>
+<li>Warm the pot</li>
+<li>Add the leaves</li>
+<li>Pour and steep</li>
+</ol>
+<div class="title">Description list with a continuation paragraph</div>
+<dl>
+<dt>CPU</dt>
+<dd><p>The brain of the computer</p>
+</dd>
+</dl>
+<p>+ A short continuation paragraph attached to the previous term with a <code>+</code> line.</p>
+<dl>
+<dt>RAM</dt>
+<dd><p>Working memory; volatile, fast, limited</p>
+</dd>
+<dt>SSD</dt>
+<dd><p>Persistent storage that doesn't grind when you wake it up</p>
+</dd>
+</dl>
+</section>
+<section id="delimited">
+<h2><a class="anchor" href="#delimited"></a><span class="sectnum">6</span> Delimited blocks: every style</h2>
+<div class="title">Listing block</div>
+<pre><code>fn main() {
+    println!("Hello, AsciiDoc!");
+}</code></pre>
+<div class="title">Literal block (markup is preserved verbatim)</div>
+<pre>*formatting* and {attributes} stay literal here.</pre>
+<div class="title">Example block</div>
+<div class="example">
+<p>An example block groups a small piece of content with a coloured frame. It can contain <strong>inline formatting</strong> and even nested blocks.</p>
+</div>
+<div class="title">Quote block</div>
+<blockquote>
+<p>We should forget about small efficiencies, say about 97% of the time; premature optimization is the root of all evil.</p>
+</blockquote>
+<div class="title">Sidebar block</div>
+<aside>
+<p>Sidebars are visually separated commentary, often used to call out a related but optional digression.</p>
+</aside>
+<div class="title">Passthrough block (raw HTML through to output)</div>
+<p style="font-style: italic; color: gray;">
+Rendered as a passthrough — the markup goes to the output untouched.
+</p>
+<div class="title">Open block (lightweight container)</div>
+<div>
+<p>An open block is a generic container delimited by <code>—</code>. It carries no styling of its own — perfect for grouping content under a single block-attribute line or block title.</p>
+</div>
+</section>
+<section id="admonitions">
+<h2><a class="anchor" href="#admonitions"></a><span class="sectnum">7</span> Admonitions</h2>
+<div class="admonitionblock note">
+<p class="label">Note</p>
+<div class="content">
+<p>A short note rendered as a paragraph admonition.</p>
+</div>
+</div>
+<div class="admonitionblock tip">
+<p class="label">Tip</p>
+<div class="content">
+<p>A tip — paragraph form, default label.</p>
+</div>
+</div>
+<div class="admonitionblock important">
+<p class="label">Important</p>
+<div class="content">
+<p>An important call-out you really shouldn't skim past.</p>
+</div>
+</div>
+<div class="admonitionblock warning">
+<p class="label">Warning</p>
+<div class="content">
+<p>A warning, often used for irreversible operations.</p>
+</div>
+</div>
+<div class="admonitionblock caution">
+<p class="label">Caution</p>
+<div class="content">
+<p>A caution — slightly softer than a warning.</p>
+</div>
+</div>
+<div class="admonitionblock note">
+<p class="title">A titled admonition</p>
+<div class="content">
+<p>Block-form admonitions can hold multiple paragraphs and other content.</p>
+<p>The leading <code>.A titled admonition</code> line replaces the default <em>Note</em> label with a custom title.</p>
+</div>
+</div>
+</section>
+<section id="source">
+<h2><a class="anchor" href="#source"></a><span class="sectnum">8</span> Source blocks with language</h2>
+<p>A <code>[source,LANG]</code> attribute on a listing emits a <code>language-LANG</code> class on the inner <code>&lt;code&gt;</code> element so downstream highlighters (Prism, Highlight.js, Rouge) can take over without conflict.</p>
+<div class="title">A Rust function with a language hint</div>
+<pre><code class="language-rust">fn main() {
+    let greeting = "Hello, AsciiDoc!";
+    println!("{}", greeting);
+}</code></pre>
+<div class="title">A Python snippet</div>
+<pre><code class="language-python">def fizzbuzz(n: int) -&gt; str:
+    if n % 15 == 0:
+        return "FizzBuzz"
+    if n % 3 == 0:
+        return "Fizz"
+    if n % 5 == 0:
+        return "Buzz"
+    return str(n)</code></pre>
+<div class="title">A Bash one-liner</div>
+<pre><code class="language-bash">adoc --emit-ast doc.adoc | jq '.blocks[0]' | adoc --from-ast -o filtered.html</code></pre>
+</section>
+<section id="tables">
+<h2><a class="anchor" href="#tables"></a><span class="sectnum">9</span> Tables: headers, cell formatters</h2>
+<div class="title">Inferred header (blank line after first row)</div>
+<table>
+<thead>
+<tr><th>Name</th><th>Role</th><th>Location</th></tr>
+</thead>
+<tbody>
+<tr><td>Alice</td><td>Engineer</td><td>Remote</td></tr>
+<tr><td>Bob</td><td>Designer</td><td>Office</td></tr>
+<tr><td>Carol</td><td>PM</td><td>Hybrid</td></tr>
+</tbody>
+</table>
+<div class="title">Explicit <code>[%header]</code></div>
+<table>
+<thead>
+<tr><th>Symbol</th><th>Decimal</th><th>Hex</th></tr>
+</thead>
+<tbody>
+<tr><td>©</td><td>169</td><td>A9</td></tr>
+<tr><td>®</td><td>174</td><td>AE</td></tr>
+<tr><td>™</td><td>8482</td><td>2122</td></tr>
+</tbody>
+</table>
+<div class="title">Cell formatters: monospace, strong, emphasis, literal, header-in-body</div>
+<table>
+<tbody>
+<tr><td>plain</td><td><strong>strong cell</strong></td><td><em>emphasised cell</em></td></tr>
+<tr><td>keyword</td><td><code>monospace text</code></td><td><pre>literal *not strong*</pre></td><th>forced th in body row</th></tr>
+</tbody>
+</table>
+</section>
+<section id="metadata">
+<h2><a class="anchor" href="#metadata"></a><span class="sectnum">10</span> Block metadata and titles</h2>
+<p>The shorthand <code>[#id.role%opt]</code> collapses an id, a CSS role, and an option flag into a single line. A leading <code>.Title</code> sets a block title that the converter renders as a <code>&lt;div class="title"&gt;</code> above the block.</p>
+<div class="title">A paragraph with id, role, option, and title</div>
+<p id="highlight-paragraph" class="lead">This paragraph carries an <code>id="highlight-paragraph"</code>, a CSS class of <code>lead</code>, the <code>hardbreaks</code> option, and a block title — all from one shorthand line and one <code>.Title</code> line.</p>
+<div class="title">Named-attribute metadata</div>
+<p>A paragraph that sets named attributes (<code>caption=</code>, <code>align=</code>) instead of — or alongside — positional and shorthand forms.</p>
+<div class="title">Important table</div>
+<table id="prices">
+<tbody>
+<tr><td>SKU</td><td>Price</td></tr>
+<tr><td>A-100</td><td>$9.99</td></tr>
+<tr><td>B-200</td><td>$14.99</td></tr>
+</tbody>
+</table>
+<p>You can cross-reference any anchored block: see <a href="#prices">the price table</a> above, or jump straight to <a href="#inline-extras">inline-extras</a>.</p>
+</section>
+<section id="preprocessor">
+<h2><a class="anchor" href="#preprocessor"></a><span class="sectnum">11</span> Preprocessor: includes, conditionals</h2>
+<p>The <code>include::</code> directive pulls another file into this document at parse time. Two regions of <code>docs/showcase-snippet.adoc</code> are selected by tag below.</p>
+<div class="title">From <code>docs/showcase-snippet.adoc</code>, <code>tags=intro</code></div>
+<p>This paragraph is pulled in from a separate file via <code>include::</code>. It lives in <code>docs/showcase-snippet.adoc</code> and is selected by the <code>tags=intro</code> argument on the include directive.</p>
+<div class="title">From the same file, <code>tags=trailing</code></div>
+<p>And this trailing paragraph is selected by <code>tags=trailing</code> so the showcase can demonstrate selecting two regions from the same file.</p>
+<p>The <code>ifdef::</code> / <code>ifndef::</code> / <code>ifeval::</code> directives gate content on whether attributes are set or on simple expressions.</p>
+<p>We are publishing edition 2 of this showcase.</p>
+<p>This paragraph is shown because <code>draft</code> is <strong>not</strong> defined.</p>
+<p>And <code>ifeval::[2 &gt;= 2]</code> is true here, so this conditional block renders.</p>
+</section>
+<section id="cli">
+<h2><a class="anchor" href="#cli"></a><span class="sectnum">12</span> Stdio extension model</h2>
+<p>The AST round-trips through <code>serde_json</code>, so external tools can post-process documents as a Unix-style pipeline:</p>
+<pre><code class="language-bash"># Render directly
+adoc docs/showcase.adoc -o docs/showcase.html
+
+# Or pipe through a custom filter
+adoc --emit-ast docs/showcase.adoc \
+    | jq '.blocks |= map(select(.kind != "comment"))' \
+    | adoc --from-ast -o docs/showcase.html</code></pre>
+</section>
+<section id="_footnotes_character_pairs_and_a_final_word">
+<h2><a class="anchor" href="#_footnotes_character_pairs_and_a_final_word"></a><span class="sectnum">13</span> Footnotes, character pairs, and a final word</h2>
+<p>A trailing footnote keeps the spec-tour honest: <span class="footnote" id="fn-spec"></span>. The same id from earlier — it appears once in the rendered output and the runtime keeps the body deduplicated.</p>
+<p>© 2026 The adoc Authors. All rights reserved ®. "<code>Smart quotes</code>" and 'curly apostrophes' aren't in scope yet, so they render as ASCII — which is intentional, not an oversight.</p>
+<p>If something here doesn't render the way the https://github.com/grahambrooks/adoc[AsciiDoc Language specification] says it should, please open an issue — the spec is the oracle, this document is just the proof.</p>
+</section>
+<!-- attributes: description=A single AsciiDoc document exercising every feature the adoc processor implements today.; edition=2; homepage=https://github.com/grahambrooks/adoc; keywords=asciidoc, adoc, html5, showcase; lang=en; product=adoc; product-version=0.1.0; sectanchors=true; sectnums=true; source-highlighter=rouge; toc=true; -->
+</body>
+</html>

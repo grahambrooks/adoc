@@ -34,6 +34,16 @@ adoc -a toc -a sectnums input.adoc   # set document attributes
 adoc input.adoc > input.html         # render to stdout
 ```
 
+### Full-feature showcase
+
+[`docs/showcase.adoc`](docs/showcase.adoc) is a single document that exercises every feature `adoc` implements today — header metadata, every delimited block, all admonitions, source blocks, tables with cell formatters, inline extras (sub/sup/highlight/passthrough/footnote), block metadata, preprocessor directives with `include::` arguments, section IDs, TOC, sectnums, and sectanchors. Build the binary, then:
+
+```bash
+make showcase                        # renders docs/showcase.adoc → docs/showcase.html
+```
+
+The rendered output is checked into [`docs/showcase.html`](docs/showcase.html) so it can be browsed directly on GitHub.
+
 ### Stylesheets
 
 The HTML5 backend ships with a built-in stylesheet (light/dark aware) and mirrors Asciidoctor's attribute-driven model.

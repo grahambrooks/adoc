@@ -1,0 +1,322 @@
+= The adoc Showcase: Every Supported Feature in One Document
+Alice Author <alice@example.com>; Bob Builder <bob@example.com>
+v1.0.0, 2026-04-25: First public showcase
+:description: A single AsciiDoc document exercising every feature the adoc processor implements today.
+:keywords: asciidoc, adoc, html5, showcase
+:product: adoc
+:product-version: 0.1.0
+:homepage: https://github.com/grahambrooks/adoc
+:edition: 2
+:lang: en
+:toc:
+:sectnums:
+:sectanchors:
+:source-highlighter: rouge
+
+This document is the canonical demonstration of what the `{product}` processor
+can render.
+Every feature in the README's _What works today_ section appears below, in
+roughly the order a reader is likely to meet them.
+The whole file is rendered with `adoc docs/showcase.adoc` and the result lives
+at `docs/showcase.html`.
+
+[#intro]
+== Document header and metadata
+
+The header above carries a title, two authors with email addresses, a revision
+line (`v1.0.0, 2026-04-25: First public showcase`), and a block of attribute
+entries.
+Attributes are referenced inline with curly braces — for example, you are
+reading version {product-version} of {product}, and the homepage is
+{homepage}.
+
+A `:toc:` attribute placed in the header pulls a Table of Contents above this
+introduction; `:sectnums:` numbers every heading; `:sectanchors:` adds a small
+hover anchor next to each heading so headings can be linked directly.
+
+== Paragraphs, line breaks, and inline quoting
+
+Paragraphs are separated by blank lines.
+A trailing space-plus (` +`) at the end of a line forces a hard +
+break, so the second half of this sentence starts on its own line.
+
+Inline quoting uses constrained pairs around a word — *strong*, _emphasis_,
+and `monospace` — or unconstrained pairs that work mid-word: **bo**ld,
+__it__alic, ``mo``no.
+Combinations nest naturally: *_strong emphasis_*, *`bold mono`*.
+Specialchars are escaped automatically, so `1 < 2 && 3 > 2` survives as
+literal text without breaking the HTML.
+
+Character replacements turn (C), (R), (TM), ..., -- and -> into typographic
+forms; arrows fire in both directions (<-, <=, =>).
+
+[#inline-extras]
+== Inline extras: subscript, superscript, highlight, passthroughs, footnotes
+
+Water is H~2~O, Einstein had E=mc^2^, and you can #highlight a phrase# inline
+with hashes (or with ##unconstrained## pairs mid-word).
+
+A constrained passthrough +keeps *stars* and {attrs} literal+, while the
+unconstrained ++**double stars** also survive++ verbatim.
+The `pass:[...]` macro emits raw HTML — pass:[<kbd>Ctrl</kbd>+<kbd>C</kbd>]
+renders as keyboard keys.
+
+Footnotes attach inline.footnote:[Here is an anonymous footnote with
+_emphasis_ inside it.]
+You can also id a footnote so it can be referenced later:
+footnote:fn-spec[The AsciiDoc Language specification at https://docs.asciidoctor.org/asciidoc/latest/].
+
+[#inline-macros]
+== Inline macros: links, xrefs, images
+
+Visit the link:{homepage}[{product} homepage] or
+mailto:alice@example.com[email Alice].
+Bare URLs autolink: https://docs.asciidoctor.org/asciidoc/latest/.
+Cross-references use either `xref:` or the shorthand `<<id>>` —
+xref:lists[jump to lists] or <<tables, jump to tables>>.
+
+Inline images embed with `image:` and accept named attributes:
+
+image:https://placehold.co/64x64?text=A[Avatar, 64, 64]
+image:https://placehold.co/64x64?text=B[width=64, height=64]
+
+[#lists]
+== Lists: unordered, ordered, description, with continuation
+
+.Unordered list with depth
+* First level
+* Still first level
+** Nested second level
+** Another second-level item
+*** Third level
+* Back to the top
+
+.Ordered list
+. Boil the kettle
+. Warm the pot
+. Add the leaves
+. Pour and steep
+
+.Description list with a continuation paragraph
+CPU:: The brain of the computer
++
+A short continuation paragraph attached to the previous term with a `+` line.
+RAM:: Working memory; volatile, fast, limited
+SSD:: Persistent storage that doesn't grind when you wake it up
+
+[#delimited]
+== Delimited blocks: every style
+
+.Listing block
+----
+fn main() {
+    println!("Hello, AsciiDoc!");
+}
+----
+
+.Literal block (markup is preserved verbatim)
+....
+*formatting* and {attributes} stay literal here.
+....
+
+.Example block
+====
+An example block groups a small piece of content with a coloured frame.
+It can contain *inline formatting* and even nested blocks.
+====
+
+.Quote block
+[quote, Donald Knuth, The Art of Computer Programming]
+____
+We should forget about small efficiencies, say about 97% of the time;
+premature optimization is the root of all evil.
+____
+
+.Sidebar block
+****
+Sidebars are visually separated commentary, often used to call out a
+related but optional digression.
+****
+
+.Passthrough block (raw HTML through to output)
+++++
+<p style="font-style: italic; color: gray;">
+Rendered as a passthrough — the markup goes to the output untouched.
+</p>
+++++
+
+.Open block (lightweight container)
+--
+An open block is a generic container delimited by `--`.
+It carries no styling of its own — perfect for grouping content under a
+single block-attribute line or block title.
+--
+
+[#admonitions]
+== Admonitions
+
+NOTE: A short note rendered as a paragraph admonition.
+
+TIP: A tip — paragraph form, default label.
+
+IMPORTANT: An important call-out you really shouldn't skim past.
+
+WARNING: A warning, often used for irreversible operations.
+
+CAUTION: A caution — slightly softer than a warning.
+
+.A titled admonition
+[NOTE]
+====
+Block-form admonitions can hold multiple paragraphs and other content.
+
+The leading `.A titled admonition` line replaces the default _Note_
+label with a custom title.
+====
+
+[#source]
+== Source blocks with language
+
+A `[source,LANG]` attribute on a listing emits a `language-LANG` class on
+the inner `<code>` element so downstream highlighters (Prism, Highlight.js,
+Rouge) can take over without conflict.
+
+.A Rust function with a language hint
+[source,rust]
+----
+fn main() {
+    let greeting = "Hello, AsciiDoc!";
+    println!("{}", greeting);
+}
+----
+
+.A Python snippet
+[source,python]
+----
+def fizzbuzz(n: int) -> str:
+    if n % 15 == 0:
+        return "FizzBuzz"
+    if n % 3 == 0:
+        return "Fizz"
+    if n % 5 == 0:
+        return "Buzz"
+    return str(n)
+----
+
+.A Bash one-liner
+[source,bash]
+----
+adoc --emit-ast doc.adoc | jq '.blocks[0]' | adoc --from-ast -o filtered.html
+----
+
+[#tables]
+== Tables: headers, cell formatters
+
+.Inferred header (blank line after first row)
+|===
+| Name | Role | Location
+
+| Alice | Engineer | Remote
+| Bob | Designer | Office
+| Carol | PM | Hybrid
+|===
+
+.Explicit `[%header]`
+[%header]
+|===
+| Symbol | Decimal | Hex
+| (C) | 169 | A9
+| (R) | 174 | AE
+| (TM) | 8482 | 2122
+|===
+
+.Cell formatters: monospace, strong, emphasis, literal, header-in-body
+|===
+| plain    s| strong cell    e| emphasised cell
+| keyword m| monospace text  l| literal *not strong* h| forced th in body row
+|===
+
+[#metadata]
+== Block metadata and titles
+
+The shorthand `[#id.role%opt]` collapses an id, a CSS role, and an option
+flag into a single line.
+A leading `.Title` sets a block title that the converter renders as a
+`<div class="title">` above the block.
+
+[#highlight-paragraph.lead%hardbreaks]
+.A paragraph with id, role, option, and title
+This paragraph carries an `id="highlight-paragraph"`, a CSS class of `lead`,
+the `hardbreaks` option, and a block title — all from one shorthand line and
+one `.Title` line.
+
+[caption="Figure 1.", align="center"]
+.Named-attribute metadata
+A paragraph that sets named attributes (`caption=`, `align=`) instead of —
+or alongside — positional and shorthand forms.
+
+[#prices]
+.Important table
+|===
+| SKU | Price
+| A-100 | $9.99
+| B-200 | $14.99
+|===
+
+You can cross-reference any anchored block: see <<prices, the price table>>
+above, or jump straight to <<inline-extras>>.
+
+[#preprocessor]
+== Preprocessor: includes, conditionals
+
+The `include::` directive pulls another file into this document at parse time.
+Two regions of `docs/showcase-snippet.adoc` are selected by tag below.
+
+.From `docs/showcase-snippet.adoc`, `tags=intro`
+include::showcase-snippet.adoc[tags=intro]
+
+.From the same file, `tags=trailing`
+include::showcase-snippet.adoc[tags=trailing]
+
+The `ifdef::` / `ifndef::` / `ifeval::` directives gate content on whether
+attributes are set or on simple expressions.
+
+ifdef::edition[We are publishing edition {edition} of this showcase.]
+
+ifndef::draft[This paragraph is shown because `draft` is **not** defined.]
+
+ifeval::[{edition} >= 2]
+And `ifeval::[{edition} >= 2]` is true here, so this conditional block renders.
+endif::[]
+
+[#cli]
+== Stdio extension model
+
+The AST round-trips through `serde_json`, so external tools can post-process
+documents as a Unix-style pipeline:
+
+[source,bash]
+----
+# Render directly
+adoc docs/showcase.adoc -o docs/showcase.html
+
+# Or pipe through a custom filter
+adoc --emit-ast docs/showcase.adoc \
+    | jq '.blocks |= map(select(.kind != "comment"))' \
+    | adoc --from-ast -o docs/showcase.html
+----
+
+== Footnotes, character pairs, and a final word
+
+A trailing footnote keeps the spec-tour honest:
+footnote:fn-spec[].
+The same id from earlier — it appears once in the rendered output and the
+runtime keeps the body deduplicated.
+
+(C) 2026 The {product} Authors. All rights reserved (R).
+"`Smart quotes`" and 'curly apostrophes' aren't in scope yet, so they
+render as ASCII -- which is intentional, not an oversight.
+
+If something here doesn't render the way the
+{homepage}[AsciiDoc Language specification] says it should, please open an
+issue — the spec is the oracle, this document is just the proof.
