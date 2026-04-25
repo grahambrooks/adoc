@@ -30,21 +30,23 @@ adoc (CLI)
                   └─ includes, ifdef/ifndef/ifeval, attribute entries
 ```
 
-### Crate layout (Cargo workspace)
+### Module layout
 
-Five crates make up the workspace:
+`adoc` is a single Cargo crate. The pipeline is realised as four sibling modules under `src/`, plus a binary at `src/main.rs`:
 
-| Crate | Responsibility |
+| Module | Responsibility |
 | --- | --- |
-| `adoc-cli` | Binary crate. `clap` argument parsing, file I/O, exit codes, wires the pipeline. |
-| `adoc-core` | Shared types: `Document`, `Block`, `Inline`, `Attributes`, `Location`. `serde` serializable. No I/O. |
-| `adoc-preprocessor` | Include resolution, conditional directives (`ifdef`, `ifndef`, `ifeval`, `endif`), attribute entries. Line-level. |
-| `adoc-parser` | Block parser (line-oriented recursive descent) and inline parser (substitution pipeline). Produces `adoc-core::Document`. |
-| `adoc-convert-html5` | Visits the AST, emits HTML5. Implements a `Converter` trait defined in `adoc-core`. Owns the built-in stylesheet asset. |
+| `adoc::ast` | Shared types: `Document`, `Block`, `Inline`, `Attributes`, `Location`, plus the `Converter` trait. `serde` serializable. No I/O. |
+| `adoc::preprocessor` | Include resolution, conditional directives (`ifdef`, `ifndef`, `ifeval`, `endif`), attribute entries. Line-level. |
+| `adoc::parser` | Block parser (line-oriented recursive descent) and inline parser (substitution pipeline). Produces `adoc::ast::Document`. |
+| `adoc::convert::html5` | Visits the AST, emits HTML5. Implements `adoc::ast::Converter`. Owns the built-in stylesheet asset (`assets/adoc.css`). |
+| `src/main.rs` | Binary `adoc`. `clap` argument parsing, file I/O, exit codes, wires the pipeline. |
 
-Future crates: `adoc-convert-docbook`, `adoc-convert-manpage`, `adoc-ext-stdio`.
+Future siblings under `src/convert/`: `docbook`, `manpage`. Future top-level modules: `ext` (stdio extension model).
 
-Dependency direction: `adoc-cli → {adoc-parser, adoc-preprocessor, adoc-convert-html5} → adoc-core`. Cycles are forbidden; converters must not depend on the parser.
+Dependency direction inside the crate: `main → {parser, preprocessor, convert::html5} → ast`. Cycles are forbidden; converters must not depend on the parser.
+
+The project lived as a five-crate Cargo workspace (`adoc-cli`, `adoc-core`, `adoc-preprocessor`, `adoc-parser`, `adoc-convert-html5`) early on; it was consolidated into a single crate once the dependency graph stabilised. Workspace boundaries were enforcing what plain module boundaries already enforce (the dependency direction above), at the cost of five separate `Cargo.toml`s and slower compile cycles.
 
 ## Key design choices
 
@@ -161,19 +163,19 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Inline subscript/superscript/highlight (`~x~`, `^x^`, `#x#`), inline passthroughs (`+text+`, `pass:[]`), inline footnotes, inline anchors, bibliography entries | **not started** |
 | TOC generation, discrete headings, `sectnums`/`sectanchors` honoured | **not started** |
 | `doctype` (article/book/manpage/inline) influencing output | **not started** |
-| `--emit-ast` / `--from-ast` wiring in `adoc-cli` | **not started** |
+| `--emit-ast` / `--from-ast` wiring in `src/main.rs` | **not started** |
 | Real `miette::Diagnostic` errors with span pointers (locations exist; error types don't carry them yet) | **not started** |
 | Conformance suite under `tests/conformance/` (expected AST + HTML5 per spec example) | **not started** — `tests/fixtures/` covers the v1 surface in the meantime |
 
 ## AST gaps
 
-The current `adoc-core` types cover what the parser produces. Several spec constructs need new node shapes (or new fields) before the parser can emit them:
+The current `adoc::ast` types cover what the parser produces. Several spec constructs need new node shapes (or new fields) before the parser can emit them:
 
 - `Block` needs an `Admonition` variant (or a per-block `style`/`attributes` envelope) carrying `note` / `tip` / `important` / `warning` / `caution`.
 - `Section`, `Paragraph`, and `DelimitedBlock` need attached **block metadata**: optional title, role list, options, explicit ID, named attributes (`source`, `language`, `cols`, `quote.attribution`, etc.). The cleanest move is a `BlockMeta` struct shared across block variants rather than per-variant fields.
 - `Table` needs column specs, a separator kind, and per-cell `format`/`halign`/`valign`/`colspan`/`rowspan`. Header/footer row distinction belongs at the table level, not the row level.
 - `Inline` needs `Subscript`, `Superscript`, `Highlight`, `Footnote`, `Anchor`, `IndexTerm`, and a `Passthrough` variant for `pass:[]` content. `Inline::RawHtml` exists but is currently unreachable — it'll absorb `pass:c[]` once that lands.
-- Cross-reference resolution needs a doc-wide ID registry built after parse, before convert. The registry's home is `adoc-core` (so `Converter` impls can consult it), but populating it is a parser pass.
+- Cross-reference resolution needs a doc-wide ID registry built after parse, before convert. The registry's home is `adoc::ast` (so `Converter` impls can consult it), but populating it is a parser pass.
 
 ## CLI / pipeline gaps
 
@@ -183,7 +185,7 @@ The current `adoc-core` types cover what the parser produces. Several spec const
 
 ## Phasing (revised)
 
-1. ~~**Skeleton** — workspace scaffold, CLI reads a file and emits a `<body>`-wrapped paragraph.~~ ✓
+1. ~~**Skeleton** — project scaffold, CLI reads a file and emits a `<body>`-wrapped paragraph.~~ ✓
 2. ~~**Block parser** — paragraphs, sections, lists, delimited blocks, basic tables.~~ ✓
 3. ~~**Inline parser** — quotes, attribute references, cross-references, inline macros, replacements, line breaks.~~ ✓
 4. **Block metadata + section IDs** — parse `[attr]` lines and `.Title` lines, attach to the following block; auto-generate section IDs and resolve xref targets. Unblocks admonitions, source blocks, table column specs, and meaningful xref output. *Next.*

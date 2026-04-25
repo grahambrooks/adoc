@@ -4,16 +4,13 @@
 //! and leading attribute entries (`:name: value` / `:!name:`). Author and
 //! revision lines only count if a title is present.
 
-use adoc_core::{AttributeValue, Attributes, Author, Header, Revision};
+use crate::ast::{AttributeValue, Attributes, Author, Header, Revision};
 
-use crate::cursor::Cursor;
-use crate::inline;
-use crate::subs::Subs;
+use super::cursor::Cursor;
+use super::inline;
+use super::subs::Subs;
 
-pub fn try_parse_header(
-    cursor: &mut Cursor,
-    attrs: &mut Attributes,
-) -> Option<Header> {
+pub fn try_parse_header(cursor: &mut Cursor, attrs: &mut Attributes) -> Option<Header> {
     cursor.skip_blank_lines();
     let line = cursor.peek()?;
     // A document title is `= ` followed by text (single `=` only).

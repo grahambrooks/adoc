@@ -1,7 +1,7 @@
 //! Line cursor over preprocessed lines.
 
-use adoc_core::Location;
-use adoc_preprocessor::PreprocessedLine;
+use crate::ast::Location;
+use crate::preprocessor::PreprocessedLine;
 
 pub struct Cursor<'a> {
     lines: &'a [PreprocessedLine],

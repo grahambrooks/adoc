@@ -3,12 +3,12 @@
 use std::fs;
 use std::io::Write;
 
-use adoc_convert_html5::{
+use adoc::ast::{AttributeValue, Attributes, Converter, SourceId};
+use adoc::convert::html5::{
     Html5Converter, Html5Options, Stylesheet, BUILTIN_CSS, BUILTIN_FILENAME,
 };
-use adoc_core::{AttributeValue, Attributes, Converter, SourceId};
-use adoc_parser::parse_with;
-use adoc_preprocessor::Preprocessor;
+use adoc::parser::parse_with;
+use adoc::preprocessor::Preprocessor;
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, ValueEnum};
 use miette::{miette, IntoDiagnostic};
@@ -102,8 +102,7 @@ fn main() -> miette::Result<()> {
     });
 
     let out_path = resolve_output_path(&cli, input);
-    let stylesheet =
-        resolve_stylesheet(&doc.attributes, &base_dir).map_err(|e| miette!("{e}"))?;
+    let stylesheet = resolve_stylesheet(&doc.attributes, &base_dir).map_err(|e| miette!("{e}"))?;
 
     let output_html = match cli.backend {
         Backend::Html5 => {
@@ -176,10 +175,7 @@ fn parse_one_cli_attribute(raw: &str) -> Option<(String, AttributeValue)> {
 
 // --- stylesheet resolution -------------------------------------------------
 
-fn resolve_stylesheet(
-    attrs: &Attributes,
-    base_dir: &Utf8Path,
-) -> std::io::Result<Stylesheet> {
+fn resolve_stylesheet(attrs: &Attributes, base_dir: &Utf8Path) -> std::io::Result<Stylesheet> {
     // Treat `:stylesheet!:` or `:stylesheet:` empty as disabled.
     match attrs.get("stylesheet") {
         Some(AttributeValue::Bool(false)) => return Ok(Stylesheet::None),
@@ -217,11 +213,7 @@ fn resolve_stylesheet(
     }
 }
 
-fn resolve_style_path(
-    base_dir: &Utf8Path,
-    stylesdir: Option<&str>,
-    name: &str,
-) -> Utf8PathBuf {
+fn resolve_style_path(base_dir: &Utf8Path, stylesdir: Option<&str>, name: &str) -> Utf8PathBuf {
     let rel = match stylesdir {
         Some(dir) => format!("{}/{}", dir.trim_end_matches('/'), name),
         None => name.to_string(),
@@ -314,7 +306,9 @@ fn init_tracing(verbose: u8, quiet: bool) {
             _ => "trace",
         }
     };
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
-    fmt().with_env_filter(filter).with_writer(std::io::stderr).init();
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
+    fmt()
+        .with_env_filter(filter)
+        .with_writer(std::io::stderr)
+        .init();
 }

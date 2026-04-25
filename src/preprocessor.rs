@@ -1,11 +1,11 @@
 //! AsciiDoc preprocessor.
 //!
 //! v1 scope: split source into lines with [`Location`] spans. Directive
-//! handling (`include::`, `ifdef`, attribute entries) is deferred to phase 4.
-//! The parser can handle attribute entries itself during header parsing, so
-//! the preprocessor remains a faithful line-splitter.
+//! handling (`include::`, `ifdef`, attribute entries) is deferred to the
+//! preprocessor phase. The parser handles attribute entries itself during
+//! header parsing, so this module remains a faithful line-splitter.
 
-use adoc_core::{Attributes, Location, SourceId};
+use crate::ast::{Attributes, Location, SourceId};
 
 #[derive(Debug, Clone)]
 pub struct PreprocessedLine {

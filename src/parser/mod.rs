@@ -1,6 +1,6 @@
 //! AsciiDoc parser.
 //!
-//! Consumes preprocessed lines and produces an [`adoc_core::Document`].
+//! Consumes preprocessed lines and produces an [`crate::ast::Document`].
 //! The block parser is hand-written recursive descent; the inline parser
 //! is a single-pass character walker implementing the spec's six substitution
 //! groups. Attributes accumulate through the document — header attribute
@@ -13,8 +13,8 @@ mod header;
 mod inline;
 mod subs;
 
-use adoc_core::{Attributes, Document};
-use adoc_preprocessor::PreprocessedLine;
+use crate::ast::{Attributes, Document};
+use crate::preprocessor::PreprocessedLine;
 
 pub use subs::Subs;
 
@@ -31,10 +31,7 @@ pub fn parse(lines: &[PreprocessedLine]) -> Result<Document, ParseError> {
 /// Parse with a seeded attribute set (typically CLI-provided attributes).
 /// Document-level entries currently override seeded values — if we later
 /// need CLI-wins semantics, track provenance here.
-pub fn parse_with(
-    lines: &[PreprocessedLine],
-    initial: Attributes,
-) -> Result<Document, ParseError> {
+pub fn parse_with(lines: &[PreprocessedLine], initial: Attributes) -> Result<Document, ParseError> {
     let mut cursor = cursor::Cursor::new(lines);
     let mut attributes = initial;
     let header = header::try_parse_header(&mut cursor, &mut attributes);

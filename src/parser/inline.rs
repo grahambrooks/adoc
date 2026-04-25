@@ -4,9 +4,9 @@
 //! Special characters are left as UTF-8 text in the AST; the HTML5 converter
 //! handles entity escaping. This keeps the AST readable and language-neutral.
 
-use adoc_core::{AttributeValue, Attributes, Inline};
+use crate::ast::{AttributeValue, Attributes, Inline};
 
-use crate::subs::Subs;
+use super::subs::Subs;
 
 pub fn parse(text: &str, attrs: &Attributes, subs: Subs) -> Vec<Inline> {
     if text.is_empty() {
@@ -280,18 +280,18 @@ fn find_closing(rem: &str, marker: &str, start: usize, constrained: bool) -> Opt
                 return None;
             }
             let inner = &hay[..i];
-            if inner.chars().next_back().map_or(true, |c| c.is_whitespace()) {
+            if inner
+                .chars()
+                .next_back()
+                .map_or(true, |c| c.is_whitespace())
+            {
                 i += 1;
                 continue;
             }
             if constrained {
                 // Char after the closing marker must not be a word char.
                 let after = &hay[i + mb.len()..];
-                if after
-                    .chars()
-                    .next()
-                    .map_or(true, |c| !is_word_char(c))
-                {
+                if after.chars().next().map_or(true, |c| !is_word_char(c)) {
                     return Some(i);
                 }
                 i += 1;
@@ -323,8 +323,7 @@ fn parse_prefix_macro(rem: &str, prefix: &str) -> Option<(Inline, usize)> {
         return None;
     }
     let after = &rem[prefix.len()..];
-    let target_end = after
-        .find(|c: char| c == '[' || c.is_whitespace())?;
+    let target_end = after.find(|c: char| c == '[' || c.is_whitespace())?;
     if !after[target_end..].starts_with('[') {
         return None;
     }
@@ -365,8 +364,14 @@ fn parse_image_macro(rem: &str) -> Option<(Inline, usize)> {
     let consumed = prefix.len() + target_end + attrs_end + 1;
     let parts: Vec<&str> = attrs_str.split(',').map(str::trim).collect();
     let alt = parts.first().copied().unwrap_or("").to_string();
-    let width = parts.get(1).filter(|s| !s.is_empty()).map(|s| s.to_string());
-    let height = parts.get(2).filter(|s| !s.is_empty()).map(|s| s.to_string());
+    let width = parts
+        .get(1)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+    let height = parts
+        .get(2)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
     Some((
         Inline::Image {
             target: target.to_string(),

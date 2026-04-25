@@ -1,6 +1,6 @@
-//! Shared types for the adoc AsciiDoc toolchain.
+//! AST types for the adoc AsciiDoc toolchain.
 //!
-//! The AST produced by `adoc-parser` and consumed by converters lives here.
+//! The AST produced by [`crate::parser`] and consumed by converters lives here.
 //! Every node carries a [`Location`] so diagnostics can point back to source.
 //! All types are `serde`-serializable: the JSON form is the contract for
 //! future stdio-based extensions.

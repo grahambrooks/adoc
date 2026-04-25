@@ -4,21 +4,19 @@
 //! (preprocessor + parser + HTML5 converter) and asserts structural
 //! properties that pin the v1 feature set.
 
-use adoc_convert_html5::Html5Converter;
-use adoc_core::{AttributeValue, Block, Converter, DelimitedStyle, ListMarker, SourceId};
-use adoc_parser::parse;
-use adoc_preprocessor::Preprocessor;
+use adoc::ast::{AttributeValue, Block, Converter, DelimitedStyle, ListMarker, SourceId};
+use adoc::convert::html5::Html5Converter;
+use adoc::parser::parse;
+use adoc::preprocessor::Preprocessor;
 use std::path::{Path, PathBuf};
 
 fn fixtures_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
         .join("tests")
         .join("fixtures")
 }
 
-fn render(name: &str) -> (adoc_core::Document, String) {
+fn render(name: &str) -> (adoc::ast::Document, String) {
     let path = fixtures_dir().join(name);
     let src = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path:?}: {e}"));
     let pre = Preprocessor::default();
@@ -50,12 +48,11 @@ fn header_with_authors_and_revision() {
     assert_eq!(rev.number.as_deref(), Some("v1.2.3"));
     assert_eq!(rev.date.as_deref(), Some("2026-04-18"));
     assert_eq!(rev.remark.as_deref(), Some("Initial release"));
+    assert_eq!(doc.attributes.get("toc"), Some(&AttributeValue::Bool(true)));
     assert_eq!(
-        doc.attributes.get("toc"),
-        Some(&AttributeValue::Bool(true))
-    );
-    assert_eq!(
-        doc.attributes.get("source-highlighter").and_then(AttributeValue::as_str),
+        doc.attributes
+            .get("source-highlighter")
+            .and_then(AttributeValue::as_str),
         Some("rouge")
     );
     assert!(html.contains("<h1>Document Title</h1>"));
@@ -73,7 +70,10 @@ fn nested_sections() {
             _ => None,
         })
         .expect("level 1 section");
-    let has_l2 = l1.blocks.iter().any(|b| matches!(b, Block::Section(s) if s.level == 2));
+    let has_l2 = l1
+        .blocks
+        .iter()
+        .any(|b| matches!(b, Block::Section(s) if s.level == 2));
     assert!(has_l2);
     assert!(html.contains("<h2>Level 1 Section</h2>"));
     assert!(html.contains("<h3>Level 2 Subsection</h3>"));
@@ -224,7 +224,7 @@ fn count_paragraphs(blocks: &[Block]) -> usize {
         .count()
 }
 
-fn find_list(blocks: &[Block]) -> Option<&adoc_core::List> {
+fn find_list(blocks: &[Block]) -> Option<&adoc::ast::List> {
     blocks.iter().find_map(|b| match b {
         Block::List(l) => Some(l),
         _ => None,

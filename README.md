@@ -111,23 +111,23 @@ adoc (CLI)
                   └─ includes, ifdef/ifndef/ifeval, attribute entries
 ```
 
-Five crates in a Cargo workspace:
+Single Cargo crate, four pipeline modules plus a binary:
 
-| Crate                | Role                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------- |
-| `adoc-cli`           | Binary `adoc`. Parses CLI args, wires the pipeline.                                   |
-| `adoc-core`          | AST types, `Location`, `Converter` trait, attribute model. No I/O.                    |
-| `adoc-preprocessor`  | Line-level: includes, conditionals, attribute entries.                                |
-| `adoc-parser`        | Hand-written recursive-descent block parser + inline substitution pipeline.           |
-| `adoc-convert-html5` | Implements the `Converter` trait for HTML5.                                           |
+| Module                  | Role                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| `adoc::ast`             | AST types, `Location`, `Converter` trait, attribute model. No I/O.                    |
+| `adoc::preprocessor`    | Line-level: includes, conditionals, attribute entries.                                |
+| `adoc::parser`          | Hand-written recursive-descent block parser + inline substitution pipeline.           |
+| `adoc::convert::html5`  | Implements the `Converter` trait for HTML5; owns the built-in stylesheet.             |
+| `src/main.rs`           | Binary `adoc`. Parses CLI args, wires the pipeline.                                   |
 
-Dependency direction: `adoc-cli → {adoc-parser, adoc-preprocessor, adoc-convert-html5} → adoc-core`.
+Dependency direction inside the crate: `main → {parser, preprocessor, convert::html5} → ast`. Future converters (DocBook, manpage) sit beside `html5` under `src/convert/`.
 
 ## Development
 
 ```bash
 make build            # cargo build
-make test             # cargo test (workspace)
+make test             # cargo test
 make lint             # cargo clippy --all-targets -- -D warnings
 make fmt              # cargo fmt --all
 make examples         # render tests/fixtures/*.adoc to docs/examples/*.html

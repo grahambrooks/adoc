@@ -1,9 +1,9 @@
 //! Covers the five [`Stylesheet`] modes.
 
-use adoc_convert_html5::{
+use adoc::ast::{Attributes, Converter, Document};
+use adoc::convert::html5::{
     Html5Converter, Html5Options, Stylesheet, BUILTIN_CSS, BUILTIN_FILENAME,
 };
-use adoc_core::{Attributes, Converter, Document};
 
 fn empty_doc() -> Document {
     Document {

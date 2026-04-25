@@ -1,12 +1,12 @@
-//! HTML5 converter for the adoc AsciiDoc toolchain.
+//! HTML5 converter.
 //!
 //! v1 scope: enough HTML to see every block and inline the parser produces.
 //! Matching Asciidoctor's exact HTML (class names, wrappers, TOC, etc.) is
-//! phase 5 — conformance work — and deliberately out of scope here.
+//! conformance work — deliberately out of scope here.
 
 use std::fmt::Write;
 
-use adoc_core::{
+use crate::ast::{
     AttributeValue, Block, ConvertError, Converter, DelimitedContent, DelimitedStyle,
     DescriptionList, Document, Inline, List, ListMarker, Paragraph, Section, Table,
 };
@@ -63,9 +63,7 @@ impl Converter for Html5Converter {
         out.push_str("<!doctype html>\n<html lang=\"en\">\n<head>\n");
         out.push_str(r#"<meta charset="utf-8">"#);
         out.push('\n');
-        out.push_str(
-            r#"<meta name="viewport" content="width=device-width, initial-scale=1">"#,
-        );
+        out.push_str(r#"<meta name="viewport" content="width=device-width, initial-scale=1">"#);
         out.push('\n');
         let title_text = doc
             .header
@@ -83,21 +81,21 @@ impl Converter for Html5Converter {
                 .map_err(|e| ConvertError::Message(e.to_string()))?;
             if !header.authors.is_empty() {
                 out.push_str(r#"<p class="authors">"#);
-                let names: Vec<String> = header
-                    .authors
-                    .iter()
-                    .map(|a| escape(&a.name))
-                    .collect();
+                let names: Vec<String> = header.authors.iter().map(|a| escape(&a.name)).collect();
                 out.push_str(&names.join(", "));
                 out.push_str("</p>\n");
             }
             if let Some(rev) = &header.revision {
                 out.push_str(r#"<p class="revision">"#);
-                let parts: Vec<String> = [rev.number.as_deref(), rev.date.as_deref(), rev.remark.as_deref()]
-                    .into_iter()
-                    .flatten()
-                    .map(escape)
-                    .collect();
+                let parts: Vec<String> = [
+                    rev.number.as_deref(),
+                    rev.date.as_deref(),
+                    rev.remark.as_deref(),
+                ]
+                .into_iter()
+                .flatten()
+                .map(escape)
+                .collect();
                 out.push_str(&parts.join(" · "));
                 out.push_str("</p>\n");
             }
@@ -175,8 +173,12 @@ fn render_section(out: &mut String, s: &Section) -> Result<(), ConvertError> {
         4 => "h5",
         _ => "h6",
     };
-    write!(out, "<section>\n<{tag}>{}</{tag}>\n", render_inlines(&s.title))
-        .map_err(|e| ConvertError::Message(e.to_string()))?;
+    write!(
+        out,
+        "<section>\n<{tag}>{}</{tag}>\n",
+        render_inlines(&s.title)
+    )
+    .map_err(|e| ConvertError::Message(e.to_string()))?;
     for b in &s.blocks {
         render_block(out, b)?;
     }
@@ -237,7 +239,7 @@ fn render_description_list(out: &mut String, d: &DescriptionList) -> Result<(), 
     Ok(())
 }
 
-fn render_delimited(out: &mut String, d: &adoc_core::DelimitedBlock) -> Result<(), ConvertError> {
+fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<(), ConvertError> {
     match (&d.style, &d.content) {
         (DelimitedStyle::Listing, DelimitedContent::Raw { text }) => {
             write!(out, "<pre><code>{}</code></pre>\n", escape(text))
@@ -398,9 +400,7 @@ fn inlines_to_plain(inlines: &[Inline]) -> String {
 fn inline_to_plain(out: &mut String, i: &Inline) {
     match i {
         Inline::Text(s) => out.push_str(s),
-        Inline::Strong(c)
-        | Inline::Emphasis(c)
-        | Inline::Monospace(c) => {
+        Inline::Strong(c) | Inline::Emphasis(c) | Inline::Monospace(c) => {
             for child in c {
                 inline_to_plain(out, child);
             }

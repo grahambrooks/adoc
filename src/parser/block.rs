@@ -4,16 +4,16 @@
 //! all seven delimited block styles, and basic tables. Inline text inside
 //! blocks is resolved immediately using the accumulated attribute context.
 
-use adoc_core::{
+use crate::ast::{
     Attributes, Block, DelimitedBlock, DelimitedContent, DelimitedStyle, DescriptionList,
     DescriptionListItem, Inline, List, ListItem, ListMarker, Location, Paragraph, Section, Table,
     TableCell, TableRow,
 };
 
-use crate::cursor::Cursor;
-use crate::header::{consume_attribute_entries, parse_attribute_entry};
-use crate::inline;
-use crate::subs::Subs;
+use super::cursor::Cursor;
+use super::header::{consume_attribute_entries, parse_attribute_entry};
+use super::inline;
+use super::subs::Subs;
 
 pub fn parse_blocks(cursor: &mut Cursor, attrs: &mut Attributes, section_level: u8) -> Vec<Block> {
     let mut out = Vec::new();
@@ -105,7 +105,9 @@ fn parse_one_block(cursor: &mut Cursor, attrs: &mut Attributes) -> Option<Block>
         return Some(parse_list_kind(cursor, attrs, marker));
     }
     if is_description_item(text) {
-        return Some(Block::DescriptionList(parse_description_list(cursor, attrs)));
+        return Some(Block::DescriptionList(parse_description_list(
+            cursor, attrs,
+        )));
     }
     Some(Block::Paragraph(parse_paragraph(cursor, attrs)))
 }
@@ -406,7 +408,7 @@ fn parse_delimited(
     }
 
     // Container styles: collect inner lines, then recursively parse them.
-    let mut inner_lines: Vec<adoc_preprocessor::PreprocessedLine> = Vec::new();
+    let mut inner_lines: Vec<crate::preprocessor::PreprocessedLine> = Vec::new();
     while let Some(line) = cursor.peek() {
         if line.text.trim_end() == delim {
             cursor.advance();
