@@ -1,0 +1,32 @@
+docs/showcase.html
+  27508cabf0243d73 357,403,558,562,612-614
+docs/showcase.adoc
+  27508cabf0243d73 14-15,73,76-77,234,236-237
+README.md
+  27508cabf0243d73 108
+tests/fixtures.rs
+  27508cabf0243d73 706-753
+src/convert/html5/mod.rs
+  27508cabf0243d73 79,134,140-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7bffc463169d8fb8fd429bdade1f5f9ed321fea4",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 131,
+      "total_deletions": 12,
+      "accepted_lines": 468,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/e895471988abec9ac001a35a5c771fb72c884b304a71203da0b7b356c9ed5b1e"
+    }
+  }
+}
