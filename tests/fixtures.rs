@@ -465,6 +465,7 @@ fn ast_roundtrips_through_serde_json() {
         "26_inline_extras.adoc",
         "27_toc_sectnums.adoc",
         "28_tables_header_formatters.adoc",
+        "29_callouts.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -701,6 +702,65 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn callouts_listing_markers_and_colist() {
+    let (doc, html) = render("29_callouts.adoc");
+
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // Markers in listings render as <b class="conum">(N)</b>.
+    assert!(body.contains(r#"<b class="conum">(1)</b>"#));
+    assert!(body.contains(r#"<b class="conum">(2)</b>"#));
+    assert!(body.contains(r#"<b class="conum">(3)</b>"#));
+
+    // Colist comes out as <ol class="colist">.
+    assert!(body.contains(r#"<ol class="colist">"#));
+    assert!(body.contains(r#"<li value="1">Bind a string slice to a local.</li>"#));
+    assert!(body.contains(r#"<li value="2">Format and print using an inline expression.</li>"#));
+    assert!(body.contains(r#"<li value="3">Two callouts can share a single line.</li>"#));
+
+    // Three colists in total: one for the source listing, one for the
+    // plain listing, one for the literal block. The third listing has
+    // no following descriptions, so no colist there.
+    assert_eq!(body.matches(r#"<ol class="colist">"#).count(), 3);
+
+    // AST shape: each colist is its own block, sibling to the listing.
+    let colists: Vec<&adoc::ast::Colist> = doc
+        .blocks
+        .iter()
+        .flat_map(|b| match b {
+            Block::Section(s) => s
+                .blocks
+                .iter()
+                .filter_map(|b| match b {
+                    Block::Colist(c) => Some(c),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+            _ => Vec::new(),
+        })
+        .collect();
+    assert_eq!(colists.len(), 3);
+    assert_eq!(colists[0].items.len(), 3);
+    assert_eq!(colists[0].items[0].number, 1);
+    assert_eq!(colists[0].items[2].number, 3);
+
+    // The "no colist" case: the third section has a listing whose markers
+    // render but no <ol class="colist"> sibling.
+    let third = match &doc.blocks[2] {
+        Block::Section(s) => s,
+        _ => panic!("expected section 3"),
+    };
+    let colist_count = third
+        .blocks
+        .iter()
+        .filter(|b| matches!(b, Block::Colist(_)))
+        .count();
+    assert_eq!(colist_count, 0);
 }
 
 fn render_src(src: &str) -> String {

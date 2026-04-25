@@ -326,6 +326,21 @@ h4 > .anchor::before, h5 > .anchor::before, h6 > .anchor::before {
   content: "#";
 }
 
+/* Source-block callouts (`<1>`, `<2>` …) and the colist that follows.
+   Renders as a bold parenthesised number inside the listing and as a
+   numbered list of descriptions below it. */
+.conum {
+  font-weight: 700;
+  color: var(--adoc-accent);
+  font-family: var(--adoc-font-mono);
+}
+ol.colist {
+  margin: 0.25em 0 1em;
+  padding-left: 2em;
+  color: var(--adoc-fg);
+}
+ol.colist > li { margin: 0.2em 0; }
+
 /* Inline highlighting */
 mark {
   background: light-dark(#fff8c5, #4d3800);
@@ -530,6 +545,16 @@ Rendered as a passthrough — the markup goes to the output untouched.
     return str(n)</code></pre>
 <div class="title">A Bash one-liner</div>
 <pre><code class="language-bash">adoc --emit-ast doc.adoc | jq '.blocks[0]' | adoc --from-ast -o filtered.html</code></pre>
+<div class="title">Callouts in a listing</div>
+<pre><code class="language-rust">fn main() {
+    let greeting = "hello"; <b class="conum">(1)</b>
+    println!("{greeting}, world!"); <b class="conum">(2)</b> <b class="conum">(3)</b>
+}</code></pre>
+<ol class="colist">
+<li value="1">Bind a string slice to a local.</li>
+<li value="2">Format and print using an inline expression.</li>
+<li value="3">Two callouts can share a single line.</li>
+</ol>
 </section>
 <section id="tables">
 <h2><a class="anchor" href="#tables"></a><span class="sectnum">9</span> Tables: headers, cell formatters</h2>

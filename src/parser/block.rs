@@ -5,9 +5,9 @@
 //! blocks is resolved immediately using the accumulated attribute context.
 
 use crate::ast::{
-    Attributes, Block, BlockMeta, CellStyle, DelimitedBlock, DelimitedContent, DelimitedStyle,
-    DescriptionList, DescriptionListItem, Inline, List, ListItem, ListMarker, Location, Paragraph,
-    RowKind, Section, Table, TableCell, TableRow,
+    Attributes, Block, BlockMeta, CellStyle, Colist, ColistItem, DelimitedBlock, DelimitedContent,
+    DelimitedStyle, DescriptionList, DescriptionListItem, Inline, List, ListItem, ListMarker,
+    Location, Paragraph, RowKind, Section, Table, TableCell, TableRow,
 };
 
 use super::cursor::Cursor;
@@ -56,12 +56,66 @@ pub fn parse_blocks(cursor: &mut Cursor, attrs: &mut Attributes, section_level: 
             continue;
         }
         if let Some(block) = parse_one_block(cursor, attrs, meta) {
+            // A listing or literal block can be followed by a colist
+            // (one or more `<N> description` lines pairing markers in the
+            // block above with descriptions).
+            let listing_or_literal = matches!(
+                &block,
+                Block::Delimited(d)
+                    if matches!(d.style, DelimitedStyle::Listing | DelimitedStyle::Literal)
+            );
             out.push(block);
+            if listing_or_literal {
+                cursor.skip_blank_lines();
+                if let Some(colist) = try_parse_colist(cursor, attrs) {
+                    out.push(Block::Colist(colist));
+                }
+            }
         } else {
             break;
         }
     }
     out
+}
+
+/// Recognise a callout list: one or more adjacent lines of the form
+/// `<N> description`. Stops at the first non-matching line.
+fn try_parse_colist(cursor: &mut Cursor, attrs: &Attributes) -> Option<Colist> {
+    let first = cursor.peek()?;
+    let (n, rest) = strip_callout_prefix(&first.text)?;
+    let location = first.location.clone();
+    let mut items = vec![ColistItem {
+        number: n,
+        inlines: inline::parse(rest, attrs, Subs::NORMAL),
+    }];
+    cursor.advance();
+    while let Some(line) = cursor.peek() {
+        let Some((n, rest)) = strip_callout_prefix(&line.text) else {
+            break;
+        };
+        items.push(ColistItem {
+            number: n,
+            inlines: inline::parse(rest, attrs, Subs::NORMAL),
+        });
+        cursor.advance();
+    }
+    Some(Colist {
+        items,
+        location,
+        meta: BlockMeta::default(),
+    })
+}
+
+fn strip_callout_prefix(text: &str) -> Option<(u32, &str)> {
+    let trimmed = text.trim_start();
+    let rest = trimmed.strip_prefix('<')?;
+    let close = rest.find('>')?;
+    let num: u32 = rest[..close].parse().ok()?;
+    let body = rest[close + 1..].trim_start();
+    if body.is_empty() {
+        return None;
+    }
+    Some((num, body))
 }
 
 fn peek_section_level(cursor: &Cursor) -> Option<u8> {

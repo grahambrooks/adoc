@@ -63,6 +63,7 @@ pub enum Block {
     DescriptionList(DescriptionList),
     Delimited(DelimitedBlock),
     Table(Table),
+    Colist(Colist),
 }
 
 /// Metadata attached to a block via `.Title` and `[...]` lines.
@@ -198,6 +199,23 @@ pub struct Table {
     pub location: Location,
     #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
     pub meta: BlockMeta,
+}
+
+/// Callout list — the `<N> description` siblings of a `[source]` / listing /
+/// literal block. Each item carries the marker number that pairs it with a
+/// `<N>` callout in the preceding block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Colist {
+    pub items: Vec<ColistItem>,
+    pub location: Location,
+    #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
+    pub meta: BlockMeta,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ColistItem {
+    pub number: u32,
+    pub inlines: Vec<Inline>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

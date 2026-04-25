@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use crate::ast::{
-    AttributeValue, Block, BlockMeta, CellStyle, ConvertError, Converter, DelimitedContent,
+    AttributeValue, Block, BlockMeta, CellStyle, Colist, ConvertError, Converter, DelimitedContent,
     DelimitedStyle, DescriptionList, Document, Inline, List, ListMarker, Paragraph, RowKind,
     Section, Table, TableCell,
 };
@@ -401,6 +401,10 @@ fn render_block(out: &mut String, block: &Block, ctx: &RenderCtx) -> Result<(), 
         Block::DescriptionList(d) => render_description_list(out, d, ctx),
         Block::Delimited(d) => render_delimited(out, d, ctx),
         Block::Table(t) => render_table(out, t),
+        Block::Colist(c) => {
+            render_colist(out, c);
+            Ok(())
+        }
     }
 }
 
@@ -556,16 +560,13 @@ fn render_delimited(
         (DelimitedStyle::Listing, DelimitedContent::Raw { text }) => {
             // `[source,LANG]` adds a `language-LANG` class on the <code>.
             let code_class = source_language_class(&d.meta);
-            writeln!(
-                out,
-                "<pre{a}><code{code_class}>{}</code></pre>",
-                escape(text)
-            )
-            .map_err(|e| ConvertError::Message(e.to_string()))
+            let body = substitute_conums(&escape(text));
+            writeln!(out, "<pre{a}><code{code_class}>{body}</code></pre>")
+                .map_err(|e| ConvertError::Message(e.to_string()))
         }
         (DelimitedStyle::Literal, DelimitedContent::Raw { text }) => {
-            writeln!(out, "<pre{a}>{}</pre>", escape(text))
-                .map_err(|e| ConvertError::Message(e.to_string()))
+            let body = substitute_conums(&escape(text));
+            writeln!(out, "<pre{a}>{body}</pre>").map_err(|e| ConvertError::Message(e.to_string()))
         }
         (DelimitedStyle::Passthrough, DelimitedContent::Raw { text }) => {
             out.push_str(text);
@@ -719,6 +720,50 @@ fn render_block_title(out: &mut String, meta: &BlockMeta) {
     if let Some(title) = &meta.title {
         let _ = writeln!(out, r#"<div class="title">{}</div>"#, render_inlines(title));
     }
+}
+
+/// Replace `&lt;N&gt;` markers with conum HTML inside an already-escaped
+/// listing/literal body. `N` is one or more ASCII digits. The function is
+/// UTF-8-safe — non-marker bytes are forwarded unchanged so multibyte
+/// characters in source code (e.g. comments) survive intact.
+fn substitute_conums(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut last_end = 0;
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while let Some(rel) = s[i..].find("&lt;") {
+        let start = i + rel;
+        let after = start + 4;
+        let mut j = after;
+        while j < bytes.len() && bytes[j].is_ascii_digit() {
+            j += 1;
+        }
+        if j > after && s[j..].starts_with("&gt;") {
+            out.push_str(&s[last_end..start]);
+            let num = &s[after..j];
+            let _ = write!(out, r#"<b class="conum">({num})</b>"#);
+            last_end = j + 4;
+            i = last_end;
+        } else {
+            i = start + 4;
+        }
+    }
+    out.push_str(&s[last_end..]);
+    out
+}
+
+fn render_colist(out: &mut String, c: &Colist) {
+    render_block_title(out, &c.meta);
+    out.push_str("<ol class=\"colist\">\n");
+    for item in &c.items {
+        let _ = writeln!(
+            out,
+            r#"<li value="{}">{}</li>"#,
+            item.number,
+            render_inlines(&item.inlines)
+        );
+    }
+    out.push_str("</ol>\n");
 }
 
 /// Like [`meta_attrs`] but emits *only* the `id` attribute. Used by

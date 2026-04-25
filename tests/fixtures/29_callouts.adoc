@@ -1,0 +1,40 @@
+= Source-block Callouts
+
+== Listing with callouts
+
+[source,rust]
+----
+fn main() {
+    let greeting = "hello"; <1>
+    println!("{greeting}, world!"); <2> <3>
+}
+----
+<1> Bind a string slice to a local.
+<2> Format and print using an inline expression.
+<3> Two callouts can share a single line.
+
+== Plain listing with callouts
+
+----
+echo one  <1>
+echo two  <2>
+----
+<1> First step.
+<2> Second step.
+
+== Listing without a colist
+
+The markers still render even when no description list follows.
+
+----
+let x = 1; <1>
+----
+
+== Literal block with callouts
+
+....
+column one  <1>
+column two  <2>
+....
+<1> Left side.
+<2> Right side.

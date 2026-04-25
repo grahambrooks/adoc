@@ -106,6 +106,7 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
   Variants are internally tagged: `{"kind": "text", "value": "hi"}`, `{"kind": "section", "level": 1, "title": [...], …}`, etc. Unit variants serialize as `{"kind": "line_break"}`.
 - Tables — `<thead>`/`<tbody>` split, header rows detected via `[%header]` / `options="header"` or the spec's blank-line-after-first-row heuristic; cell formatters `m|` (monospace), `s|` (strong), `e|` (emphasis), `l|` (literal `<pre>`), and `h|` (forced `<th>` even in body rows).
 - Source-block syntax highlighting — opt-in via `:source-highlighter: prism` or `:source-highlighter: highlightjs`; the converter injects the matching CDN `<link>` / `<script>` tags so any `[source,LANG]` listing gets highlighted in the browser. Themes pick via `:prism-theme:` / `:highlightjs-theme:` (defaults: `prism`, `default`). Unset (or any other value, e.g. `rouge`/`pygments`) keeps the BYO model — just the `language-LANG` class on `<code>`.
+- Source-block callouts — `<1>` / `<2>` markers inside listing or literal blocks render as `<b class="conum">(N)</b>`, and a sibling `<N> description` block — one or more adjacent callout lines after the listing — becomes an `<ol class="colist">` with each `<li value="N">` carrying the matching description. Markers render whether or not a colist follows; a colist after a non-listing block is treated as ordinary text.
 
 ## What's missing
 
@@ -114,7 +115,6 @@ The big-ticket items, in roughly the order they're queued:
 - **`include::` argument tail** — `indent=`, `encoding=`, and tag wildcards (`*`, `**`). The common arguments (`lines=`, `tags=`, `leveloffset=`) are in.
 - **`[discrete]` headings** and `:toc-placement:` (always top for now).
 - **Doc-wide ID registry + xref validation** — section IDs land on the AST nodes today, but there's no centralised registry yet, so dangling xrefs render silently (the `<a href>` is emitted but the target doesn't exist). Validation belongs with the diagnostics work.
-- **Source-block callouts** — `<1>` / `<2>` markers and matching colist sibling block.
 - **Tables — remaining bits**: `cols=` widths/alignments, cell span/repeat (`2|`, `2.3|`), CSV/DSV separators, `a|` AsciiDoc cells (which require recursive block parsing of cell content).
 - **Inline anchors** (`anchor:id[]`), bibliography entries (`[[[id]]]`), and the numbered end-of-doc footnote section.
 - **TOC, discrete headings, `sectnums`, `sectanchors`.**

@@ -210,6 +210,18 @@ def fizzbuzz(n: int) -> str:
 adoc --emit-ast doc.adoc | jq '.blocks[0]' | adoc --from-ast -o filtered.html
 ----
 
+.Callouts in a listing
+[source,rust]
+----
+fn main() {
+    let greeting = "hello"; <1>
+    println!("{greeting}, world!"); <2> <3>
+}
+----
+<1> Bind a string slice to a local.
+<2> Format and print using an inline expression.
+<3> Two callouts can share a single line.
+
 [#tables]
 == Tables: headers, cell formatters
 

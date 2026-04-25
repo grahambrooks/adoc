@@ -1,3 +1,10 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Source-block Callouts</title>
+<style>
 /* adoc.css — default stylesheet for HTML5 output from the adoc processor.
  *
  * Theming uses CSS custom properties resolved with `light-dark()` gated on
@@ -361,3 +368,46 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+</style>
+</head>
+<body>
+<header>
+<h1>Source-block Callouts</h1>
+</header>
+<section id="_listing_with_callouts">
+<h2>Listing with callouts</h2>
+<pre><code class="language-rust">fn main() {
+    let greeting = "hello"; <b class="conum">(1)</b>
+    println!("{greeting}, world!"); <b class="conum">(2)</b> <b class="conum">(3)</b>
+}</code></pre>
+<ol class="colist">
+<li value="1">Bind a string slice to a local.</li>
+<li value="2">Format and print using an inline expression.</li>
+<li value="3">Two callouts can share a single line.</li>
+</ol>
+</section>
+<section id="_plain_listing_with_callouts">
+<h2>Plain listing with callouts</h2>
+<pre><code>echo one  <b class="conum">(1)</b>
+echo two  <b class="conum">(2)</b></code></pre>
+<ol class="colist">
+<li value="1">First step.</li>
+<li value="2">Second step.</li>
+</ol>
+</section>
+<section id="_listing_without_a_colist">
+<h2>Listing without a colist</h2>
+<p>The markers still render even when no description list follows.</p>
+<pre><code>let x = 1; <b class="conum">(1)</b></code></pre>
+</section>
+<section id="_literal_block_with_callouts">
+<h2>Literal block with callouts</h2>
+<pre>column one  <b class="conum">(1)</b>
+column two  <b class="conum">(2)</b></pre>
+<ol class="colist">
+<li value="1">Left side.</li>
+<li value="2">Right side.</li>
+</ol>
+</section>
+</body>
+</html>
