@@ -1,0 +1,36 @@
+DESIGN.md
+  27508cabf0243d73 164-165
+src/parser/block.rs
+  27508cabf0243d73 141,144,153-168,180-190
+src/convert/html5/assets/adoc.css
+  27508cabf0243d73 226-261
+tests/fixtures.rs
+  27508cabf0243d73 371-421
+tests/fixtures/25_admonitions_source.adoc
+  27508cabf0243d73 1-43
+README.md
+  27508cabf0243d73 88-89,97-98
+src/convert/html5/mod.rs
+  27508cabf0243d73 189-191,202-228,284-289,294-301,409-494
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "884cdb6f0bfd2c02f0c8798c6997ebc937c06650",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 312,
+      "total_deletions": 20,
+      "accepted_lines": 1319,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/3f2d34a9d0eab1b8e93e71ba4ef2f4095d309db929dabd62368793a813c543dd"
+    }
+  }
+}
