@@ -4,6 +4,7 @@
 //! Matching Asciidoctor's exact HTML (class names, wrappers, TOC, etc.) is
 //! conformance work — deliberately out of scope here.
 
+use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use crate::ast::{
@@ -59,6 +60,7 @@ impl Html5Converter {
 
 impl Converter for Html5Converter {
     fn convert(&self, doc: &Document) -> Result<String, ConvertError> {
+        let ctx = RenderCtx::new(doc);
         let mut out = String::new();
         out.push_str("<!doctype html>\n<html lang=\"en\">\n<head>\n");
         out.push_str(r#"<meta charset="utf-8">"#);
@@ -102,8 +104,12 @@ impl Converter for Html5Converter {
             out.push_str("</header>\n");
         }
 
+        if ctx.toc {
+            render_toc(&mut out, &ctx);
+        }
+
         for block in &doc.blocks {
-            render_block(&mut out, block)?;
+            render_block(&mut out, block, &ctx)?;
         }
 
         if !doc.attributes.is_empty() {
@@ -154,18 +160,183 @@ fn render_stylesheet(out: &mut String, stylesheet: &Stylesheet) {
     }
 }
 
-fn render_block(out: &mut String, block: &Block) -> Result<(), ConvertError> {
+// --- render context (TOC, sectnums, sectanchors) ---------------------------
+
+/// State derived from the document attributes and a single pre-walk.
+/// Threaded through every render fn that recurses into [`render_block`].
+struct RenderCtx {
+    /// `:toc:` flag — render a TOC at the top of the body.
+    toc: bool,
+    /// `:sectnums:` flag — prepend "1.2.3" to each section heading.
+    #[allow(dead_code)]
+    sectnums: bool,
+    /// `:sectanchors:` flag — emit a `<a class="anchor">` next to each heading.
+    sectanchors: bool,
+    /// Section ID → numbering string (e.g. `"1.2.3"`). Empty string when
+    /// `sectnums` is off.
+    section_numbers: BTreeMap<String, String>,
+    /// In-order TOC entries (one per section).
+    toc_entries: Vec<TocEntry>,
+}
+
+struct TocEntry {
+    level: u8,
+    id: String,
+    number: String,
+    title_plain: String,
+}
+
+impl RenderCtx {
+    fn new(doc: &Document) -> Self {
+        let toc = is_truthy(doc.attributes.get("toc"));
+        let sectnums = is_truthy(doc.attributes.get("sectnums"));
+        let sectanchors = is_truthy(doc.attributes.get("sectanchors"));
+        let mut counter = [0u32; 7];
+        let mut section_numbers = BTreeMap::new();
+        let mut toc_entries = Vec::new();
+        walk_sections(
+            &doc.blocks,
+            &mut counter,
+            sectnums,
+            &mut section_numbers,
+            &mut toc_entries,
+        );
+        Self {
+            toc,
+            sectnums,
+            sectanchors,
+            section_numbers,
+            toc_entries,
+        }
+    }
+
+    fn section_number(&self, id: Option<&str>) -> Option<&str> {
+        let id = id?;
+        let n = self.section_numbers.get(id)?;
+        if n.is_empty() {
+            None
+        } else {
+            Some(n.as_str())
+        }
+    }
+}
+
+fn walk_sections(
+    blocks: &[Block],
+    counter: &mut [u32; 7],
+    sectnums: bool,
+    numbers: &mut BTreeMap<String, String>,
+    toc: &mut Vec<TocEntry>,
+) {
+    for b in blocks {
+        if let Block::Section(s) = b {
+            let level = (s.level as usize).min(6);
+            counter[level] += 1;
+            for slot in counter.iter_mut().skip(level + 1) {
+                *slot = 0;
+            }
+            let number = if sectnums {
+                (1..=level)
+                    .map(|i| counter[i].to_string())
+                    .collect::<Vec<_>>()
+                    .join(".")
+            } else {
+                String::new()
+            };
+            if let Some(id) = s.meta.id.as_deref() {
+                numbers.insert(id.to_string(), number.clone());
+                toc.push(TocEntry {
+                    level: s.level,
+                    id: id.to_string(),
+                    number,
+                    title_plain: inlines_to_plain(&s.title),
+                });
+            }
+            walk_sections(&s.blocks, counter, sectnums, numbers, toc);
+        }
+    }
+}
+
+fn render_toc(out: &mut String, ctx: &RenderCtx) {
+    if ctx.toc_entries.is_empty() {
+        return;
+    }
+    out.push_str(r#"<div id="toc" class="toc">"#);
+    out.push('\n');
+    out.push_str(r#"<div class="toc-title">Table of Contents</div>"#);
+    out.push('\n');
+
+    // Build correct nesting: a deeper entry's <ul> goes *inside* the
+    // preceding <li>, so we keep the most recent <li> open while we look
+    // ahead and only close it when we land back at the same or a
+    // shallower level.
+    let mut depth: u8 = 0;
+    let mut li_open = false;
+    for entry in &ctx.toc_entries {
+        let level = entry.level;
+        if level > depth {
+            while depth < level {
+                out.push_str("<ul>\n");
+                depth += 1;
+            }
+        } else {
+            // li_open is overwritten to `true` at the end of every iteration,
+            // so just close the prior <li> without bothering to flip the flag.
+            if li_open {
+                out.push_str("</li>\n");
+            }
+            while depth > level {
+                out.push_str("</ul>\n");
+                depth -= 1;
+                out.push_str("</li>\n");
+            }
+        }
+        let prefix = if entry.number.is_empty() {
+            String::new()
+        } else {
+            format!(r#"<span class="sectnum">{}</span> "#, entry.number)
+        };
+        let _ = write!(
+            out,
+            r##"<li><a href="#{}">{}{}</a>"##,
+            escape_attr(&entry.id),
+            prefix,
+            escape(&entry.title_plain)
+        );
+        li_open = true;
+    }
+    if li_open {
+        out.push_str("</li>\n");
+    }
+    while depth > 0 {
+        out.push_str("</ul>\n");
+        depth -= 1;
+        if depth > 0 {
+            out.push_str("</li>\n");
+        }
+    }
+    out.push_str("</div>\n");
+}
+
+fn is_truthy(v: Option<&AttributeValue>) -> bool {
+    matches!(v, Some(AttributeValue::Bool(true)))
+        || matches!(v, Some(AttributeValue::String(s)) if !s.is_empty() && !s.eq_ignore_ascii_case("false"))
+}
+
+// ---------------------------------------------------------------------------
+
+fn render_block(out: &mut String, block: &Block, ctx: &RenderCtx) -> Result<(), ConvertError> {
     match block {
-        Block::Section(s) => render_section(out, s),
+        Block::Section(s) => render_section(out, s, ctx),
         Block::Paragraph(p) => render_paragraph(out, p),
-        Block::List(l) => render_list(out, l),
-        Block::DescriptionList(d) => render_description_list(out, d),
-        Block::Delimited(d) => render_delimited(out, d),
+        Block::List(l) => render_list(out, l, ctx),
+        Block::DescriptionList(d) => render_description_list(out, d, ctx),
+        Block::Delimited(d) => render_delimited(out, d, ctx),
         Block::Table(t) => render_table(out, t),
     }
 }
 
-fn render_section(out: &mut String, s: &Section) -> Result<(), ConvertError> {
+fn render_section(out: &mut String, s: &Section, ctx: &RenderCtx) -> Result<(), ConvertError> {
     let tag = match s.level {
         1 => "h2",
         2 => "h3",
@@ -176,10 +347,26 @@ fn render_section(out: &mut String, s: &Section) -> Result<(), ConvertError> {
     write!(out, "<section{}>\n", meta_attrs(&s.meta))
         .map_err(|e| ConvertError::Message(e.to_string()))?;
     render_block_title(out, &s.meta);
-    writeln!(out, "<{tag}>{}</{tag}>", render_inlines(&s.title))
-        .map_err(|e| ConvertError::Message(e.to_string()))?;
+
+    // Optional sectnums prefix and sectanchors `<a class="anchor">` link.
+    let prefix = ctx.section_number(s.meta.id.as_deref()).unwrap_or("");
+    let prefix_html = if prefix.is_empty() {
+        String::new()
+    } else {
+        format!(r#"<span class="sectnum">{prefix}</span> "#)
+    };
+    let anchor_html = match (ctx.sectanchors, s.meta.id.as_deref()) {
+        (true, Some(id)) => format!(r##"<a class="anchor" href="#{}"></a>"##, escape_attr(id)),
+        _ => String::new(),
+    };
+    writeln!(
+        out,
+        "<{tag}>{anchor_html}{prefix_html}{}</{tag}>",
+        render_inlines(&s.title)
+    )
+    .map_err(|e| ConvertError::Message(e.to_string()))?;
     for b in &s.blocks {
-        render_block(out, b)?;
+        render_block(out, b, ctx)?;
     }
     out.push_str("</section>\n");
     Ok(())
@@ -226,7 +413,7 @@ fn render_admonition_paragraph(
     Ok(())
 }
 
-fn render_list(out: &mut String, l: &List) -> Result<(), ConvertError> {
+fn render_list(out: &mut String, l: &List, ctx: &RenderCtx) -> Result<(), ConvertError> {
     // Re-nest by depth.
     let tag = match l.marker {
         ListMarker::Unordered => "ul",
@@ -253,7 +440,7 @@ fn render_list(out: &mut String, l: &List) -> Result<(), ConvertError> {
             .map_err(|e| ConvertError::Message(e.to_string()))?;
         for b in &item.blocks {
             out.push('\n');
-            render_block(out, b)?;
+            render_block(out, b, ctx)?;
         }
         out.push_str("</li>\n");
     }
@@ -263,7 +450,11 @@ fn render_list(out: &mut String, l: &List) -> Result<(), ConvertError> {
     Ok(())
 }
 
-fn render_description_list(out: &mut String, d: &DescriptionList) -> Result<(), ConvertError> {
+fn render_description_list(
+    out: &mut String,
+    d: &DescriptionList,
+    ctx: &RenderCtx,
+) -> Result<(), ConvertError> {
     render_block_title(out, &d.meta);
     writeln!(out, "<dl{}>", meta_attrs(&d.meta))
         .map_err(|e| ConvertError::Message(e.to_string()))?;
@@ -272,7 +463,7 @@ fn render_description_list(out: &mut String, d: &DescriptionList) -> Result<(), 
             .map_err(|e| ConvertError::Message(e.to_string()))?;
         out.push_str("<dd>");
         for b in &item.description {
-            render_block(out, b)?;
+            render_block(out, b, ctx)?;
         }
         out.push_str("</dd>\n");
     }
@@ -280,12 +471,16 @@ fn render_description_list(out: &mut String, d: &DescriptionList) -> Result<(), 
     Ok(())
 }
 
-fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<(), ConvertError> {
+fn render_delimited(
+    out: &mut String,
+    d: &crate::ast::DelimitedBlock,
+    ctx: &RenderCtx,
+) -> Result<(), ConvertError> {
     // Block-form admonition (e.g. `[NOTE]\n====\n…\n====`).
     if let (Some(kw), DelimitedContent::Blocks { blocks }) =
         (admonition_keyword(&d.meta), &d.content)
     {
-        return render_admonition_block(out, &d.meta, kw, blocks);
+        return render_admonition_block(out, &d.meta, kw, blocks, ctx);
     }
     render_block_title(out, &d.meta);
     let a = meta_attrs(&d.meta);
@@ -315,7 +510,7 @@ fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<
             writeln!(out, "<div{}>", merge_class_attr(&d.meta, "example"))
                 .map_err(|e| ConvertError::Message(e.to_string()))?;
             for b in blocks {
-                render_block(out, b)?;
+                render_block(out, b, ctx)?;
             }
             out.push_str("</div>\n");
             Ok(())
@@ -323,7 +518,7 @@ fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<
         (DelimitedStyle::Quote, DelimitedContent::Blocks { blocks }) => {
             writeln!(out, "<blockquote{a}>").map_err(|e| ConvertError::Message(e.to_string()))?;
             for b in blocks {
-                render_block(out, b)?;
+                render_block(out, b, ctx)?;
             }
             out.push_str("</blockquote>\n");
             Ok(())
@@ -331,7 +526,7 @@ fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<
         (DelimitedStyle::Sidebar, DelimitedContent::Blocks { blocks }) => {
             writeln!(out, "<aside{a}>").map_err(|e| ConvertError::Message(e.to_string()))?;
             for b in blocks {
-                render_block(out, b)?;
+                render_block(out, b, ctx)?;
             }
             out.push_str("</aside>\n");
             Ok(())
@@ -339,7 +534,7 @@ fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<
         (DelimitedStyle::Open, DelimitedContent::Blocks { blocks }) => {
             writeln!(out, "<div{a}>").map_err(|e| ConvertError::Message(e.to_string()))?;
             for b in blocks {
-                render_block(out, b)?;
+                render_block(out, b, ctx)?;
             }
             out.push_str("</div>\n");
             Ok(())
@@ -450,6 +645,7 @@ fn render_admonition_block(
     meta: &BlockMeta,
     kw: &str,
     blocks: &[Block],
+    ctx: &RenderCtx,
 ) -> Result<(), ConvertError> {
     let label = admonition_label(kw);
     let class = admonition_class(kw);
@@ -468,7 +664,7 @@ fn render_admonition_block(
     }
     writeln!(out, r#"<div class="content">"#).map_err(|e| ConvertError::Message(e.to_string()))?;
     for b in blocks {
-        render_block(out, b)?;
+        render_block(out, b, ctx)?;
     }
     out.push_str("</div>\n</div>\n");
     Ok(())

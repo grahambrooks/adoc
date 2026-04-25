@@ -368,6 +368,46 @@ fn preprocessor_conditionals_and_include() {
 }
 
 #[test]
+fn toc_sectnums_sectanchors() {
+    let (_doc, html) = render("27_toc_sectnums.adoc");
+
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // TOC block exists with a title and nested ULs.
+    assert!(body.contains(r#"<div id="toc" class="toc">"#));
+    assert!(body.contains(r#"<div class="toc-title">Table of Contents</div>"#));
+    // Top-level sections are at depth 1; nested ones bump depth — we don't
+    // assert exact nesting here (it's covered structurally below) beyond
+    // checking that `<ul>` opens at all.
+    assert!(body.contains("<ul>"));
+
+    // TOC entries link to each section's id and carry the sectnum prefix.
+    assert!(body
+        .contains(r##"<a href="#_introduction"><span class="sectnum">1</span> Introduction</a>"##));
+    assert!(body.contains(r##"<a href="#_methods"><span class="sectnum">2</span> Methods</a>"##));
+    assert!(body.contains(r##"<a href="#_setup"><span class="sectnum">2.1</span> Setup</a>"##));
+    assert!(
+        body.contains(r##"<a href="#_step_one"><span class="sectnum">2.2.1</span> Step One</a>"##)
+    );
+    assert!(
+        body.contains(r##"<a href="#_conclusion"><span class="sectnum">4</span> Conclusion</a>"##)
+    );
+
+    // Section headings carry the sectnum prefix and the sectanchors `<a>`.
+    assert!(body.contains(
+        r##"<h2><a class="anchor" href="#_introduction"></a><span class="sectnum">1</span> Introduction</h2>"##
+    ));
+    assert!(body.contains(
+        r##"<h3><a class="anchor" href="#_setup"></a><span class="sectnum">2.1</span> Setup</h3>"##
+    ));
+    assert!(body.contains(
+        r##"<h4><a class="anchor" href="#_step_one"></a><span class="sectnum">2.2.1</span> Step One</h4>"##
+    ));
+}
+
+#[test]
 fn inline_subscript_superscript_highlight_passthrough_footnote() {
     let (_doc, html) = render("26_inline_extras.adoc");
 

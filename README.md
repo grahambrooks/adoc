@@ -88,12 +88,14 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - Admonitions — paragraph form (`NOTE: text`, `TIP: …`, `IMPORTANT: …`, `WARNING: …`, `CAUTION: …`) and block form (`[NOTE]` on any paragraph or `====` example block) render as `<div class="admonitionblock kw">` with a labelled body. Bundled CSS gives each variant a coloured side-rule.
 - Source blocks with language — `[source,LANG]` on a `----` listing emits `<pre><code class="language-LANG">…</code></pre>` so downstream highlighters (Prism, Highlight.js, Rouge) can take over without conflict.
 - Inline extras — subscript `~text~`, superscript `^text^`, highlight `#text#` / `##text##`, constrained passthrough `+text+` and unconstrained `++text++` (HTML-escaped, no inline subs), `pass:[…]` macro (raw HTML), and inline footnotes `footnote:[…]` / `footnote:id[…]` (rendered inline as `<span class="footnote">`; numbered end-of-doc section is queued).
+- TOC, sectnums, sectanchors — `:toc:` emits a nested `<div id="toc">` with title links above the body; `:sectnums:` prepends `1.2.3` numbering to section headings (and TOC entries); `:sectanchors:` adds a hover-revealed `<a class="anchor">` next to each heading. All three are computed in a single pre-walk.
 
 ## What's missing
 
 The big-ticket items, in roughly the order they're queued:
 
 - **`include::` argument tail** — `indent=`, `encoding=`, and tag wildcards (`*`, `**`). The common arguments (`lines=`, `tags=`, `leveloffset=`) are in.
+- **`[discrete]` headings** and `:toc-placement:` (always top for now).
 - **Doc-wide ID registry + xref validation** — section IDs land on the AST nodes today, but there's no centralised registry yet, so dangling xrefs render silently (the `<a href>` is emitted but the target doesn't exist). Validation belongs with the diagnostics work.
 - **Built-in syntax highlighting** — we ship the `language-LANG` class only; no Rouge/Pygments/Prism integration. Ship of choice is BYO highlighter via a custom stylesheet.
 - **Source-block callouts** — `<1>` / `<2>` markers and matching colist sibling block.

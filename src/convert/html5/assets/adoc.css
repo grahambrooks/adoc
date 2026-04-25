@@ -259,6 +259,57 @@ pre > code[class^="language-"]::before {
   text-transform: lowercase;
 }
 
+/* Table of Contents */
+#toc {
+  margin: 1.5em 0 2em;
+  padding: 1em 1.25em;
+  border-left: 3px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  background: light-dark(#f6f8fa, #161b22);
+}
+#toc .toc-title {
+  font-weight: 600;
+  margin-bottom: 0.5em;
+  color: var(--adoc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.85em;
+}
+#toc ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.25em 0;
+}
+#toc ul ul { padding-left: 1.25em; }
+#toc li { margin: 0.15em 0; }
+#toc a { color: var(--adoc-fg); }
+
+/* Section numbers and anchor links */
+.sectnum {
+  color: var(--adoc-muted);
+  margin-right: 0.4em;
+  font-variant-numeric: tabular-nums;
+}
+h1 > .anchor, h2 > .anchor, h3 > .anchor,
+h4 > .anchor, h5 > .anchor, h6 > .anchor {
+  display: inline-block;
+  width: 0;
+  margin-left: -0.9em;
+  padding-right: 0.4em;
+  text-decoration: none;
+  color: var(--adoc-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+h1:hover > .anchor, h2:hover > .anchor, h3:hover > .anchor,
+h4:hover > .anchor, h5:hover > .anchor, h6:hover > .anchor {
+  opacity: 1;
+}
+h1 > .anchor::before, h2 > .anchor::before, h3 > .anchor::before,
+h4 > .anchor::before, h5 > .anchor::before, h6 > .anchor::before {
+  content: "#";
+}
+
 /* Inline highlighting */
 mark {
   background: light-dark(#fff8c5, #4d3800);

@@ -1,0 +1,30 @@
+= TOC, Sectnums, Sectanchors
+:toc:
+:sectnums:
+:sectanchors:
+
+== Introduction
+
+Body of the introduction.
+
+== Methods
+
+=== Setup
+
+Body of setup.
+
+=== Procedure
+
+Body of procedure.
+
+==== Step One
+
+Detail.
+
+== Results
+
+Body of results.
+
+== Conclusion
+
+Body of conclusion.

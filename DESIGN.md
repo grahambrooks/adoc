@@ -164,6 +164,8 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Admonitions: paragraph shortcut (`NOTE: …`) and block-form (`[NOTE]` on any paragraph or `====` example) render as `<div class="admonitionblock kw">` with a default label or supplied title | done |
 | Source blocks with language: `[source,LANG]` adds `language-LANG` class on the inner `<code>`; downstream-highlighter friendly | done |
 | Inline extras: subscript `~`, superscript `^`, highlight `#`/`##`, passthrough `+`/`++` (HTML-escape, no subs), `pass:[]` macro (raw HTML), `footnote:[]` / `footnote:id[]` (rendered inline) | done |
+| TOC, sectnums, sectanchors driven by document attributes; computed in a single pre-walk and rendered ahead of the body | done |
+| `[discrete]` headings, `:toc-placement:`, custom TOC titles | **not started** |
 | Inline anchors (`anchor:id[]`), bibliography entries (`[[[id]]]`), numbered end-of-doc footnote section | **not started** |
 | Admonition blocks and admonition paragraphs | **not started** |
 | Source blocks with language attribute (callouts, syntax-highlighter hint) | **not started** |
