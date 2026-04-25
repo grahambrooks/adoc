@@ -526,6 +526,40 @@ fn render_inline(out: &mut String, i: &Inline) {
             }
             out.push_str("</code>");
         }
+        Inline::Subscript(children) => {
+            out.push_str("<sub>");
+            for c in children {
+                render_inline(out, c);
+            }
+            out.push_str("</sub>");
+        }
+        Inline::Superscript(children) => {
+            out.push_str("<sup>");
+            for c in children {
+                render_inline(out, c);
+            }
+            out.push_str("</sup>");
+        }
+        Inline::Highlight(children) => {
+            out.push_str("<mark>");
+            for c in children {
+                render_inline(out, c);
+            }
+            out.push_str("</mark>");
+        }
+        Inline::Footnote { id, text } => {
+            match id {
+                Some(id) => {
+                    let _ = write!(out, r#"<span class="footnote" id="{}">"#, escape_attr(id));
+                }
+                None => out.push_str(r#"<span class="footnote">"#),
+            }
+            for c in text {
+                render_inline(out, c);
+            }
+            out.push_str("</span>");
+        }
+        Inline::Passthrough(text) => out.push_str(&escape(text)),
         Inline::Link { href, text } => {
             let _ = write!(out, r#"<a href="{}">"#, escape_attr(href));
             for c in text {
@@ -584,11 +618,22 @@ fn inlines_to_plain(inlines: &[Inline]) -> String {
 fn inline_to_plain(out: &mut String, i: &Inline) {
     match i {
         Inline::Text(s) => out.push_str(s),
-        Inline::Strong(c) | Inline::Emphasis(c) | Inline::Monospace(c) => {
+        Inline::Strong(c)
+        | Inline::Emphasis(c)
+        | Inline::Monospace(c)
+        | Inline::Subscript(c)
+        | Inline::Superscript(c)
+        | Inline::Highlight(c) => {
             for child in c {
                 inline_to_plain(out, child);
             }
         }
+        Inline::Footnote { text, .. } => {
+            for child in text {
+                inline_to_plain(out, child);
+            }
+        }
+        Inline::Passthrough(s) => out.push_str(s),
         Inline::Link { text, .. } => {
             for child in text {
                 inline_to_plain(out, child);

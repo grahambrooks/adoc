@@ -111,7 +111,12 @@ pub fn inlines_to_plain(inlines: &[Inline]) -> String {
 fn write_plain(out: &mut String, inline: &Inline) {
     match inline {
         Inline::Text(s) => out.push_str(s),
-        Inline::Strong(c) | Inline::Emphasis(c) | Inline::Monospace(c) => {
+        Inline::Strong(c)
+        | Inline::Emphasis(c)
+        | Inline::Monospace(c)
+        | Inline::Subscript(c)
+        | Inline::Superscript(c)
+        | Inline::Highlight(c) => {
             for child in c {
                 write_plain(out, child);
             }
@@ -135,12 +140,18 @@ fn write_plain(out: &mut String, inline: &Inline) {
         }
         Inline::Xref { target, text: None } => out.push_str(target),
         Inline::Image { alt, .. } => out.push_str(alt),
+        Inline::Footnote { text, .. } => {
+            for child in text {
+                write_plain(out, child);
+            }
+        }
         Inline::AttributeRef(name) => {
             out.push('{');
             out.push_str(name);
             out.push('}');
         }
         Inline::LineBreak => out.push(' '),
+        Inline::Passthrough(s) => out.push_str(s),
         Inline::RawHtml(_) => {}
     }
 }

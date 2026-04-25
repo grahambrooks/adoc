@@ -163,6 +163,8 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Doc-wide ID registry + xref validation (warn on dangling, resolve `<<title text>>` to derived IDs) | **not started** — sits with the diagnostics phase |
 | Admonitions: paragraph shortcut (`NOTE: …`) and block-form (`[NOTE]` on any paragraph or `====` example) render as `<div class="admonitionblock kw">` with a default label or supplied title | done |
 | Source blocks with language: `[source,LANG]` adds `language-LANG` class on the inner `<code>`; downstream-highlighter friendly | done |
+| Inline extras: subscript `~`, superscript `^`, highlight `#`/`##`, passthrough `+`/`++` (HTML-escape, no subs), `pass:[]` macro (raw HTML), `footnote:[]` / `footnote:id[]` (rendered inline) | done |
+| Inline anchors (`anchor:id[]`), bibliography entries (`[[[id]]]`), numbered end-of-doc footnote section | **not started** |
 | Admonition blocks and admonition paragraphs | **not started** |
 | Source blocks with language attribute (callouts, syntax-highlighter hint) | **not started** |
 | Tables: column specs (`cols=`), header rows, cell formatters (`a\|`, `m\|`, `s\|`, `e\|`, `l\|`, `h\|`), `psv`/`csv`/`dsv` separators | **not started** (every row is a body row of plain inline cells) |
@@ -179,7 +181,7 @@ The current `adoc::ast` types cover what the parser produces. Several spec const
 
 - `Block` needs an `Admonition` variant (or a derived view over `BlockMeta::style`) carrying `note` / `tip` / `important` / `warning` / `caution`. The metadata is already captured (`meta.style = Some("NOTE")`); the next bullet just needs to render it as an admonition.
 - `Table` needs column specs, a separator kind, and per-cell `format`/`halign`/`valign`/`colspan`/`rowspan`. Header/footer row distinction belongs at the table level, not the row level. (`BlockMeta::named` already carries `cols=`, so the wiring exists.)
-- `Inline` needs `Subscript`, `Superscript`, `Highlight`, `Footnote`, `Anchor`, `IndexTerm`, and a `Passthrough` variant for `pass:[]` content. `Inline::RawHtml` exists but is currently unreachable — it'll absorb `pass:c[]` once that lands.
+- `Inline` has `Subscript`, `Superscript`, `Highlight`, `Footnote`, and `Passthrough`. Still missing: `Anchor` (for `anchor:id[]`), `IndexTerm`, and bibliography entries (`[[[id]]]`). `Inline::RawHtml` is reached today via `pass:[]`.
 - Cross-reference resolution needs a doc-wide ID registry built after parse, before convert. The registry's home is `adoc::ast` (so `Converter` impls can consult it), but populating it is a parser pass.
 
 ## CLI / pipeline gaps

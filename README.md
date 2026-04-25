@@ -87,6 +87,7 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - Section IDs — auto-derived from titles (`_` prefix, lowercase, non-alphanumeric collapsed to `_`, deduped with `_2`/`_3`/… suffixes), or supplied explicitly via the `[#id]` shorthand or the legacy `[[id]]` / `[[id, reftext]]` block-anchor line. Anchored blocks render with `id="…"` so `xref:` targets that previously dangled now resolve.
 - Admonitions — paragraph form (`NOTE: text`, `TIP: …`, `IMPORTANT: …`, `WARNING: …`, `CAUTION: …`) and block form (`[NOTE]` on any paragraph or `====` example block) render as `<div class="admonitionblock kw">` with a labelled body. Bundled CSS gives each variant a coloured side-rule.
 - Source blocks with language — `[source,LANG]` on a `----` listing emits `<pre><code class="language-LANG">…</code></pre>` so downstream highlighters (Prism, Highlight.js, Rouge) can take over without conflict.
+- Inline extras — subscript `~text~`, superscript `^text^`, highlight `#text#` / `##text##`, constrained passthrough `+text+` and unconstrained `++text++` (HTML-escaped, no inline subs), `pass:[…]` macro (raw HTML), and inline footnotes `footnote:[…]` / `footnote:id[…]` (rendered inline as `<span class="footnote">`; numbered end-of-doc section is queued).
 
 ## What's missing
 
@@ -97,7 +98,7 @@ The big-ticket items, in roughly the order they're queued:
 - **Built-in syntax highlighting** — we ship the `language-LANG` class only; no Rouge/Pygments/Prism integration. Ship of choice is BYO highlighter via a custom stylesheet.
 - **Source-block callouts** — `<1>` / `<2>` markers and matching colist sibling block.
 - **Full tables** — `cols=`, header rows, cell formatters (`a`, `m`, `s`, `e`, `l`, `h`), CSV/DSV separators.
-- **Inline subscript/superscript/highlight**, inline footnotes, inline anchors, inline passthroughs, bibliography entries.
+- **Inline anchors** (`anchor:id[]`), bibliography entries (`[[[id]]]`), and the numbered end-of-doc footnote section.
 - **TOC, discrete headings, `sectnums`, `sectanchors`.**
 - **`--emit-ast` / `--from-ast`** wiring for the stdio extension model.
 - **Real `miette::Diagnostic` errors** with span pointers (locations are already plumbed; error types just don't carry them yet).

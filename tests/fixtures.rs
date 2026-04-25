@@ -368,6 +368,41 @@ fn preprocessor_conditionals_and_include() {
 }
 
 #[test]
+fn inline_subscript_superscript_highlight_passthrough_footnote() {
+    let (_doc, html) = render("26_inline_extras.adoc");
+
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // Subscript and superscript.
+    assert!(
+        body.contains("H<sub>2</sub>O"),
+        "missing <sub>; body:\n{body}"
+    );
+    assert!(body.contains("E=mc<sup>2</sup>"));
+
+    // Highlight (unconstrained ##…## form).
+    assert!(body.contains("<mark>highlighted phrase</mark>"));
+
+    // Constrained passthrough HTML-escapes its content but suppresses inline
+    // subs — literal stars and attribute braces both survive as text.
+    assert!(body.contains("*keeps stars* and {attrs}"));
+    assert!(!body.contains("<strong>keeps stars</strong>"));
+
+    // Unconstrained ++…++ form: literal `**double stars**` survives.
+    assert!(body.contains("**double stars**"));
+    assert!(!body.contains("<strong>double stars</strong>"));
+
+    // pass:[…] is rendered verbatim — angle brackets stay literal.
+    assert!(body.contains("<kbd>Ctrl</kbd>"));
+
+    // Footnotes (anonymous + id'd).
+    assert!(body.contains(r#"<span class="footnote">anchored thought</span>"#));
+    assert!(body.contains(r#"<span class="footnote" id="fn1">an id</span>"#));
+}
+
+#[test]
 fn admonitions_paragraph_block_titled_and_source_language() {
     let (doc, html) = render("25_admonitions_source.adoc");
 

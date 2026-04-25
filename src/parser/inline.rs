@@ -71,6 +71,12 @@ impl<'a> InlineParser<'a> {
             }
 
             if self.subs.quotes {
+                if let Some((inline, consumed)) = self.try_passthrough(remaining, &buf) {
+                    flush(&mut buf, &mut out);
+                    out.push(inline);
+                    self.pos += consumed;
+                    continue;
+                }
                 if let Some((inline, consumed)) = self.try_quote(remaining, &buf) {
                     flush(&mut buf, &mut out);
                     out.push(inline);
@@ -125,6 +131,37 @@ impl<'a> InlineParser<'a> {
         }
         if let Some(m) = parse_shorthand_xref(rem, self.attrs) {
             return Some(m);
+        }
+        if let Some(m) = parse_footnote_macro(rem, self.attrs, self.subs) {
+            return Some(m);
+        }
+        if let Some(m) = parse_pass_macro(rem) {
+            return Some(m);
+        }
+        None
+    }
+
+    // --- passthroughs ---
+    //
+    // Both forms emit raw text with HTML-escape but no further inline
+    // substitution. Handled outside [`try_quote`] because the inner text
+    // is not recursively parsed.
+
+    fn try_passthrough(&self, rem: &str, buf: &str) -> Option<(Inline, usize)> {
+        // Unconstrained `++text++` — try first so `+` constrained doesn't
+        // greedily match a single `+`.
+        if rem.starts_with("++") {
+            if let Some(inner_len) = find_closing(rem, "++", 2, false) {
+                let text = rem[2..2 + inner_len].to_string();
+                return Some((Inline::Passthrough(text), 2 + inner_len + 2));
+            }
+        }
+        // Constrained `+text+` — single `+` with word-boundary rule.
+        if rem.starts_with('+') && !rem.starts_with("++") && is_constrained_open(rem, "+", buf) {
+            if let Some(inner_len) = find_closing(rem, "+", 1, true) {
+                let text = rem[1..1 + inner_len].to_string();
+                return Some((Inline::Passthrough(text), 1 + inner_len + 1));
+            }
         }
         None
     }
@@ -233,13 +270,20 @@ const CONSTRAINED_QUOTES: &[(&str, fn(Vec<Inline>) -> Inline)] = &[
     ("*", Inline::Strong),
     ("_", Inline::Emphasis),
     ("`", Inline::Monospace),
+    ("#", Inline::Highlight),
 ];
 
-// Unconstrained quotes: double-char markers, no boundary requirement.
+// Unconstrained quotes: longer (or marker-class-specific) markers, with
+// only inner-edge whitespace rejection — no outer word-boundary rule.
+// Subscript (`~`) and superscript (`^`) are single-char but unconstrained
+// per spec, so they live here.
 const UNCONSTRAINED_QUOTES: &[(&str, fn(Vec<Inline>) -> Inline)] = &[
     ("**", Inline::Strong),
     ("__", Inline::Emphasis),
     ("``", Inline::Monospace),
+    ("##", Inline::Highlight),
+    ("~", Inline::Subscript),
+    ("^", Inline::Superscript),
 ];
 
 fn is_constrained_open(rem: &str, marker: &str, buf: &str) -> bool {
@@ -434,6 +478,52 @@ fn parse_shorthand_xref(rem: &str, attrs: &Attributes) -> Option<(Inline, usize)
         },
         consumed,
     ))
+}
+
+/// `footnote:[text]` (anonymous) or `footnote:id[text]` (named). The
+/// inner text is parsed for the active substitutions so it can carry
+/// formatting, links, etc.
+fn parse_footnote_macro(rem: &str, attrs: &Attributes, subs: Subs) -> Option<(Inline, usize)> {
+    let prefix = "footnote:";
+    if !rem.starts_with(prefix) {
+        return None;
+    }
+    let after = &rem[prefix.len()..];
+    let bracket = after.find('[')?;
+    let id_str = &after[..bracket];
+    let id = if id_str.is_empty() {
+        None
+    } else if is_attribute_name(id_str) {
+        Some(id_str.to_string())
+    } else {
+        return None;
+    };
+    let attrs_end = find_unescaped(&after[bracket..], ']')?;
+    let inner = &after[bracket + 1..bracket + attrs_end];
+    let consumed = prefix.len() + bracket + attrs_end + 1;
+    let text = parse(inner, attrs, subs);
+    Some((Inline::Footnote { id, text }, consumed))
+}
+
+/// `pass:[text]` — verbatim insertion (no escape, no further subs).
+/// Modifier letters (`pass:c[]`, `pass:n[]`, etc.) are not yet honoured;
+/// for now the body is always treated as raw HTML.
+fn parse_pass_macro(rem: &str) -> Option<(Inline, usize)> {
+    let prefix = "pass:";
+    if !rem.starts_with(prefix) {
+        return None;
+    }
+    let after = &rem[prefix.len()..];
+    let bracket = after.find('[')?;
+    // Reject letters that aren't ascii alpha (so we don't accidentally
+    // consume `pass:foo bar` etc.) — only modifiers should sit here.
+    if !after[..bracket].chars().all(|c| c.is_ascii_alphabetic()) {
+        return None;
+    }
+    let attrs_end = find_unescaped(&after[bracket..], ']')?;
+    let inner = &after[bracket + 1..bracket + attrs_end];
+    let consumed = prefix.len() + bracket + attrs_end + 1;
+    Some((Inline::RawHtml(inner.to_string()), consumed))
 }
 
 fn find_unescaped(s: &str, needle: char) -> Option<usize> {

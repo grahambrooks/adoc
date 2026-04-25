@@ -1,0 +1,13 @@
+= Inline Extras
+
+H~2~O is one molecule; E=mc^2^ another.
+
+The ##highlighted phrase## should stand out.
+
+Constrained passthrough +*keeps stars* and {attrs}+ verbatim.
+
+Unconstrained ++**double stars**++ also pass through.
+
+Use pass:[<kbd>Ctrl</kbd>+<kbd>C</kbd>] to inject HTML literally.
+
+A footnote:[anchored thought] mid-sentence; another with footnote:fn1[an id].

@@ -259,6 +259,29 @@ pre > code[class^="language-"]::before {
   text-transform: lowercase;
 }
 
+/* Inline highlighting */
+mark {
+  background: light-dark(#fff8c5, #4d3800);
+  color: inherit;
+  padding: 0 0.2em;
+  border-radius: 0.2em;
+}
+
+/* Subscript / superscript get a tiny size bump so they read cleanly */
+sub, sup { font-size: 0.78em; line-height: 0; }
+
+/* Inline footnote — surfaced as a parenthesised aside until we grow a
+   proper end-of-doc footnote section. */
+.footnote {
+  font-size: 0.85em;
+  color: var(--adoc-muted);
+  vertical-align: super;
+  line-height: 0;
+  margin: 0 0.15em;
+}
+.footnote::before { content: "["; }
+.footnote::after  { content: "]"; }
+
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }

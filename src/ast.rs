@@ -217,6 +217,12 @@ pub enum Inline {
     Strong(Vec<Inline>),
     Emphasis(Vec<Inline>),
     Monospace(Vec<Inline>),
+    /// `~text~` — renders as `<sub>`.
+    Subscript(Vec<Inline>),
+    /// `^text^` — renders as `<sup>`.
+    Superscript(Vec<Inline>),
+    /// `#text#` (constrained) or `##text##` (unconstrained) — renders as `<mark>`.
+    Highlight(Vec<Inline>),
     Link {
         href: String,
         text: Vec<Inline>,
@@ -231,8 +237,21 @@ pub enum Inline {
         width: Option<String>,
         height: Option<String>,
     },
+    /// `footnote:[text]` (anonymous) or `footnote:id[text]` (named).
+    /// Numbering / end-of-doc footnote section is deferred — the renderer
+    /// emits the text inline today.
+    Footnote {
+        #[serde(skip_serializing_if = "Option::is_none", default)]
+        id: Option<String>,
+        text: Vec<Inline>,
+    },
     AttributeRef(String),
     LineBreak,
+    /// `+text+` (constrained) or `++text++` (unconstrained) — emits the
+    /// text with HTML special-character escaping but no further inline
+    /// substitutions applied.
+    Passthrough(String),
+    /// `pass:[text]` — emitted verbatim, no escaping. Use to inject raw HTML.
     RawHtml(String),
 }
 
