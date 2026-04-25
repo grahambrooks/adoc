@@ -5,14 +5,15 @@
 //! blocks is resolved immediately using the accumulated attribute context.
 
 use crate::ast::{
-    Attributes, Block, DelimitedBlock, DelimitedContent, DelimitedStyle, DescriptionList,
-    DescriptionListItem, Inline, List, ListItem, ListMarker, Location, Paragraph, Section, Table,
-    TableCell, TableRow,
+    Attributes, Block, BlockMeta, DelimitedBlock, DelimitedContent, DelimitedStyle,
+    DescriptionList, DescriptionListItem, Inline, List, ListItem, ListMarker, Location, Paragraph,
+    Section, Table, TableCell, TableRow,
 };
 
 use super::cursor::Cursor;
 use super::header::{consume_attribute_entries, parse_attribute_entry};
 use super::inline;
+use super::meta::collect_block_meta;
 use super::subs::Subs;
 
 pub fn parse_blocks(cursor: &mut Cursor, attrs: &mut Attributes, section_level: u8) -> Vec<Block> {
@@ -29,16 +30,26 @@ pub fn parse_blocks(cursor: &mut Cursor, attrs: &mut Attributes, section_level: 
                 continue;
             }
         }
+        // Collect any block metadata (.Title and [attrlist] lines) that
+        // immediately precedes the upcoming block.
+        let meta = collect_block_meta(cursor, attrs);
+        // A blank line between metadata and the block detaches the metadata.
+        // Drop and start over rather than attaching across the gap.
+        match cursor.peek() {
+            None => break,
+            Some(line) if line.text.trim().is_empty() => continue,
+            _ => {}
+        }
         // Section headers end the enclosing section if they are same-or-higher level.
         if let Some(level) = peek_section_level(cursor) {
             if level <= section_level {
                 break;
             }
-            let section = parse_section(cursor, attrs, level);
+            let section = parse_section(cursor, attrs, level, meta);
             out.push(Block::Section(section));
             continue;
         }
-        if let Some(block) = parse_one_block(cursor, attrs) {
+        if let Some(block) = parse_one_block(cursor, attrs, meta) {
             out.push(block);
         } else {
             break;
@@ -76,7 +87,12 @@ fn section_level_of(text: &str) -> Option<u8> {
     }
 }
 
-fn parse_section(cursor: &mut Cursor, attrs: &mut Attributes, level: u8) -> Section {
+fn parse_section(
+    cursor: &mut Cursor,
+    attrs: &mut Attributes,
+    level: u8,
+    meta: BlockMeta,
+) -> Section {
     let line = cursor.advance().expect("caller peeked a section header");
     let location = line.location.clone();
     let title_src = line.text[(level as usize + 1) + 1..].trim();
@@ -85,36 +101,38 @@ fn parse_section(cursor: &mut Cursor, attrs: &mut Attributes, level: u8) -> Sect
     Section {
         level,
         title,
-        id: None,
         blocks,
         location,
+        meta,
     }
 }
 
-fn parse_one_block(cursor: &mut Cursor, attrs: &mut Attributes) -> Option<Block> {
+fn parse_one_block(cursor: &mut Cursor, attrs: &mut Attributes, meta: BlockMeta) -> Option<Block> {
     let line = cursor.peek()?;
     let text = line.text.as_str();
 
     if let Some(style) = delimited_style(text) {
-        return Some(Block::Delimited(parse_delimited(cursor, attrs, style)));
+        return Some(Block::Delimited(parse_delimited(
+            cursor, attrs, style, meta,
+        )));
     }
     if text.trim_start() == "|===" {
-        return Some(Block::Table(parse_table(cursor, attrs)));
+        return Some(Block::Table(parse_table(cursor, attrs, meta)));
     }
     if let Some(marker) = list_marker(text) {
-        return Some(parse_list_kind(cursor, attrs, marker));
+        return Some(parse_list_kind(cursor, attrs, marker, meta));
     }
     if is_description_item(text) {
         return Some(Block::DescriptionList(parse_description_list(
-            cursor, attrs,
+            cursor, attrs, meta,
         )));
     }
-    Some(Block::Paragraph(parse_paragraph(cursor, attrs)))
+    Some(Block::Paragraph(parse_paragraph(cursor, attrs, meta)))
 }
 
 // --- paragraphs -------------------------------------------------------------
 
-fn parse_paragraph(cursor: &mut Cursor, attrs: &Attributes) -> Paragraph {
+fn parse_paragraph(cursor: &mut Cursor, attrs: &Attributes, meta: BlockMeta) -> Paragraph {
     let location = cursor.current_location();
     let mut lines: Vec<String> = Vec::new();
     while let Some(line) = cursor.peek() {
@@ -130,7 +148,11 @@ fn parse_paragraph(cursor: &mut Cursor, attrs: &Attributes) -> Paragraph {
     }
     let text = lines.join("\n");
     let inlines = parse_inlines_multiline(&text, attrs, Subs::NORMAL);
-    Paragraph { inlines, location }
+    Paragraph {
+        inlines,
+        location,
+        meta,
+    }
 }
 
 fn is_block_boundary(text: &str) -> bool {
@@ -224,7 +246,12 @@ fn list_marker(text: &str) -> Option<ListMarkerInfo> {
     None
 }
 
-fn parse_list_kind(cursor: &mut Cursor, attrs: &mut Attributes, first: ListMarkerInfo) -> Block {
+fn parse_list_kind(
+    cursor: &mut Cursor,
+    attrs: &mut Attributes,
+    first: ListMarkerInfo,
+    meta: BlockMeta,
+) -> Block {
     let location = cursor.current_location();
     let mut items: Vec<ListItem> = Vec::new();
     loop {
@@ -256,6 +283,7 @@ fn parse_list_kind(cursor: &mut Cursor, attrs: &mut Attributes, first: ListMarke
         marker: first.marker,
         items,
         location,
+        meta,
     })
 }
 
@@ -276,7 +304,9 @@ fn parse_list_item_attachments(cursor: &mut Cursor, attrs: &mut Attributes) -> V
         if cursor.at_end() {
             return out;
         }
-        if let Some(block) = parse_one_block(cursor, attrs) {
+        // Allow metadata on continuation blocks too.
+        let inner_meta = collect_block_meta(cursor, attrs);
+        if let Some(block) = parse_one_block(cursor, attrs, inner_meta) {
             out.push(block);
         }
     }
@@ -313,7 +343,11 @@ fn description_term_end(text: &str) -> Option<usize> {
     Some(idx)
 }
 
-fn parse_description_list(cursor: &mut Cursor, attrs: &mut Attributes) -> DescriptionList {
+fn parse_description_list(
+    cursor: &mut Cursor,
+    attrs: &mut Attributes,
+    meta: BlockMeta,
+) -> DescriptionList {
     let location = cursor.current_location();
     let mut items: Vec<DescriptionListItem> = Vec::new();
     loop {
@@ -338,11 +372,16 @@ fn parse_description_list(cursor: &mut Cursor, attrs: &mut Attributes) -> Descri
             description.push(Block::Paragraph(Paragraph {
                 inlines: inline::parse(desc_inline_src, attrs, Subs::NORMAL),
                 location: line.location.clone(),
+                meta: BlockMeta::default(),
             }));
         }
         items.push(DescriptionListItem { term, description });
     }
-    DescriptionList { items, location }
+    DescriptionList {
+        items,
+        location,
+        meta,
+    }
 }
 
 // --- delimited blocks -------------------------------------------------------
@@ -378,6 +417,7 @@ fn parse_delimited(
     cursor: &mut Cursor,
     attrs: &mut Attributes,
     style: DelimitedStyle,
+    meta: BlockMeta,
 ) -> DelimitedBlock {
     let opener = cursor.advance().expect("caller peeked opener");
     let delim = opener.text.trim_end().to_string();
@@ -404,6 +444,7 @@ fn parse_delimited(
                 text: raw_lines.join("\n"),
             },
             location,
+            meta,
         };
     }
 
@@ -423,12 +464,13 @@ fn parse_delimited(
         style,
         content: DelimitedContent::Blocks { blocks },
         location,
+        meta,
     }
 }
 
 // --- tables -----------------------------------------------------------------
 
-fn parse_table(cursor: &mut Cursor, attrs: &Attributes) -> Table {
+fn parse_table(cursor: &mut Cursor, attrs: &Attributes, meta: BlockMeta) -> Table {
     let opener = cursor.advance().expect("caller peeked |===");
     let location = opener.location.clone();
     let mut lines: Vec<String> = Vec::new();
@@ -441,7 +483,11 @@ fn parse_table(cursor: &mut Cursor, attrs: &Attributes) -> Table {
         cursor.advance();
     }
     let rows = parse_table_rows(&lines, attrs);
-    Table { rows, location }
+    Table {
+        rows,
+        location,
+        meta,
+    }
 }
 
 fn parse_table_rows(lines: &[String], attrs: &Attributes) -> Vec<TableRow> {

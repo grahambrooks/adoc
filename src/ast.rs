@@ -65,19 +65,64 @@ pub enum Block {
     Table(Table),
 }
 
+/// Metadata attached to a block via `.Title` and `[...]` lines.
+///
+/// The serialized form skips empty fields, so a metadata-free block round-trips
+/// through JSON as `"meta": {}` (or omits the field entirely with future
+/// `#[serde(skip_serializing_if = "BlockMeta::is_empty")]` on the parent).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BlockMeta {
+    /// Explicit block ID (`[#myid]` shorthand or `id="myid"` attribute).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    /// Block title (`.Title` line). Stored inline-parsed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<Vec<Inline>>,
+    /// Block style — first positional attribute (e.g., `source`, `NOTE`, `quote`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<String>,
+    /// Roles (`.role` shorthand or whitespace-separated `role="..."`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub roles: Vec<String>,
+    /// Options (`%opt` shorthand or comma-separated `options="..."`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub options: Vec<String>,
+    /// Remaining positional values after the style (e.g., `rust` in `[source,rust]`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub positional: Vec<String>,
+    /// Named attributes (`name=value`), excluding ones folded into the fields above.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub named: BTreeMap<String, String>,
+}
+
+impl BlockMeta {
+    pub fn is_empty(&self) -> bool {
+        self.id.is_none()
+            && self.title.is_none()
+            && self.style.is_none()
+            && self.roles.is_empty()
+            && self.options.is_empty()
+            && self.positional.is_empty()
+            && self.named.is_empty()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Section {
     pub level: u8,
     pub title: Vec<Inline>,
-    pub id: Option<String>,
     pub blocks: Vec<Block>,
     pub location: Location,
+    #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
+    pub meta: BlockMeta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Paragraph {
     pub inlines: Vec<Inline>,
     pub location: Location,
+    #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
+    pub meta: BlockMeta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,6 +130,8 @@ pub struct List {
     pub marker: ListMarker,
     pub items: Vec<ListItem>,
     pub location: Location,
+    #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
+    pub meta: BlockMeta,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -105,6 +152,8 @@ pub struct ListItem {
 pub struct DescriptionList {
     pub items: Vec<DescriptionListItem>,
     pub location: Location,
+    #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
+    pub meta: BlockMeta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,6 +167,8 @@ pub struct DelimitedBlock {
     pub style: DelimitedStyle,
     pub content: DelimitedContent,
     pub location: Location,
+    #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
+    pub meta: BlockMeta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -145,6 +196,8 @@ pub enum DelimitedContent {
 pub struct Table {
     pub rows: Vec<TableRow>,
     pub location: Location,
+    #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
+    pub meta: BlockMeta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

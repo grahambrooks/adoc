@@ -154,9 +154,9 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Header parser: title, multiple authors with optional emails, revision (`vN, date: remark`), leading/trailing attribute entries | done |
 | HTML5 converter: every current AST node renders; document title, authors, revision in `<header>`; debug `<!-- attributes: ... -->` trailer | done |
 | Stylesheet resolution (five modes) and `:copycss:` | done |
+| Block metadata: `[attrlist]` (positional/named/shorthand `#id.role%opt`) and `.Title` lines collected and attached to the next block via `BlockMeta`; HTML5 emits `id`/`class` and a `<div class="title">` ahead of titled blocks | done |
 | Preprocessor: line splitter only — no `include::`, no conditionals, no attribute resolution at line level | **not started** |
-| Block attribute lines (`[source,rust]`, `[NOTE]`, `[#id.role%opt]`, `[quote, author, source]`) and block titles (`.Title`) | **not started** |
-| Section IDs — auto-generated from titles or via `[[anchor]]` / `[#id]` | **not started** (every `Section.id` is `None`, so xrefs are always dangling) |
+| Section IDs — auto-generated from titles or via legacy `[[anchor]]` form (the `[#id]` shorthand path is covered by block metadata; auto-gen and `[[anchor]]` are pending) | **partial** |
 | Admonition blocks and admonition paragraphs | **not started** |
 | Source blocks with language attribute (callouts, syntax-highlighter hint) | **not started** |
 | Tables: column specs (`cols=`), header rows, cell formatters (`a\|`, `m\|`, `s\|`, `e\|`, `l\|`, `h\|`), `psv`/`csv`/`dsv` separators | **not started** (every row is a body row of plain inline cells) |
@@ -171,9 +171,8 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 
 The current `adoc::ast` types cover what the parser produces. Several spec constructs need new node shapes (or new fields) before the parser can emit them:
 
-- `Block` needs an `Admonition` variant (or a per-block `style`/`attributes` envelope) carrying `note` / `tip` / `important` / `warning` / `caution`.
-- `Section`, `Paragraph`, and `DelimitedBlock` need attached **block metadata**: optional title, role list, options, explicit ID, named attributes (`source`, `language`, `cols`, `quote.attribution`, etc.). The cleanest move is a `BlockMeta` struct shared across block variants rather than per-variant fields.
-- `Table` needs column specs, a separator kind, and per-cell `format`/`halign`/`valign`/`colspan`/`rowspan`. Header/footer row distinction belongs at the table level, not the row level.
+- `Block` needs an `Admonition` variant (or a derived view over `BlockMeta::style`) carrying `note` / `tip` / `important` / `warning` / `caution`. The metadata is already captured (`meta.style = Some("NOTE")`); the next bullet just needs to render it as an admonition.
+- `Table` needs column specs, a separator kind, and per-cell `format`/`halign`/`valign`/`colspan`/`rowspan`. Header/footer row distinction belongs at the table level, not the row level. (`BlockMeta::named` already carries `cols=`, so the wiring exists.)
 - `Inline` needs `Subscript`, `Superscript`, `Highlight`, `Footnote`, `Anchor`, `IndexTerm`, and a `Passthrough` variant for `pass:[]` content. `Inline::RawHtml` exists but is currently unreachable — it'll absorb `pass:c[]` once that lands.
 - Cross-reference resolution needs a doc-wide ID registry built after parse, before convert. The registry's home is `adoc::ast` (so `Converter` impls can consult it), but populating it is a parser pass.
 
@@ -188,12 +187,13 @@ The current `adoc::ast` types cover what the parser produces. Several spec const
 1. ~~**Skeleton** — project scaffold, CLI reads a file and emits a `<body>`-wrapped paragraph.~~ ✓
 2. ~~**Block parser** — paragraphs, sections, lists, delimited blocks, basic tables.~~ ✓
 3. ~~**Inline parser** — quotes, attribute references, cross-references, inline macros, replacements, line breaks.~~ ✓
-4. **Block metadata + section IDs** — parse `[attr]` lines and `.Title` lines, attach to the following block; auto-generate section IDs and resolve xref targets. Unblocks admonitions, source blocks, table column specs, and meaningful xref output. *Next.*
-5. **Preprocessor** — `include::` resolution with the include chain wired into `Location`, `ifdef`/`ifndef`/`ifeval`/`endif`, attribute entries pulled out of the parser.
-6. **HTML5 conformance** — match the spec's expected output for the conformance corpus: TOC, section anchors, admonition markup, source-block markup with language class, full table model. Stand up `tests/conformance/`.
-7. **Diagnostics polish** — `miette::Diagnostic` for `ParseError`/`PreprocessError`/`ConvertError` with span pointers; promote warnings (dangling xref, unknown attribute reference) into the diagnostic stream.
-8. **Stdio extension model** — implement `--emit-ast` / `--from-ast`; freeze and document the JSON schema; ship a trivial example filter.
-9. **Additional backends** — DocBook, man page.
+4. ~~**Block metadata** — parse `[attr]` lines and `.Title` lines, attach to the following block via `BlockMeta`. HTML5 renders `id`/`class`/title.~~ ✓
+5. **Section IDs** — auto-generate from titles, parse the legacy `[[anchor]]` form, build a doc-wide ID registry, and resolve xref targets so cross-references are no longer dangling. *Next.*
+6. **Preprocessor** — `include::` resolution with the include chain wired into `Location`, `ifdef`/`ifndef`/`ifeval`/`endif`, attribute entries pulled out of the parser.
+7. **HTML5 conformance** — match the spec's expected output for the conformance corpus: TOC, section anchors, admonition markup, source-block markup with language class, full table model. Stand up `tests/conformance/`.
+8. **Diagnostics polish** — `miette::Diagnostic` for `ParseError`/`PreprocessError`/`ConvertError` with span pointers; promote warnings (dangling xref, unknown attribute reference) into the diagnostic stream.
+9. **Stdio extension model** — implement `--emit-ast` / `--from-ast`; freeze and document the JSON schema; ship a trivial example filter.
+10. **Additional backends** — DocBook, man page.
 
 ## Dependencies
 

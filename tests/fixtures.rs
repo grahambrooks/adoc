@@ -232,6 +232,125 @@ fn find_list(blocks: &[Block]) -> Option<&adoc::ast::List> {
 }
 
 #[test]
+fn block_metadata_attaches_to_following_block() {
+    let (doc, html) = render("21_block_metadata.adoc");
+
+    // First paragraph: title + id + role.
+    let first = doc
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            Block::Paragraph(p) if p.meta.id.as_deref() == Some("first") => Some(p),
+            _ => None,
+        })
+        .expect("paragraph #first");
+    assert_eq!(first.meta.roles, vec!["lead".to_string()]);
+    let title = first.meta.title.as_ref().expect("title");
+    assert!(matches!(title.first(), Some(adoc::ast::Inline::Text(t)) if t == "A titled paragraph"));
+
+    // [NOTE] paragraph: style is captured.
+    let note = doc
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            Block::Paragraph(p) if p.meta.style.as_deref() == Some("NOTE") => Some(p),
+            _ => None,
+        })
+        .expect("NOTE paragraph");
+    assert!(note.meta.id.is_none());
+
+    // Source listing block: style + positional + title.
+    let listing = doc
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            Block::Delimited(d) if d.meta.style.as_deref() == Some("source") => Some(d),
+            _ => None,
+        })
+        .expect("source listing");
+    assert_eq!(listing.meta.positional, vec!["rust".to_string()]);
+    assert!(listing.meta.title.is_some());
+
+    // Mixed shorthand paragraph.
+    let mixed = doc
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            Block::Paragraph(p) if p.meta.id.as_deref() == Some("xref-target") => Some(p),
+            _ => None,
+        })
+        .expect("xref-target paragraph");
+    assert_eq!(mixed.meta.roles, vec!["callout".to_string()]);
+    assert_eq!(mixed.meta.options, vec!["hardbreaks".to_string()]);
+    assert_eq!(mixed.meta.positional, vec!["quoted".to_string()]);
+
+    // Named-attributes paragraph.
+    let named = doc
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            Block::Paragraph(p) if p.meta.named.contains_key("caption") => Some(p),
+            _ => None,
+        })
+        .expect("named-attrs paragraph");
+    assert_eq!(
+        named.meta.named.get("caption").map(String::as_str),
+        Some("Figure 1.")
+    );
+    assert_eq!(
+        named.meta.named.get("align").map(String::as_str),
+        Some("center")
+    );
+
+    // Table with id and title.
+    let table = doc
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            Block::Table(t) => Some(t),
+            _ => None,
+        })
+        .expect("table");
+    assert_eq!(table.meta.id.as_deref(), Some("prices"));
+    assert!(table.meta.title.is_some());
+
+    // Section id from `[#feature]`.
+    let section = doc
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            Block::Section(s) => Some(s),
+            _ => None,
+        })
+        .expect("section");
+    assert_eq!(section.meta.id.as_deref(), Some("feature"));
+
+    // HTML carries the id, class, and title-divs.
+    assert!(html.contains(r#"<p id="first" class="lead">"#));
+    assert!(html.contains(r#"<div class="title">A titled paragraph</div>"#));
+    assert!(html.contains(r#"<table id="prices">"#));
+    assert!(html.contains(r#"<div class="title">Important table</div>"#));
+    assert!(html.contains(r#"<section id="feature">"#));
+}
+
+#[test]
+fn block_metadata_orphaned_by_blank_line_is_dropped() {
+    let src = "[#orphan]\n\nplain paragraph\n";
+    let pre = adoc::preprocessor::Preprocessor::default();
+    let lines = pre.run(src, SourceId(0)).expect("preprocess");
+    let doc = adoc::parser::parse(&lines).expect("parse");
+    let para = doc
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            Block::Paragraph(p) => Some(p),
+            _ => None,
+        })
+        .expect("paragraph");
+    assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
 fn delimited_style_roundtrip() {
     // Quick check that every DelimitedStyle variant exercised by fixtures
     // is recognised.

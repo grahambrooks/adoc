@@ -1,0 +1,36 @@
+= Block Metadata Showcase
+
+.A titled paragraph
+[#first.lead]
+A paragraph with a block title, an explicit id, and a role.
+
+[NOTE]
+A paragraph carrying just a block style.
+
+.Listing 1: Hello
+[source,rust]
+----
+fn main() {
+    println!("hi");
+}
+----
+
+[#xref-target.callout%hardbreaks,quoted]
+A paragraph with shorthand id, role, option, and an additional positional.
+
+[caption="Figure 1.",align=center]
+A paragraph with named attributes only.
+
+.Important table
+[#prices]
+|===
+| Item | Price
+
+| Apple | 1
+| Pear | 2
+|===
+
+[#feature]
+== Feature Section
+
+This section has an explicit id.

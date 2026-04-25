@@ -7,7 +7,7 @@
 use std::fmt::Write;
 
 use crate::ast::{
-    AttributeValue, Block, ConvertError, Converter, DelimitedContent, DelimitedStyle,
+    AttributeValue, Block, BlockMeta, ConvertError, Converter, DelimitedContent, DelimitedStyle,
     DescriptionList, Document, Inline, List, ListMarker, Paragraph, Section, Table,
 };
 
@@ -173,12 +173,11 @@ fn render_section(out: &mut String, s: &Section) -> Result<(), ConvertError> {
         4 => "h5",
         _ => "h6",
     };
-    write!(
-        out,
-        "<section>\n<{tag}>{}</{tag}>\n",
-        render_inlines(&s.title)
-    )
-    .map_err(|e| ConvertError::Message(e.to_string()))?;
+    write!(out, "<section{}>\n", meta_attrs(&s.meta))
+        .map_err(|e| ConvertError::Message(e.to_string()))?;
+    render_block_title(out, &s.meta);
+    writeln!(out, "<{tag}>{}</{tag}>", render_inlines(&s.title))
+        .map_err(|e| ConvertError::Message(e.to_string()))?;
     for b in &s.blocks {
         render_block(out, b)?;
     }
@@ -187,8 +186,14 @@ fn render_section(out: &mut String, s: &Section) -> Result<(), ConvertError> {
 }
 
 fn render_paragraph(out: &mut String, p: &Paragraph) -> Result<(), ConvertError> {
-    write!(out, "<p>{}</p>\n", render_inlines(&p.inlines))
-        .map_err(|e| ConvertError::Message(e.to_string()))
+    render_block_title(out, &p.meta);
+    writeln!(
+        out,
+        "<p{}>{}</p>",
+        meta_attrs(&p.meta),
+        render_inlines(&p.inlines)
+    )
+    .map_err(|e| ConvertError::Message(e.to_string()))
 }
 
 fn render_list(out: &mut String, l: &List) -> Result<(), ConvertError> {
@@ -197,16 +202,20 @@ fn render_list(out: &mut String, l: &List) -> Result<(), ConvertError> {
         ListMarker::Unordered => "ul",
         ListMarker::Ordered => "ol",
     };
+    render_block_title(out, &l.meta);
     let mut current_depth = 0u8;
     let mut open = 0u32;
+    let mut top_attrs: Option<String> = Some(meta_attrs(&l.meta));
     for item in &l.items {
         while current_depth < item.depth {
-            out.push_str(&format!("<{tag}>\n"));
+            // Apply meta only to the outermost list element.
+            let attrs = top_attrs.take().unwrap_or_default();
+            writeln!(out, "<{tag}{attrs}>").map_err(|e| ConvertError::Message(e.to_string()))?;
             current_depth += 1;
             open += 1;
         }
         while current_depth > item.depth {
-            out.push_str(&format!("</{tag}>\n"));
+            writeln!(out, "</{tag}>").map_err(|e| ConvertError::Message(e.to_string()))?;
             current_depth -= 1;
             open = open.saturating_sub(1);
         }
@@ -219,15 +228,17 @@ fn render_list(out: &mut String, l: &List) -> Result<(), ConvertError> {
         out.push_str("</li>\n");
     }
     for _ in 0..open {
-        out.push_str(&format!("</{tag}>\n"));
+        writeln!(out, "</{tag}>").map_err(|e| ConvertError::Message(e.to_string()))?;
     }
     Ok(())
 }
 
 fn render_description_list(out: &mut String, d: &DescriptionList) -> Result<(), ConvertError> {
-    out.push_str("<dl>\n");
+    render_block_title(out, &d.meta);
+    writeln!(out, "<dl{}>", meta_attrs(&d.meta))
+        .map_err(|e| ConvertError::Message(e.to_string()))?;
     for item in &d.items {
-        write!(out, "<dt>{}</dt>\n", render_inlines(&item.term))
+        writeln!(out, "<dt>{}</dt>", render_inlines(&item.term))
             .map_err(|e| ConvertError::Message(e.to_string()))?;
         out.push_str("<dd>");
         for b in &item.description {
@@ -240,13 +251,15 @@ fn render_description_list(out: &mut String, d: &DescriptionList) -> Result<(), 
 }
 
 fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<(), ConvertError> {
+    render_block_title(out, &d.meta);
+    let a = meta_attrs(&d.meta);
     match (&d.style, &d.content) {
         (DelimitedStyle::Listing, DelimitedContent::Raw { text }) => {
-            write!(out, "<pre><code>{}</code></pre>\n", escape(text))
+            writeln!(out, "<pre{a}><code>{}</code></pre>", escape(text))
                 .map_err(|e| ConvertError::Message(e.to_string()))
         }
         (DelimitedStyle::Literal, DelimitedContent::Raw { text }) => {
-            write!(out, "<pre>{}</pre>\n", escape(text))
+            writeln!(out, "<pre{a}>{}</pre>", escape(text))
                 .map_err(|e| ConvertError::Message(e.to_string()))
         }
         (DelimitedStyle::Passthrough, DelimitedContent::Raw { text }) => {
@@ -255,8 +268,10 @@ fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<
             Ok(())
         }
         (DelimitedStyle::Example, DelimitedContent::Blocks { blocks }) => {
-            out.push_str(r#"<div class="example">"#);
-            out.push('\n');
+            // The "example" class is intrinsic to this block style; user roles
+            // append after it.
+            writeln!(out, "<div{}>", merge_class_attr(&d.meta, "example"))
+                .map_err(|e| ConvertError::Message(e.to_string()))?;
             for b in blocks {
                 render_block(out, b)?;
             }
@@ -264,7 +279,7 @@ fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<
             Ok(())
         }
         (DelimitedStyle::Quote, DelimitedContent::Blocks { blocks }) => {
-            out.push_str("<blockquote>\n");
+            writeln!(out, "<blockquote{a}>").map_err(|e| ConvertError::Message(e.to_string()))?;
             for b in blocks {
                 render_block(out, b)?;
             }
@@ -272,8 +287,7 @@ fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<
             Ok(())
         }
         (DelimitedStyle::Sidebar, DelimitedContent::Blocks { blocks }) => {
-            out.push_str(r#"<aside>"#);
-            out.push('\n');
+            writeln!(out, "<aside{a}>").map_err(|e| ConvertError::Message(e.to_string()))?;
             for b in blocks {
                 render_block(out, b)?;
             }
@@ -281,7 +295,7 @@ fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<
             Ok(())
         }
         (DelimitedStyle::Open, DelimitedContent::Blocks { blocks }) => {
-            out.push_str("<div>\n");
+            writeln!(out, "<div{a}>").map_err(|e| ConvertError::Message(e.to_string()))?;
             for b in blocks {
                 render_block(out, b)?;
             }
@@ -295,7 +309,9 @@ fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<
 }
 
 fn render_table(out: &mut String, t: &Table) -> Result<(), ConvertError> {
-    out.push_str("<table>\n");
+    render_block_title(out, &t.meta);
+    writeln!(out, "<table{}>", meta_attrs(&t.meta))
+        .map_err(|e| ConvertError::Message(e.to_string()))?;
     for row in &t.rows {
         out.push_str("<tr>");
         for cell in &row.cells {
@@ -306,6 +322,46 @@ fn render_table(out: &mut String, t: &Table) -> Result<(), ConvertError> {
     }
     out.push_str("</table>\n");
     Ok(())
+}
+
+// --- block metadata rendering ---------------------------------------------
+
+/// Build the ` id="..." class="..."` fragment for a block opening tag.
+/// Returns an empty string when no id or roles are set.
+fn meta_attrs(meta: &BlockMeta) -> String {
+    let mut out = String::new();
+    if let Some(id) = &meta.id {
+        let _ = write!(out, r#" id="{}""#, escape_attr(id));
+    }
+    if !meta.roles.is_empty() {
+        let classes = meta
+            .roles
+            .iter()
+            .map(|r| escape_attr(r))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let _ = write!(out, r#" class="{classes}""#);
+    }
+    out
+}
+
+/// Like [`meta_attrs`] but merges an intrinsic class (e.g., `"example"` for the
+/// example block) with any user-supplied roles into a single `class` attribute.
+fn merge_class_attr(meta: &BlockMeta, intrinsic: &str) -> String {
+    let mut out = String::new();
+    if let Some(id) = &meta.id {
+        let _ = write!(out, r#" id="{}""#, escape_attr(id));
+    }
+    let mut classes = vec![intrinsic.to_string()];
+    classes.extend(meta.roles.iter().map(|r| escape_attr(r)));
+    let _ = write!(out, r#" class="{}""#, classes.join(" "));
+    out
+}
+
+fn render_block_title(out: &mut String, meta: &BlockMeta) {
+    if let Some(title) = &meta.title {
+        let _ = writeln!(out, r#"<div class="title">{}</div>"#, render_inlines(title));
+    }
 }
 
 // --- inline rendering ------------------------------------------------------
