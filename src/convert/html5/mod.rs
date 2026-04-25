@@ -186,6 +186,9 @@ fn render_section(out: &mut String, s: &Section) -> Result<(), ConvertError> {
 }
 
 fn render_paragraph(out: &mut String, p: &Paragraph) -> Result<(), ConvertError> {
+    if let Some(kw) = admonition_keyword(&p.meta) {
+        return render_admonition_paragraph(out, p, kw);
+    }
     render_block_title(out, &p.meta);
     writeln!(
         out,
@@ -194,6 +197,33 @@ fn render_paragraph(out: &mut String, p: &Paragraph) -> Result<(), ConvertError>
         render_inlines(&p.inlines)
     )
     .map_err(|e| ConvertError::Message(e.to_string()))
+}
+
+fn render_admonition_paragraph(
+    out: &mut String,
+    p: &Paragraph,
+    kw: &str,
+) -> Result<(), ConvertError> {
+    let label = admonition_label(kw);
+    let class = admonition_class(kw);
+    writeln!(
+        out,
+        r#"<div{} class="admonitionblock {class}">"#,
+        meta_id_only(&p.meta)
+    )
+    .map_err(|e| ConvertError::Message(e.to_string()))?;
+    if let Some(title) = &p.meta.title {
+        writeln!(out, r#"<p class="title">{}</p>"#, render_inlines(title))
+            .map_err(|e| ConvertError::Message(e.to_string()))?;
+    } else {
+        writeln!(out, r#"<p class="label">{label}</p>"#)
+            .map_err(|e| ConvertError::Message(e.to_string()))?;
+    }
+    writeln!(out, r#"<div class="content">"#).map_err(|e| ConvertError::Message(e.to_string()))?;
+    writeln!(out, "<p>{}</p>", render_inlines(&p.inlines))
+        .map_err(|e| ConvertError::Message(e.to_string()))?;
+    out.push_str("</div>\n</div>\n");
+    Ok(())
 }
 
 fn render_list(out: &mut String, l: &List) -> Result<(), ConvertError> {
@@ -251,12 +281,24 @@ fn render_description_list(out: &mut String, d: &DescriptionList) -> Result<(), 
 }
 
 fn render_delimited(out: &mut String, d: &crate::ast::DelimitedBlock) -> Result<(), ConvertError> {
+    // Block-form admonition (e.g. `[NOTE]\n====\n…\n====`).
+    if let (Some(kw), DelimitedContent::Blocks { blocks }) =
+        (admonition_keyword(&d.meta), &d.content)
+    {
+        return render_admonition_block(out, &d.meta, kw, blocks);
+    }
     render_block_title(out, &d.meta);
     let a = meta_attrs(&d.meta);
     match (&d.style, &d.content) {
         (DelimitedStyle::Listing, DelimitedContent::Raw { text }) => {
-            writeln!(out, "<pre{a}><code>{}</code></pre>", escape(text))
-                .map_err(|e| ConvertError::Message(e.to_string()))
+            // `[source,LANG]` adds a `language-LANG` class on the <code>.
+            let code_class = source_language_class(&d.meta);
+            writeln!(
+                out,
+                "<pre{a}><code{code_class}>{}</code></pre>",
+                escape(text)
+            )
+            .map_err(|e| ConvertError::Message(e.to_string()))
         }
         (DelimitedStyle::Literal, DelimitedContent::Raw { text }) => {
             writeln!(out, "<pre{a}>{}</pre>", escape(text))
@@ -362,6 +404,92 @@ fn render_block_title(out: &mut String, meta: &BlockMeta) {
     if let Some(title) = &meta.title {
         let _ = writeln!(out, r#"<div class="title">{}</div>"#, render_inlines(title));
     }
+}
+
+/// Like [`meta_attrs`] but emits *only* the `id` attribute. Used by
+/// renderers that build the class list themselves (admonitions, etc.).
+fn meta_id_only(meta: &BlockMeta) -> String {
+    let mut out = String::new();
+    if let Some(id) = &meta.id {
+        let _ = write!(out, r#" id="{}""#, escape_attr(id));
+    }
+    out
+}
+
+// --- admonitions ----------------------------------------------------------
+
+fn admonition_keyword(meta: &BlockMeta) -> Option<&str> {
+    let style = meta.style.as_deref()?;
+    matches!(style, "NOTE" | "TIP" | "IMPORTANT" | "WARNING" | "CAUTION").then_some(style)
+}
+
+fn admonition_label(kw: &str) -> &'static str {
+    match kw {
+        "NOTE" => "Note",
+        "TIP" => "Tip",
+        "IMPORTANT" => "Important",
+        "WARNING" => "Warning",
+        "CAUTION" => "Caution",
+        _ => "Note",
+    }
+}
+
+fn admonition_class(kw: &str) -> &'static str {
+    match kw {
+        "NOTE" => "note",
+        "TIP" => "tip",
+        "IMPORTANT" => "important",
+        "WARNING" => "warning",
+        "CAUTION" => "caution",
+        _ => "note",
+    }
+}
+
+fn render_admonition_block(
+    out: &mut String,
+    meta: &BlockMeta,
+    kw: &str,
+    blocks: &[Block],
+) -> Result<(), ConvertError> {
+    let label = admonition_label(kw);
+    let class = admonition_class(kw);
+    writeln!(
+        out,
+        r#"<div{} class="admonitionblock {class}">"#,
+        meta_id_only(meta)
+    )
+    .map_err(|e| ConvertError::Message(e.to_string()))?;
+    if let Some(title) = &meta.title {
+        writeln!(out, r#"<p class="title">{}</p>"#, render_inlines(title))
+            .map_err(|e| ConvertError::Message(e.to_string()))?;
+    } else {
+        writeln!(out, r#"<p class="label">{label}</p>"#)
+            .map_err(|e| ConvertError::Message(e.to_string()))?;
+    }
+    writeln!(out, r#"<div class="content">"#).map_err(|e| ConvertError::Message(e.to_string()))?;
+    for b in blocks {
+        render_block(out, b)?;
+    }
+    out.push_str("</div>\n</div>\n");
+    Ok(())
+}
+
+// --- source-block language ------------------------------------------------
+
+/// `[source,rust]` on a listing block becomes ` class="language-rust"` on
+/// the inner `<code>`. Returns an empty string if no language is set.
+fn source_language_class(meta: &BlockMeta) -> String {
+    if meta.style.as_deref() != Some("source") {
+        return String::new();
+    }
+    let Some(lang) = meta.positional.first() else {
+        return String::new();
+    };
+    let lang = lang.trim();
+    if lang.is_empty() {
+        return String::new();
+    }
+    format!(r#" class="language-{}""#, escape_attr(lang))
 }
 
 // --- inline rendering ------------------------------------------------------

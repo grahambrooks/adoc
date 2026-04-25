@@ -161,6 +161,8 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Safe-mode enforcement: `safe`/`server` reject absolute paths and paths escaping `base_dir` after canonicalisation; `secure` disables `include::` | done |
 | Section IDs — `[#id]` shorthand (via block metadata), `[[id]]` / `[[id, reftext]]` legacy anchor lines, and auto-generation from titles (lowercase, non-alphanumeric → `_`, deduped). Block parser rolls back metadata that turned out to belong to an outer scope (so `[[anchor]]` above a sibling-level section header attaches to the right section). | done |
 | Doc-wide ID registry + xref validation (warn on dangling, resolve `<<title text>>` to derived IDs) | **not started** — sits with the diagnostics phase |
+| Admonitions: paragraph shortcut (`NOTE: …`) and block-form (`[NOTE]` on any paragraph or `====` example) render as `<div class="admonitionblock kw">` with a default label or supplied title | done |
+| Source blocks with language: `[source,LANG]` adds `language-LANG` class on the inner `<code>`; downstream-highlighter friendly | done |
 | Admonition blocks and admonition paragraphs | **not started** |
 | Source blocks with language attribute (callouts, syntax-highlighter hint) | **not started** |
 | Tables: column specs (`cols=`), header rows, cell formatters (`a\|`, `m\|`, `s\|`, `e\|`, `l\|`, `h\|`), `psv`/`csv`/`dsv` separators | **not started** (every row is a body row of plain inline cells) |

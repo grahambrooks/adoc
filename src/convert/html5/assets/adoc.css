@@ -223,6 +223,42 @@ hr {
   margin: 2em 0;
 }
 
+/* Admonitions */
+.admonitionblock {
+  margin: 1.25em 0;
+  padding: 0.75em 1em;
+  border-left: 4px solid var(--adoc-border);
+  border-radius: var(--adoc-radius);
+  background: light-dark(#f6f8fa, #161b22);
+}
+.admonitionblock > .label,
+.admonitionblock > .title {
+  margin: 0 0 0.5em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.85em;
+}
+.admonitionblock > .content > :first-child { margin-top: 0; }
+.admonitionblock > .content > :last-child  { margin-bottom: 0; }
+.admonitionblock.note      { border-left-color: light-dark(#0969da, #58a6ff); }
+.admonitionblock.tip       { border-left-color: light-dark(#1a7f37, #3fb950); }
+.admonitionblock.important { border-left-color: light-dark(#9a6700, #d29922); }
+.admonitionblock.warning   { border-left-color: light-dark(#bc4c00, #db6d28); }
+.admonitionblock.caution   { border-left-color: light-dark(#cf222e, #f85149); }
+
+/* Source-block language hint. We don't ship a highlighter; this just
+   surfaces the language as a small label so downstream CSS / Prism /
+   Highlight.js can take over without conflict. */
+pre > code[class^="language-"]::before {
+  content: attr(class) " ";
+  display: block;
+  font-size: 0.75em;
+  color: var(--adoc-muted);
+  margin-bottom: 0.4em;
+  text-transform: lowercase;
+}
+
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }

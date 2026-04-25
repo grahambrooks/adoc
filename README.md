@@ -85,6 +85,8 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - `include::` arguments — `lines=` (single line, range, open-ended `..-1`, multiple `;`-separated ranges), `tags=` / `tag=` (comment-leader-agnostic `tag::name[]` / `end::name[]` markers, multiple tags, `!name` negation), `leveloffset=` (signed, clamped to `1..=6`).
 - Safe modes — `unsafe` (no checks), `safe` / `server` (rejects absolute include paths and any path that escapes `--base-dir` after canonicalisation), `secure` (disables `include::` entirely).
 - Section IDs — auto-derived from titles (`_` prefix, lowercase, non-alphanumeric collapsed to `_`, deduped with `_2`/`_3`/… suffixes), or supplied explicitly via the `[#id]` shorthand or the legacy `[[id]]` / `[[id, reftext]]` block-anchor line. Anchored blocks render with `id="…"` so `xref:` targets that previously dangled now resolve.
+- Admonitions — paragraph form (`NOTE: text`, `TIP: …`, `IMPORTANT: …`, `WARNING: …`, `CAUTION: …`) and block form (`[NOTE]` on any paragraph or `====` example block) render as `<div class="admonitionblock kw">` with a labelled body. Bundled CSS gives each variant a coloured side-rule.
+- Source blocks with language — `[source,LANG]` on a `----` listing emits `<pre><code class="language-LANG">…</code></pre>` so downstream highlighters (Prism, Highlight.js, Rouge) can take over without conflict.
 
 ## What's missing
 
@@ -92,8 +94,8 @@ The big-ticket items, in roughly the order they're queued:
 
 - **`include::` argument tail** — `indent=`, `encoding=`, and tag wildcards (`*`, `**`). The common arguments (`lines=`, `tags=`, `leveloffset=`) are in.
 - **Doc-wide ID registry + xref validation** — section IDs land on the AST nodes today, but there's no centralised registry yet, so dangling xrefs render silently (the `<a href>` is emitted but the target doesn't exist). Validation belongs with the diagnostics work.
-- **Admonitions** — `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION` (paragraph-style and block-style).
-- **Source blocks with language**, syntax-highlighter hints, callouts.
+- **Built-in syntax highlighting** — we ship the `language-LANG` class only; no Rouge/Pygments/Prism integration. Ship of choice is BYO highlighter via a custom stylesheet.
+- **Source-block callouts** — `<1>` / `<2>` markers and matching colist sibling block.
 - **Full tables** — `cols=`, header rows, cell formatters (`a`, `m`, `s`, `e`, `l`, `h`), CSV/DSV separators.
 - **Inline subscript/superscript/highlight**, inline footnotes, inline anchors, inline passthroughs, bibliography entries.
 - **TOC, discrete headings, `sectnums`, `sectanchors`.**

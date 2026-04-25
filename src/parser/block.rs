@@ -138,9 +138,10 @@ fn parse_one_block(cursor: &mut Cursor, attrs: &mut Attributes, meta: BlockMeta)
 
 // --- paragraphs -------------------------------------------------------------
 
-fn parse_paragraph(cursor: &mut Cursor, attrs: &Attributes, meta: BlockMeta) -> Paragraph {
+fn parse_paragraph(cursor: &mut Cursor, attrs: &Attributes, mut meta: BlockMeta) -> Paragraph {
     let location = cursor.current_location();
     let mut lines: Vec<String> = Vec::new();
+    let mut first = true;
     while let Some(line) = cursor.peek() {
         let t = line.text.as_str();
         if t.trim().is_empty() {
@@ -149,7 +150,22 @@ fn parse_paragraph(cursor: &mut Cursor, attrs: &Attributes, meta: BlockMeta) -> 
         if is_block_boundary(t) {
             break;
         }
-        lines.push(line.text.clone());
+        let pushed = if first {
+            // Paragraph admonition shortcut: `NOTE: text`, `TIP: …`, etc.
+            // The first line's keyword + colon + space is stripped and
+            // promoted to `meta.style`. Block-level metadata wins if it
+            // already set a style.
+            if let Some((kw, rest)) = strip_admonition_prefix(t) {
+                meta.style.get_or_insert_with(|| kw.to_string());
+                rest.to_string()
+            } else {
+                line.text.clone()
+            }
+        } else {
+            line.text.clone()
+        };
+        lines.push(pushed);
+        first = false;
         cursor.advance();
     }
     let text = lines.join("\n");
@@ -159,6 +175,19 @@ fn parse_paragraph(cursor: &mut Cursor, attrs: &Attributes, meta: BlockMeta) -> 
         location,
         meta,
     }
+}
+
+const ADMONITION_KEYWORDS: &[&str] = &["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"];
+
+fn strip_admonition_prefix(line: &str) -> Option<(&'static str, &str)> {
+    for kw in ADMONITION_KEYWORDS {
+        if let Some(rest) = line.strip_prefix(kw) {
+            if let Some(content) = rest.strip_prefix(": ") {
+                return Some((kw, content));
+            }
+        }
+    }
+    None
 }
 
 fn is_block_boundary(text: &str) -> bool {

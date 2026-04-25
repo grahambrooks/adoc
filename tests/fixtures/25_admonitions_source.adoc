@@ -1,0 +1,43 @@
+= Admonitions and Source Blocks
+
+NOTE: A paragraph admonition shorthand.
+
+TIP: A tip with `inline code`.
+
+IMPORTANT: Pay attention.
+
+WARNING: Be careful.
+
+CAUTION: Last warning.
+
+[NOTE]
+====
+A block-style admonition with multiple paragraphs.
+
+This is the second paragraph inside the same NOTE.
+====
+
+[WARNING]
+A block-style attribute on a regular paragraph also flips it into
+admonition rendering.
+
+.A titled note
+[TIP]
+A titled admonition retains its supplied title instead of the default
+label.
+
+[source,rust]
+----
+fn main() {
+    println!("hello");
+}
+----
+
+[source]
+----
+no language attribute here
+----
+
+----
+plain listing — neither source nor language
+----

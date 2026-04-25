@@ -368,6 +368,58 @@ fn preprocessor_conditionals_and_include() {
 }
 
 #[test]
+fn admonitions_paragraph_block_titled_and_source_language() {
+    let (doc, html) = render("25_admonitions_source.adoc");
+
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // Paragraph admonition shortcut: each keyword is captured on meta.style
+    // and renders the appropriate admonitionblock with a default label.
+    for (kw, class, label) in [
+        ("NOTE", "note", "Note"),
+        ("TIP", "tip", "Tip"),
+        ("IMPORTANT", "important", "Important"),
+        ("WARNING", "warning", "Warning"),
+        ("CAUTION", "caution", "Caution"),
+    ] {
+        // The AST records the keyword on meta.style.
+        let any = doc.blocks.iter().any(|b| match b {
+            Block::Paragraph(p) => p.meta.style.as_deref() == Some(kw),
+            _ => false,
+        });
+        assert!(any, "no paragraph with style {kw}");
+
+        // The HTML carries the right admonitionblock class and either a
+        // default label or, for the titled TIP, a custom title.
+        let needle = format!(r#"<div class="admonitionblock {class}">"#);
+        assert!(body.contains(&needle), "expected {needle}\nbody:\n{body}",);
+        if kw != "TIP" {
+            // Default label for non-titled admonitions.
+            let label_needle = format!(r#"<p class="label">{label}</p>"#);
+            assert!(body.contains(&label_needle), "missing label {label_needle}");
+        }
+    }
+
+    // The titled TIP keeps its supplied title in place of the default label.
+    assert!(body.contains(r#"<p class="title">A titled note</p>"#));
+
+    // Block-form admonition wraps multiple paragraphs.
+    let inner_count = body
+        .matches(r#"<div class="admonitionblock note">"#)
+        .count();
+    assert!(inner_count >= 1, "expected a NOTE admonitionblock");
+
+    // Source listing with language → language-rust class.
+    assert!(body.contains(r#"<pre><code class="language-rust">fn main()"#));
+    // [source] without a language → plain <code>.
+    assert!(body.contains(r#"<pre><code>no language attribute here"#));
+    // Plain listing (no [source]) → also plain <code>, untouched.
+    assert!(body.contains(r#"<pre><code>plain listing"#));
+}
+
+#[test]
 fn section_ids_auto_explicit_and_xrefs() {
     let (doc, html) = render("24_section_ids.adoc");
 
