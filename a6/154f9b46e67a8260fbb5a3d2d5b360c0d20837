@@ -1,0 +1,32 @@
+docs/showcase.adoc
+  27508cabf0243d73 1-322
+docs/showcase-snippet.adoc
+  27508cabf0243d73 1-10
+Makefile
+  27508cabf0243d73 9,38-42,54
+README.md
+  27508cabf0243d73 37-46
+docs/showcase.html
+  27508cabf0243d73 1-613
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "a6154f9b46e67a8260fbb5a3d2d5b360c0d20837",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 990,
+      "total_deletions": 29,
+      "accepted_lines": 1299,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/dcbc8c0a0c669320c1d5e8ddad0c181a94649cef6f74f2ca45e1f3364555251d"
+    }
+  }
+}
