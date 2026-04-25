@@ -32,15 +32,19 @@ adoc (CLI)
 
 ### Crate layout (Cargo workspace)
 
+Five crates make up the workspace:
+
 | Crate | Responsibility |
-|---|---|
+| --- | --- |
 | `adoc-cli` | Binary crate. `clap` argument parsing, file I/O, exit codes, wires the pipeline. |
 | `adoc-core` | Shared types: `Document`, `Block`, `Inline`, `Attributes`, `Location`. `serde` serializable. No I/O. |
 | `adoc-preprocessor` | Include resolution, conditional directives (`ifdef`, `ifndef`, `ifeval`, `endif`), attribute entries. Line-level. |
 | `adoc-parser` | Block parser (line-oriented recursive descent) and inline parser (substitution pipeline). Produces `adoc-core::Document`. |
-| `adoc-convert-html5` | Visits the AST, emits HTML5. Implements a `Converter` trait defined in `adoc-core`. |
+| `adoc-convert-html5` | Visits the AST, emits HTML5. Implements a `Converter` trait defined in `adoc-core`. Owns the built-in stylesheet asset. |
 
 Future crates: `adoc-convert-docbook`, `adoc-convert-manpage`, `adoc-ext-stdio`.
+
+Dependency direction: `adoc-cli → {adoc-parser, adoc-preprocessor, adoc-convert-html5} → adoc-core`. Cycles are forbidden; converters must not depend on the parser.
 
 ## Key design choices
 
@@ -63,15 +67,36 @@ The spec defines six substitution groups applied in order:
 5. Macros (inline)
 6. Post-replacements (line breaks)
 
-Each block type declares which groups apply. We model substitutions as a composable pipeline; block parsers configure it per block. This matches the spec's structure and makes overrides (via `subs` attribute) straightforward.
+Each block type declares which groups apply. The pipeline is modeled as a `Subs` flag struct; block parsers configure it per block. This matches the spec's structure and makes overrides (via `subs` attribute) straightforward.
+
+Implementation note: special-character escaping is currently performed at the HTML5 render boundary rather than as a parse-time substitution. The AST holds raw UTF-8 text in `Inline::Text`; converters are responsible for the appropriate escape. This keeps the AST language-neutral but means the special-characters group is implicit, not a configurable step. Revisit if a backend needs to opt out.
 
 ### Diagnostics via `miette`
 
-Every AST node carries a `Location { source: SourceId, byte_range, line, column }`. Errors and warnings report precise spans with `miette`-style formatted output. Include resolution preserves the include chain so errors in included files point through the chain.
+Every AST node carries a `Location { source: SourceId, byte_range, line, column }`. Errors and warnings are intended to report precise spans through `miette`. Include resolution preserves the include chain so errors in included files point through the chain.
+
+Current state: locations are populated, but `ParseError`/`PreprocessError` are flat `Message(String)` enums. Promoting them to span-bearing `miette::Diagnostic` impls is queued behind preprocessor work — there's little to report on until directives can fail.
 
 ### Serializable AST
 
 The AST round-trips through `serde`. This is load-bearing for the future stdio extension model: `adoc --emit-ast doc.adoc | my-filter | adoc --from-ast --to html5`. Getting this right in v1 costs little and unlocks extensions later without a core rework.
+
+The serialized JSON form is a public interface — once `--emit-ast` ships, breaking changes to AST node shapes need intent and a versioning story.
+
+### Stylesheet model
+
+HTML5 output ships with a built-in stylesheet (`adoc.css`, embedded into the binary). Resolution mirrors Asciidoctor's attribute-driven model and happens at the CLI boundary; the converter receives a fully-resolved `Stylesheet` enum and renders it.
+
+| Attribute combination | Result |
+|---|---|
+| (default) | Inline the built-in stylesheet via `<style>`. |
+| `:linkcss:` | Emit `<link rel="stylesheet" href="adoc.css">`. |
+| `:stylesheet: theme.css` | Read `theme.css` from `:stylesdir:` (default: input dir) and inline it. |
+| `:stylesheet: theme.css` + `:linkcss:` | Emit `<link>` to the supplied href; do not read the file. |
+| `:stylesheet!:` or empty | Emit no stylesheet. |
+| `:copycss:` | Copy the resolved CSS next to the output file. |
+
+Five modes total: `BuiltinEmbed` (default), `BuiltinLink`, `CustomEmbed`, `CustomLink`, `None`.
 
 ### Unicode-correct by default
 
@@ -79,11 +104,13 @@ Source is UTF-8. Column offsets are character-based, not byte-based, for diagnos
 
 ## Conformance strategy
 
-"Spec-compliant" is only meaningful if it's measurable. From the first milestone:
+"Spec-compliant" is only meaningful if it's measurable. The plan is a layered test corpus:
 
-- A **conformance suite** under `tests/conformance/` — one `.adoc` input plus expected AST (JSON) and expected HTML5 output per feature.
-- Fixtures derived from the spec's own examples where the normative text provides them.
-- Asciidoctor's behavior is a sanity check, not the oracle. Where the spec is silent, we document our interpretation; where Asciidoctor diverges from the spec, we follow the spec and record the divergence.
+- **Now:** integration fixtures under `tests/fixtures/` — 20 `.adoc` inputs each driving a structural assertion through the full pipeline (parser + HTML5). These pin the v1 feature set during development.
+- **Next:** a **conformance suite** under `tests/conformance/` — one `.adoc` input plus expected AST (JSON, snapshotted with `insta`) and expected HTML5 output per feature, derived from the spec's normative examples where available.
+- Asciidoctor's behavior is a sanity check, not the oracle. Where the spec is silent, document the interpretation; where Asciidoctor diverges from the spec, follow the spec and record the divergence.
+
+The fixture set bootstraps confidence and gets retired as the conformance suite grows.
 
 ## CLI surface (v1)
 
@@ -107,22 +134,74 @@ Options:
 
 Exit codes: `0` success, `1` usage error, `2` parse/convert error, `3` I/O error.
 
-## Phasing
+Status: flags are parsed and the happy path renders to file or stdout. The following are accepted but not yet honoured by the pipeline:
 
-1. **Skeleton** — workspace scaffold, CLI reads a file and emits a `<body>`-wrapped paragraph. End-to-end pipeline shape proven.
-2. **Block parser** — paragraphs, sections, lists (ordered/unordered/description), delimited blocks (listing, literal, example, quote, sidebar, passthrough, open), tables.
-3. **Inline parser** — all quote forms, attribute references, cross-references, inline macros, passthroughs.
-4. **Preprocessor** — include directives, conditional directives, attribute entries.
-5. **HTML5 converter** — passes the conformance corpus.
-6. **Stdio extension model** — `--emit-ast` / `--from-ast` stabilized, documented.
-7. **Additional backends** — DocBook, man page.
+- `--emit-ast` / `--from-ast` — the binary always parses from disk and always renders.
+- `--safe-mode` — parsed; no enforcement applied.
+- Multiple input files — accepted; only the first is processed.
 
-## Dependencies (initial)
+## Implementation status
 
+The original phasing assumed a strict left-to-right walk; in practice the block parser, inline parser, and HTML5 converter were built in parallel against a fixture suite, and the preprocessor was deferred. Current state:
+
+| Area | Status |
+|---|---|
+| Workspace skeleton, CLI shell, end-to-end pipeline | done |
+| Block parser: paragraphs, sections (levels 1–5), ordered/unordered/description lists with depth and `+` continuation, all seven delimited styles, simple tables | done |
+| Inline parser: constrained + unconstrained quotes (strong/em/mono), attribute references, `link:`/`mailto:`/`xref:`/`image:` macros, http/https/ftp autolinks, shorthand `<<xref>>`, eight character replacements, hard line break (` +`) | done |
+| Header parser: title, multiple authors with optional emails, revision (`vN, date: remark`), leading/trailing attribute entries | done |
+| HTML5 converter: every current AST node renders; document title, authors, revision in `<header>`; debug `<!-- attributes: ... -->` trailer | done |
+| Stylesheet resolution (five modes) and `:copycss:` | done |
+| Preprocessor: line splitter only — no `include::`, no conditionals, no attribute resolution at line level | **not started** |
+| Block attribute lines (`[source,rust]`, `[NOTE]`, `[#id.role%opt]`, `[quote, author, source]`) and block titles (`.Title`) | **not started** |
+| Section IDs — auto-generated from titles or via `[[anchor]]` / `[#id]` | **not started** (every `Section.id` is `None`, so xrefs are always dangling) |
+| Admonition blocks and admonition paragraphs | **not started** |
+| Source blocks with language attribute (callouts, syntax-highlighter hint) | **not started** |
+| Tables: column specs (`cols=`), header rows, cell formatters (`a\|`, `m\|`, `s\|`, `e\|`, `l\|`, `h\|`), `psv`/`csv`/`dsv` separators | **not started** (every row is a body row of plain inline cells) |
+| Inline subscript/superscript/highlight (`~x~`, `^x^`, `#x#`), inline passthroughs (`+text+`, `pass:[]`), inline footnotes, inline anchors, bibliography entries | **not started** |
+| TOC generation, discrete headings, `sectnums`/`sectanchors` honoured | **not started** |
+| `doctype` (article/book/manpage/inline) influencing output | **not started** |
+| `--emit-ast` / `--from-ast` wiring in `adoc-cli` | **not started** |
+| Real `miette::Diagnostic` errors with span pointers (locations exist; error types don't carry them yet) | **not started** |
+| Conformance suite under `tests/conformance/` (expected AST + HTML5 per spec example) | **not started** — `tests/fixtures/` covers the v1 surface in the meantime |
+
+## AST gaps
+
+The current `adoc-core` types cover what the parser produces. Several spec constructs need new node shapes (or new fields) before the parser can emit them:
+
+- `Block` needs an `Admonition` variant (or a per-block `style`/`attributes` envelope) carrying `note` / `tip` / `important` / `warning` / `caution`.
+- `Section`, `Paragraph`, and `DelimitedBlock` need attached **block metadata**: optional title, role list, options, explicit ID, named attributes (`source`, `language`, `cols`, `quote.attribution`, etc.). The cleanest move is a `BlockMeta` struct shared across block variants rather than per-variant fields.
+- `Table` needs column specs, a separator kind, and per-cell `format`/`halign`/`valign`/`colspan`/`rowspan`. Header/footer row distinction belongs at the table level, not the row level.
+- `Inline` needs `Subscript`, `Superscript`, `Highlight`, `Footnote`, `Anchor`, `IndexTerm`, and a `Passthrough` variant for `pass:[]` content. `Inline::RawHtml` exists but is currently unreachable — it'll absorb `pass:c[]` once that lands.
+- Cross-reference resolution needs a doc-wide ID registry built after parse, before convert. The registry's home is `adoc-core` (so `Converter` impls can consult it), but populating it is a parser pass.
+
+## CLI / pipeline gaps
+
+- `--emit-ast` should emit `serde_json::to_string_pretty(&doc)` and exit before the converter runs. `--from-ast` should bypass the preprocessor and parser entirely and `serde_json::from_reader(stdin)`.
+- Multi-input handling: either iterate (one output per input) or document that only the first input is processed and reject the rest at parse time.
+- Safe modes need a real implementation: `unsafe` permits arbitrary include paths; `safe` rejects absolute paths; `server` additionally rejects `..`; `secure` disables `include::` and any macro that touches the filesystem.
+
+## Phasing (revised)
+
+1. ~~**Skeleton** — workspace scaffold, CLI reads a file and emits a `<body>`-wrapped paragraph.~~ ✓
+2. ~~**Block parser** — paragraphs, sections, lists, delimited blocks, basic tables.~~ ✓
+3. ~~**Inline parser** — quotes, attribute references, cross-references, inline macros, replacements, line breaks.~~ ✓
+4. **Block metadata + section IDs** — parse `[attr]` lines and `.Title` lines, attach to the following block; auto-generate section IDs and resolve xref targets. Unblocks admonitions, source blocks, table column specs, and meaningful xref output. *Next.*
+5. **Preprocessor** — `include::` resolution with the include chain wired into `Location`, `ifdef`/`ifndef`/`ifeval`/`endif`, attribute entries pulled out of the parser.
+6. **HTML5 conformance** — match the spec's expected output for the conformance corpus: TOC, section anchors, admonition markup, source-block markup with language class, full table model. Stand up `tests/conformance/`.
+7. **Diagnostics polish** — `miette::Diagnostic` for `ParseError`/`PreprocessError`/`ConvertError` with span pointers; promote warnings (dangling xref, unknown attribute reference) into the diagnostic stream.
+8. **Stdio extension model** — implement `--emit-ast` / `--from-ast`; freeze and document the JSON schema; ship a trivial example filter.
+9. **Additional backends** — DocBook, man page.
+
+## Dependencies
+
+In use:
 - `clap` (derive) — CLI parsing
 - `miette` + `thiserror` — diagnostics and errors
 - `serde` + `serde_json` — AST serialization
 - `camino` — UTF-8 path handling
-- `unicode-segmentation` — grapheme/column accounting
-- `tracing` — structured logging
-- Dev: `insta` — snapshot testing for the conformance suite
+- `unicode-segmentation` — grapheme/column accounting (added; not yet used in column reporting)
+- `tracing` + `tracing-subscriber` — structured logging
+- Dev: `insta` — snapshot testing, queued for the conformance suite
+
+No new dependencies are anticipated for phases 4–7. Phase 8's extension model may pull in `jsonschema` for AST validation at the `--from-ast` boundary.
