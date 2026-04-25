@@ -203,11 +203,52 @@ pub struct Table {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TableRow {
     pub cells: Vec<TableCell>,
+    #[serde(default, skip_serializing_if = "RowKind::is_default")]
+    pub kind: RowKind,
+}
+
+/// Whether a row is part of the table header, body, or footer. Body is
+/// the default; header is set by the `[%header]` option or the
+/// "first-row-then-blank-line" heuristic. Footer is reserved for `[%footer]`
+/// (parser support pending).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RowKind {
+    Header,
+    #[default]
+    Body,
+    Footer,
+}
+
+impl RowKind {
+    pub fn is_default(&self) -> bool {
+        matches!(self, RowKind::Body)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TableCell {
     pub inlines: Vec<Inline>,
+    /// Style override from a cell-formatter prefix (`a|`, `m|`, etc.).
+    /// `None` means default rendering — plain inline content in a `<td>`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<CellStyle>,
+}
+
+/// Cell style from a formatter prefix on the `|` cell separator.
+///
+/// `AsciiDoc` cells re-parse their content as nested AsciiDoc blocks; the
+/// parser does not yet honour that — `a|` cells currently degrade to
+/// default style. `Header` forces `<th>` regardless of row kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CellStyle {
+    AsciiDoc,
+    Monospace,
+    Strong,
+    Emphasis,
+    Header,
+    Literal,
 }
 
 /// Inline content node.

@@ -204,9 +204,18 @@ th, td {
   text-align: left;
   vertical-align: top;
 }
-tr:first-child td {
+th {
   background: var(--adoc-table-header-bg);
   font-weight: 600;
+}
+/* Literal cells preserve whitespace and use the same code background as
+   inline <code>. */
+td > pre, th > pre {
+  margin: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--adoc-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 0.9em;
 }
 
 /* Images */

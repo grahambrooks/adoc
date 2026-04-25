@@ -1,0 +1,26 @@
+= Tables: Headers and Cell Formatters
+
+== Inferred header (blank line after first row)
+
+|===
+| Name | Role | Location
+
+| Alice | Engineer | Remote
+| Bob | Designer | Office
+|===
+
+== Explicit header via [%header]
+
+[%header]
+|===
+| Item | Price | Stock
+| Apple | 1 | 12
+| Pear | 2 | 7
+|===
+
+== Cell formatters
+
+|===
+| plain s| strong cell e| emphasised cell
+| also plain m| monospace text l| literal *not strong* h| forced th in body row
+|===

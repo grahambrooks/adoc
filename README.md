@@ -94,6 +94,7 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
   adoc --emit-ast doc.adoc | jq … | adoc --from-ast -o out.html
   ```
   Variants are internally tagged: `{"kind": "text", "value": "hi"}`, `{"kind": "section", "level": 1, "title": [...], …}`, etc. Unit variants serialize as `{"kind": "line_break"}`.
+- Tables — `<thead>`/`<tbody>` split, header rows detected via `[%header]` / `options="header"` or the spec's blank-line-after-first-row heuristic; cell formatters `m|` (monospace), `s|` (strong), `e|` (emphasis), `l|` (literal `<pre>`), and `h|` (forced `<th>` even in body rows).
 
 ## What's missing
 
@@ -104,7 +105,7 @@ The big-ticket items, in roughly the order they're queued:
 - **Doc-wide ID registry + xref validation** — section IDs land on the AST nodes today, but there's no centralised registry yet, so dangling xrefs render silently (the `<a href>` is emitted but the target doesn't exist). Validation belongs with the diagnostics work.
 - **Built-in syntax highlighting** — we ship the `language-LANG` class only; no Rouge/Pygments/Prism integration. Ship of choice is BYO highlighter via a custom stylesheet.
 - **Source-block callouts** — `<1>` / `<2>` markers and matching colist sibling block.
-- **Full tables** — `cols=`, header rows, cell formatters (`a`, `m`, `s`, `e`, `l`, `h`), CSV/DSV separators.
+- **Tables — remaining bits**: `cols=` widths/alignments, cell span/repeat (`2|`, `2.3|`), CSV/DSV separators, `a|` AsciiDoc cells (which require recursive block parsing of cell content).
 - **Inline anchors** (`anchor:id[]`), bibliography entries (`[[[id]]]`), and the numbered end-of-doc footnote section.
 - **TOC, discrete headings, `sectnums`, `sectanchors`.**
 - **`--emit-ast` / `--from-ast`** wiring for the stdio extension model.

@@ -5,9 +5,9 @@
 //! blocks is resolved immediately using the accumulated attribute context.
 
 use crate::ast::{
-    Attributes, Block, BlockMeta, DelimitedBlock, DelimitedContent, DelimitedStyle,
+    Attributes, Block, BlockMeta, CellStyle, DelimitedBlock, DelimitedContent, DelimitedStyle,
     DescriptionList, DescriptionListItem, Inline, List, ListItem, ListMarker, Location, Paragraph,
-    Section, Table, TableCell, TableRow,
+    RowKind, Section, Table, TableCell, TableRow,
 };
 
 use super::cursor::Cursor;
@@ -519,7 +519,7 @@ fn parse_table(cursor: &mut Cursor, attrs: &Attributes, meta: BlockMeta) -> Tabl
         lines.push(line.text.clone());
         cursor.advance();
     }
-    let rows = parse_table_rows(&lines, attrs);
+    let rows = parse_table_rows(&lines, attrs, &meta);
     Table {
         rows,
         location,
@@ -527,31 +527,70 @@ fn parse_table(cursor: &mut Cursor, attrs: &Attributes, meta: BlockMeta) -> Tabl
     }
 }
 
-fn parse_table_rows(lines: &[String], attrs: &Attributes) -> Vec<TableRow> {
-    let mut rows: Vec<TableRow> = Vec::new();
+fn parse_table_rows(lines: &[String], attrs: &Attributes, meta: &BlockMeta) -> Vec<TableRow> {
+    // Track which rows are immediately followed by a blank line — used by
+    // the spec's "first-row-then-blank-line" header heuristic.
+    let mut rows: Vec<(TableRow, bool)> = Vec::new();
     for raw in lines {
         let trimmed = raw.trim();
         if trimmed.is_empty() {
+            if let Some(last) = rows.last_mut() {
+                last.1 = true;
+            }
             continue;
         }
-        // A row line starts with `|`; split on ` | ` boundaries.
+        // A row line starts with `|`; cells follow.
         if let Some(rest) = trimmed.strip_prefix('|') {
             let cells: Vec<TableCell> = split_table_cells(rest)
                 .into_iter()
-                .map(|src| TableCell {
-                    inlines: inline::parse(src.trim(), attrs, Subs::NORMAL),
-                })
+                .map(|(style, src)| build_cell(style, src.trim(), attrs))
                 .collect();
-            rows.push(TableRow { cells });
+            rows.push((
+                TableRow {
+                    cells,
+                    kind: RowKind::Body,
+                },
+                false,
+            ));
         }
     }
-    rows
+
+    // Header inference: explicit via [%header] / options=header, OR via the
+    // blank-line-after-first-row heuristic.
+    let explicit_header = meta.options.iter().any(|o| o == "header")
+        || meta
+            .named
+            .get("options")
+            .map(|s| s.split(',').any(|p| p.trim() == "header"))
+            .unwrap_or(false);
+    let inferred_header = rows.len() >= 2 && rows[0].1;
+    if explicit_header || inferred_header {
+        if let Some(first) = rows.first_mut() {
+            first.0.kind = RowKind::Header;
+        }
+    }
+
+    rows.into_iter().map(|(row, _)| row).collect()
 }
 
-fn split_table_cells(row: &str) -> Vec<String> {
-    // Split on unescaped `|`. Does not yet honour cell specs (a|, m|, etc.).
-    let mut cells: Vec<String> = Vec::new();
+fn build_cell(style: Option<CellStyle>, src: &str, attrs: &Attributes) -> TableCell {
+    let inlines = match style {
+        // Literal cells: verbatim text, no inline subs.
+        Some(CellStyle::Literal) => vec![Inline::Text {
+            value: src.to_string(),
+        }],
+        _ => inline::parse(src, attrs, Subs::NORMAL),
+    };
+    TableCell { inlines, style }
+}
+
+fn split_table_cells(row: &str) -> Vec<(Option<CellStyle>, String)> {
+    // Split on unescaped `|`, peeling off any cell-formatter prefix glued
+    // to the `|` that opens each cell. The formatter applies to the *next*
+    // cell, not the one whose content it sits inside.
+    let mut cells: Vec<(Option<CellStyle>, String)> = Vec::new();
     let mut current = String::new();
+    let mut next_style: Option<CellStyle> = None;
     let mut escape = false;
     for ch in row.chars() {
         if escape {
@@ -564,13 +603,49 @@ fn split_table_cells(row: &str) -> Vec<String> {
             continue;
         }
         if ch == '|' {
-            cells.push(std::mem::take(&mut current));
+            // The formatter (if any) sits on the tail of `current`,
+            // immediately before the `|` we just hit. Peel it off and
+            // hand it to the next cell.
+            let extracted = peel_trailing_formatter(&mut current);
+            cells.push((next_style, std::mem::take(&mut current)));
+            next_style = extracted;
             continue;
         }
         current.push(ch);
     }
-    cells.push(current);
+    cells.push((next_style, current));
     cells
+}
+
+/// If `s` ends with `<ws><formatter>` (or `<formatter>` at start of `s`),
+/// strip the formatter letter and return the corresponding [`CellStyle`].
+fn peel_trailing_formatter(s: &mut String) -> Option<CellStyle> {
+    let trimmed = s.trim_end();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let last = trimmed.chars().last()?;
+    let style = match last {
+        'a' => CellStyle::AsciiDoc,
+        'm' => CellStyle::Monospace,
+        's' => CellStyle::Strong,
+        'e' => CellStyle::Emphasis,
+        'h' => CellStyle::Header,
+        'l' => CellStyle::Literal,
+        _ => return None,
+    };
+    let before = &trimmed[..trimmed.len() - 1];
+    let preceded_by_ws = before.is_empty()
+        || before
+            .chars()
+            .last()
+            .map(|c| c.is_whitespace())
+            .unwrap_or(true);
+    if !preceded_by_ws {
+        return None;
+    }
+    s.truncate(before.len());
+    Some(style)
 }
 
 // Re-export for crate root use.

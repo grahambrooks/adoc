@@ -370,6 +370,80 @@ fn preprocessor_conditionals_and_include() {
 }
 
 #[test]
+fn tables_header_inference_and_cell_formatters() {
+    let (doc, html) = render("28_tables_header_formatters.adoc");
+
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    let tables: Vec<&adoc::ast::Table> = doc
+        .blocks
+        .iter()
+        .flat_map(|b| match b {
+            Block::Section(s) => s
+                .blocks
+                .iter()
+                .filter_map(|b| match b {
+                    Block::Table(t) => Some(t),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+            _ => Vec::new(),
+        })
+        .collect();
+    assert_eq!(tables.len(), 3, "expected 3 tables, got {}", tables.len());
+
+    // Inferred header (blank line after first row).
+    assert_eq!(tables[0].rows[0].kind, adoc::ast::RowKind::Header);
+    for row in &tables[0].rows[1..] {
+        assert_eq!(row.kind, adoc::ast::RowKind::Body);
+    }
+
+    // Explicit [%header].
+    assert_eq!(tables[1].rows[0].kind, adoc::ast::RowKind::Header);
+
+    // Cell formatters captured on cell.style.
+    let formatters = &tables[2];
+    // Row 0: cells[0] plain, cells[1] s|, cells[2] e|.
+    assert_eq!(formatters.rows[0].cells[0].style, None);
+    assert_eq!(
+        formatters.rows[0].cells[1].style,
+        Some(adoc::ast::CellStyle::Strong)
+    );
+    assert_eq!(
+        formatters.rows[0].cells[2].style,
+        Some(adoc::ast::CellStyle::Emphasis)
+    );
+    // Row 1: cells[0] plain, cells[1] m|, cells[2] l|, cells[3] h|.
+    assert_eq!(
+        formatters.rows[1].cells[1].style,
+        Some(adoc::ast::CellStyle::Monospace)
+    );
+    assert_eq!(
+        formatters.rows[1].cells[2].style,
+        Some(adoc::ast::CellStyle::Literal)
+    );
+    assert_eq!(
+        formatters.rows[1].cells[3].style,
+        Some(adoc::ast::CellStyle::Header)
+    );
+
+    // HTML carries <thead>/<tbody> for headered tables.
+    assert!(body.matches("<thead>").count() >= 2);
+    assert!(body.contains("<tbody>"));
+
+    // Cell-formatter rendering.
+    assert!(body.contains("<td><strong>strong cell</strong></td>"));
+    assert!(body.contains("<td><em>emphasised cell</em></td>"));
+    assert!(body.contains("<td><code>monospace text</code></td>"));
+    // Literal cells keep their stars literal (no <strong>) and wrap in <pre>.
+    assert!(body.contains("<td><pre>literal *not strong*</pre></td>"));
+    // h| in a body row forces <th>.
+    assert!(body.contains("<th>forced th in body row</th>"));
+}
+
+#[test]
 fn ast_roundtrips_through_serde_json() {
     // For every existing fixture, render → JSON → parse-back → render, and
     // assert the two HTML outputs are byte-identical. This pins the AST
@@ -390,6 +464,7 @@ fn ast_roundtrips_through_serde_json() {
         "25_admonitions_source.adoc",
         "26_inline_extras.adoc",
         "27_toc_sectnums.adoc",
+        "28_tables_header_formatters.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);

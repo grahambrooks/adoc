@@ -8,8 +8,9 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use crate::ast::{
-    AttributeValue, Block, BlockMeta, ConvertError, Converter, DelimitedContent, DelimitedStyle,
-    DescriptionList, Document, Inline, List, ListMarker, Paragraph, Section, Table,
+    AttributeValue, Block, BlockMeta, CellStyle, ConvertError, Converter, DelimitedContent,
+    DelimitedStyle, DescriptionList, Document, Inline, List, ListMarker, Paragraph, RowKind,
+    Section, Table, TableCell,
 };
 
 /// The built-in default stylesheet, compiled into the binary.
@@ -549,16 +550,68 @@ fn render_table(out: &mut String, t: &Table) -> Result<(), ConvertError> {
     render_block_title(out, &t.meta);
     writeln!(out, "<table{}>", meta_attrs(&t.meta))
         .map_err(|e| ConvertError::Message(e.to_string()))?;
-    for row in &t.rows {
-        out.push_str("<tr>");
-        for cell in &row.cells {
-            write!(out, "<td>{}</td>", render_inlines(&cell.inlines))
-                .map_err(|e| ConvertError::Message(e.to_string()))?;
+
+    // Group rows by kind so we can emit <thead>/<tbody>/<tfoot> sections.
+    let mut i = 0;
+    while i < t.rows.len() {
+        let kind = t.rows[i].kind;
+        let mut j = i;
+        while j < t.rows.len() && t.rows[j].kind == kind {
+            j += 1;
         }
-        out.push_str("</tr>\n");
+        let (open, close) = match kind {
+            RowKind::Header => ("<thead>\n", "</thead>\n"),
+            RowKind::Body => ("<tbody>\n", "</tbody>\n"),
+            RowKind::Footer => ("<tfoot>\n", "</tfoot>\n"),
+        };
+        out.push_str(open);
+        for row in &t.rows[i..j] {
+            out.push_str("<tr>");
+            for cell in &row.cells {
+                render_table_cell(out, cell, kind)?;
+            }
+            out.push_str("</tr>\n");
+        }
+        out.push_str(close);
+        i = j;
     }
+
     out.push_str("</table>\n");
     Ok(())
+}
+
+fn render_table_cell(
+    out: &mut String,
+    cell: &TableCell,
+    row_kind: RowKind,
+) -> Result<(), ConvertError> {
+    // Forced header style or header rows always use <th>.
+    let force_th = matches!(cell.style, Some(CellStyle::Header)) || row_kind == RowKind::Header;
+    let tag = if force_th { "th" } else { "td" };
+
+    let body = match cell.style {
+        // Effective `cell.style` is dispatched here. Header rows lose the
+        // wrapping (the <th> already conveys the role).
+        Some(CellStyle::Monospace) if !force_th => {
+            format!("<code>{}</code>", render_inlines(&cell.inlines))
+        }
+        Some(CellStyle::Strong) if !force_th => {
+            format!("<strong>{}</strong>", render_inlines(&cell.inlines))
+        }
+        Some(CellStyle::Emphasis) if !force_th => {
+            format!("<em>{}</em>", render_inlines(&cell.inlines))
+        }
+        Some(CellStyle::Literal) => {
+            // Literal cells: <pre>-wrapped, content already verbatim text.
+            let plain = inlines_to_plain(&cell.inlines);
+            format!("<pre>{}</pre>", escape(&plain))
+        }
+        // AsciiDoc cells are accepted in the AST but not yet recursively
+        // parsed; treat as default for now.
+        _ => render_inlines(&cell.inlines),
+    };
+
+    write!(out, "<{tag}>{body}</{tag}>").map_err(|e| ConvertError::Message(e.to_string()))
 }
 
 // --- block metadata rendering ---------------------------------------------

@@ -183,7 +183,7 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 The current `adoc::ast` types cover what the parser produces. Several spec constructs need new node shapes (or new fields) before the parser can emit them:
 
 - `Block` needs an `Admonition` variant (or a derived view over `BlockMeta::style`) carrying `note` / `tip` / `important` / `warning` / `caution`. The metadata is already captured (`meta.style = Some("NOTE")`); the next bullet just needs to render it as an admonition.
-- `Table` needs column specs, a separator kind, and per-cell `format`/`halign`/`valign`/`colspan`/`rowspan`. Header/footer row distinction belongs at the table level, not the row level. (`BlockMeta::named` already carries `cols=`, so the wiring exists.)
+- `Table` has per-row `kind` (Header/Body/Footer) and per-cell `style` (AsciiDoc/Monospace/Strong/Emphasis/Header/Literal). Still missing: column specs (widths/alignments) and per-cell span/repeat for `colspan`/`rowspan`. (`BlockMeta::named` already carries `cols=`, so the wiring exists when we go to read it.)
 - `Inline` has `Subscript`, `Superscript`, `Highlight`, `Footnote`, and `Passthrough`. Still missing: `Anchor` (for `anchor:id[]`), `IndexTerm`, and bibliography entries (`[[[id]]]`). `Inline::RawHtml` is reached today via `pass:[]`.
 - Cross-reference resolution needs a doc-wide ID registry built after parse, before convert. The registry's home is `adoc::ast` (so `Converter` impls can consult it), but populating it is a parser pass.
 
