@@ -558,11 +558,17 @@ fn render_delimited(
     let a = meta_attrs(&d.meta);
     match (&d.style, &d.content) {
         (DelimitedStyle::Listing, DelimitedContent::Raw { text }) => {
-            // `[source,LANG]` adds a `language-LANG` class on the <code>.
+            // `[source,LANG]` adds a `language-LANG` class on the <code>
+            // and a matching `data-lang="LANG"` on the <pre> so the default
+            // stylesheet can surface the language as a corner pill.
             let code_class = source_language_class(&d.meta);
+            let pre_lang_attr = source_language_data_attr(&d.meta);
             let body = substitute_conums(&escape(text));
-            writeln!(out, "<pre{a}><code{code_class}>{body}</code></pre>")
-                .map_err(|e| ConvertError::Message(e.to_string()))
+            writeln!(
+                out,
+                "<pre{a}{pre_lang_attr}><code{code_class}>{body}</code></pre>"
+            )
+            .map_err(|e| ConvertError::Message(e.to_string()))
         }
         (DelimitedStyle::Literal, DelimitedContent::Raw { text }) => {
             let body = substitute_conums(&escape(text));
@@ -899,17 +905,32 @@ fn render_admonition_block(
 /// `[source,rust]` on a listing block becomes ` class="language-rust"` on
 /// the inner `<code>`. Returns an empty string if no language is set.
 fn source_language_class(meta: &BlockMeta) -> String {
-    if meta.style.as_deref() != Some("source") {
-        return String::new();
-    }
-    let Some(lang) = meta.positional.first() else {
+    let Some(lang) = source_language(meta) else {
         return String::new();
     };
-    let lang = lang.trim();
-    if lang.is_empty() {
-        return String::new();
-    }
     format!(r#" class="language-{}""#, escape_attr(lang))
+}
+
+/// `[source,rust]` on a listing block becomes ` data-lang="rust"` on the
+/// outer `<pre>`. Lets the default stylesheet surface the language as a
+/// corner pill via `attr(data-lang)`.
+fn source_language_data_attr(meta: &BlockMeta) -> String {
+    let Some(lang) = source_language(meta) else {
+        return String::new();
+    };
+    format!(r#" data-lang="{}""#, escape_attr(lang))
+}
+
+fn source_language(meta: &BlockMeta) -> Option<&str> {
+    if meta.style.as_deref() != Some("source") {
+        return None;
+    }
+    let lang = meta.positional.first()?.trim();
+    if lang.is_empty() {
+        None
+    } else {
+        Some(lang)
+    }
 }
 
 // --- inline rendering ------------------------------------------------------

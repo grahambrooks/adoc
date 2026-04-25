@@ -10,52 +10,113 @@
  * Theming uses CSS custom properties resolved with `light-dark()` gated on
  * `color-scheme: light dark`. Browsers honour `prefers-color-scheme` out of
  * the box; explicit override via `<html data-theme="light|dark">`.
+ *
+ * The custom-property names below are the public interface — user
+ * stylesheets can re-declare any of them to retheme the output without
+ * touching the structural rules.
  */
 
 :root {
   color-scheme: light dark;
 
+  /* --- Surfaces & ink ----------------------------------------------- */
   --adoc-bg:              light-dark(#ffffff, #0d1117);
+  --adoc-bg-soft:         light-dark(#fafbfc, #11161d);
   --adoc-fg:              light-dark(#1f2328, #e6edf3);
   --adoc-muted:           light-dark(#57606a, #8b949e);
+  --adoc-faint:           light-dark(#8c959f, #6e7681);
+
+  /* --- Accents ------------------------------------------------------ */
   --adoc-accent:          light-dark(#0969da, #4493f8);
   --adoc-accent-hover:    light-dark(#0860c7, #79b8ff);
-  --adoc-border:          light-dark(#d0d7de, #30363d);
+  --adoc-accent-soft:     color-mix(in oklab, var(--adoc-accent) 12%, transparent);
+
+  /* --- Lines & dividers --------------------------------------------- */
+  --adoc-border:          light-dark(#d8dee4, #30363d);
+  --adoc-border-soft:     light-dark(#eaeef2, #21262d);
+
+  /* --- Code & blocks ------------------------------------------------ */
   --adoc-code-bg:         light-dark(#f6f8fa, #161b22);
   --adoc-code-fg:         light-dark(#1f2328, #e6edf3);
   --adoc-example-bg:      light-dark(#f6f8fa, #161b22);
-  --adoc-aside-bg:        light-dark(#fff8dc, #1f1b00);
-  --adoc-aside-border:    light-dark(#d1a72c, #a07b00);
-  --adoc-quote-border:    light-dark(#d0d7de, #30363d);
+
+  /* --- Sidebar / aside (neutral, not yellow) ------------------------ */
+  --adoc-aside-bg:        light-dark(#f6f8fa, #161b22);
+  --adoc-aside-border:    light-dark(#d8dee4, #30363d);
+
+  /* --- Quote -------------------------------------------------------- */
+  --adoc-quote-border:    light-dark(#d8dee4, #30363d);
   --adoc-quote-fg:        light-dark(#57606a, #8b949e);
-  --adoc-table-border:    light-dark(#d0d7de, #30363d);
+
+  /* --- Tables ------------------------------------------------------- */
+  --adoc-table-border:    light-dark(#e1e4e8, #30363d);
   --adoc-table-header-bg: light-dark(#f6f8fa, #161b22);
-  --adoc-selection:       light-dark(#b6e3ff, #264f78);
+  --adoc-table-row-alt:   light-dark(#fafbfc, #11161d);
 
-  --adoc-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
-  --adoc-font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas,
-    "Liberation Mono", monospace;
+  /* --- Selection / focus ------------------------------------------- */
+  --adoc-selection:       color-mix(in oklab, var(--adoc-accent) 28%, transparent);
+  --adoc-focus-ring:      var(--adoc-accent);
 
+  /* --- Admonition accents (left-rule + tinted bg) ------------------ */
+  --adoc-note:            light-dark(#0969da, #58a6ff);
+  --adoc-tip:             light-dark(#1a7f37, #3fb950);
+  --adoc-important:       light-dark(#9a6700, #d29922);
+  --adoc-warning:         light-dark(#bc4c00, #db6d28);
+  --adoc-caution:         light-dark(#cf222e, #f85149);
+
+  /* --- Shadows ------------------------------------------------------ */
+  --adoc-shadow-sm: 0 1px 2px light-dark(rgb(31 35 40 / 0.06), rgb(0 0 0 / 0.4));
+  --adoc-shadow-md: 0 1px 3px light-dark(rgb(31 35 40 / 0.06), rgb(0 0 0 / 0.4)),
+                    0 4px 12px light-dark(rgb(31 35 40 / 0.04), rgb(0 0 0 / 0.3));
+
+  /* --- Type --------------------------------------------------------- */
+  --adoc-font-body:
+    "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  --adoc-font-mono:
+    "Geist Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Monaco,
+    Consolas, "Liberation Mono", monospace;
+
+  /* --- Layout ------------------------------------------------------- */
   --adoc-content-width: 48rem;
-  --adoc-radius: 6px;
+  --adoc-radius:        8px;
+  --adoc-radius-sm:     4px;
 }
 
 [data-theme="light"] { color-scheme: light; }
 [data-theme="dark"]  { color-scheme: dark;  }
 
+/* ---------------------------------------------------------------------
+ *  Reset / base
+ * ------------------------------------------------------------------ */
+
 *, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  tab-size: 4;
+}
 
 ::selection { background: var(--adoc-selection); }
 
+:focus-visible {
+  outline: 2px solid var(--adoc-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--adoc-radius-sm);
+}
+
 body {
   margin: 0;
-  padding: 2.5rem 1.25rem 4rem;
+  padding: 3rem 1.25rem 5rem;
   font-family: var(--adoc-font-body);
   font-size: 1rem;
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--adoc-fg);
   background: var(--adoc-bg);
+  font-feature-settings: "kern", "liga", "calt";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -66,16 +127,26 @@ body > * {
   margin-right: auto;
 }
 
-/* Document header */
+/* Long URLs and inline code shouldn't push the layout. */
+p, li, dd, blockquote, .footnote {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ---------------------------------------------------------------------
+ *  Document header
+ * ------------------------------------------------------------------ */
+
 body > header {
-  border-bottom: 1px solid var(--adoc-border);
-  padding-bottom: 1rem;
-  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--adoc-border-soft);
+  padding-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
 }
 body > header h1 {
-  font-size: 2.25rem;
-  line-height: 1.2;
+  font-size: clamp(1.875rem, 1.4rem + 1.5vw, 2.5rem);
+  line-height: 1.15;
   margin: 0 0 0.5rem;
+  letter-spacing: -0.015em;
 }
 .authors, .revision {
   color: var(--adoc-muted);
@@ -83,262 +154,407 @@ body > header h1 {
   font-size: 0.95rem;
 }
 
-/* Headings */
+/* ---------------------------------------------------------------------
+ *  Headings
+ * ------------------------------------------------------------------ */
+
 h1, h2, h3, h4, h5, h6 {
   line-height: 1.25;
-  margin-top: 2em;
-  margin-bottom: 0.5em;
+  margin-top: 2.25em;
+  margin-bottom: 0.6em;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  scroll-margin-top: 4rem;
 }
-h1 { font-size: 2rem; }
+h1 { font-size: 2rem; letter-spacing: -0.02em; }
 h2 {
   font-size: 1.5rem;
-  border-bottom: 1px solid var(--adoc-border);
-  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--adoc-border-soft);
+  padding-bottom: 0.35em;
 }
 h3 { font-size: 1.25rem; }
 h4 { font-size: 1.05rem; }
 h5 { font-size: 1rem; }
-h6 { font-size: 0.9rem; color: var(--adoc-muted); }
+h6 { font-size: 0.9rem; color: var(--adoc-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 
 /* Sections inherit content width from body > *; nested sections flow inline. */
 section > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 1.5em; }
 
-/* Paragraphs */
-p { margin: 0 0 1em; }
+/* ---------------------------------------------------------------------
+ *  Paragraphs & inline
+ * ------------------------------------------------------------------ */
 
-/* Links */
+p {
+  margin: 0 0 1em;
+  /* Progressive enhancement: keeps line-end orphans tidy in modern browsers. */
+  text-wrap: pretty;
+}
+
 a {
   color: var(--adoc-accent);
   text-decoration: underline;
-  text-underline-offset: 0.2em;
-  text-decoration-thickness: 0.05em;
-  transition: color 120ms ease;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 0.06em;
+  transition: color 120ms ease, text-decoration-thickness 120ms ease;
 }
 a:hover {
   color: var(--adoc-accent-hover);
-  text-decoration-thickness: 0.1em;
+  text-decoration-thickness: 0.12em;
 }
 
-/* Inline emphasis */
-strong { font-weight: 600; }
+strong { font-weight: 650; }
 em     { font-style: italic; }
+small  { font-size: 0.875em; }
 
-/* Lists */
+/* ---------------------------------------------------------------------
+ *  Lists
+ * ------------------------------------------------------------------ */
+
 ul, ol { padding-left: 1.5em; margin: 0 0 1em; }
-li     { margin: 0.2em 0; }
+li     { margin: 0.25em 0; }
 li > :is(ul, ol) { margin: 0.3em 0 0; }
+li::marker { color: var(--adoc-faint); }
 
-/* Description list */
 dl { margin: 0 0 1em; }
-dt { font-weight: 600; margin-top: 0.75em; }
+dt { font-weight: 600; margin-top: 0.85em; }
 dd { margin: 0.25em 0 0 1.5em; }
 dd > p:first-child { margin-top: 0; }
 
-/* Inline code */
-code {
+/* ---------------------------------------------------------------------
+ *  Code (inline + blocks)
+ * ------------------------------------------------------------------ */
+
+code, kbd, samp, var {
   font-family: var(--adoc-font-mono);
+  font-feature-settings: "calt" 0, "liga" 0;  /* keep ligatures off in code */
+}
+
+code {
   font-size: 0.9em;
   background: var(--adoc-code-bg);
   color: var(--adoc-code-fg);
-  padding: 0.15em 0.35em;
-  border-radius: var(--adoc-radius);
+  padding: 0.15em 0.4em;
+  border-radius: var(--adoc-radius-sm);
+  white-space: nowrap;
 }
 
-/* Code blocks */
+kbd {
+  display: inline-block;
+  padding: 0.1em 0.45em;
+  font-size: 0.85em;
+  border: 1px solid var(--adoc-border);
+  border-bottom-width: 2px;
+  border-radius: var(--adoc-radius-sm);
+  background: var(--adoc-bg-soft);
+  color: var(--adoc-fg);
+  vertical-align: 0.05em;
+}
+
 pre {
   font-family: var(--adoc-font-mono);
-  font-size: 0.9em;
+  font-size: 0.875em;
   background: var(--adoc-code-bg);
   color: var(--adoc-code-fg);
   padding: 1em 1.25em;
-  border: 1px solid var(--adoc-border);
+  border: 1px solid var(--adoc-border-soft);
   border-radius: var(--adoc-radius);
   overflow-x: auto;
-  line-height: 1.5;
-  margin: 0 0 1em;
+  line-height: 1.55;
+  margin: 0 0 1.25em;
+  box-shadow: var(--adoc-shadow-sm);
+  position: relative;
 }
 pre code {
   background: transparent;
   padding: 0;
   border-radius: 0;
   font-size: 1em;
+  white-space: inherit;
 }
 
-/* Blockquote */
+/* Source-block language label as a corner pill. Uses a content-style chip
+ * (not flow text) so it doesn't fight any client-side highlighter that
+ * decorates the same `<code>`. */
+pre:has(> code[class^="language-"])::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0.6em;
+  right: 0.85em;
+  font-size: 0.7em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--adoc-muted);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------
+ *  Block quote
+ * ------------------------------------------------------------------ */
+
 blockquote {
   border-left: 0.25em solid var(--adoc-quote-border);
-  margin: 0 0 1em;
-  padding: 0 1em;
+  margin: 0 0 1.25em;
+  padding: 0.25em 1.25em;
   color: var(--adoc-quote-fg);
+  font-style: italic;
 }
 blockquote > :first-child { margin-top: 0; }
 blockquote > :last-child  { margin-bottom: 0; }
+blockquote em { font-style: normal; }
 
-/* Example block */
+/* ---------------------------------------------------------------------
+ *  Containing blocks: example, sidebar, open
+ * ------------------------------------------------------------------ */
+
 .example {
   background: var(--adoc-example-bg);
-  border: 1px solid var(--adoc-border);
+  border: 1px solid var(--adoc-border-soft);
   border-radius: var(--adoc-radius);
   padding: 1em 1.25em;
-  margin: 0 0 1em;
+  margin: 0 0 1.25em;
+  box-shadow: var(--adoc-shadow-sm);
 }
 .example > :first-child { margin-top: 0; }
 .example > :last-child  { margin-bottom: 0; }
 
-/* Sidebar */
 aside {
   background: var(--adoc-aside-bg);
   border: 1px solid var(--adoc-aside-border);
-  border-left-width: 0.25em;
+  border-left: 4px solid var(--adoc-accent);
   border-radius: var(--adoc-radius);
   padding: 1em 1.25em;
-  margin: 0 0 1em;
+  margin: 0 0 1.25em;
+  box-shadow: var(--adoc-shadow-sm);
 }
 aside > :first-child { margin-top: 0; }
 aside > :last-child  { margin-bottom: 0; }
 
-/* Tables */
+/* Block titles (`.Title` lines). */
+.title {
+  font-weight: 600;
+  color: var(--adoc-fg);
+  margin: 1.25em 0 0.4em;
+  font-size: 0.95em;
+}
+
+/* ---------------------------------------------------------------------
+ *  Tables
+ * ------------------------------------------------------------------ */
+
 table {
   border-collapse: collapse;
   width: 100%;
-  margin: 0 0 1em;
+  margin: 0 0 1.25em;
   border: 1px solid var(--adoc-table-border);
+  border-radius: var(--adoc-radius);
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
 }
 th, td {
-  padding: 0.5em 0.75em;
-  border: 1px solid var(--adoc-table-border);
+  padding: 0.6em 0.85em;
+  border-bottom: 1px solid var(--adoc-table-border);
   text-align: left;
   vertical-align: top;
 }
+tbody tr:last-child > * { border-bottom: 0; }
 th {
   background: var(--adoc-table-header-bg);
   font-weight: 600;
+  font-size: 0.92em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--adoc-muted);
+  border-bottom: 1px solid var(--adoc-table-border);
 }
+tbody tr:nth-child(even) > td { background: var(--adoc-table-row-alt); }
+
 /* Literal cells preserve whitespace and use the same code background as
    inline <code>. */
 td > pre, th > pre {
   margin: 0;
   background: transparent;
   padding: 0;
-  font-family: var(--adoc-font-mono, ui-monospace, SFMono-Regular, monospace);
+  border: 0;
+  box-shadow: none;
   font-size: 0.9em;
 }
 
-/* Images */
+td.halign-left,   th.halign-left   { text-align: left; }
+td.halign-center, th.halign-center { text-align: center; }
+td.halign-right,  th.halign-right  { text-align: right; }
+
+/* ---------------------------------------------------------------------
+ *  Images & rule
+ * ------------------------------------------------------------------ */
+
 img {
   max-width: 100%;
   height: auto;
-  border-radius: var(--adoc-radius);
+  border-radius: var(--adoc-radius-sm);
 }
 
-/* Horizontal rule */
 hr {
   border: 0;
   border-top: 1px solid var(--adoc-border);
-  margin: 2em 0;
+  margin: 2.5em 0;
 }
 
-/* Admonitions */
+/* ---------------------------------------------------------------------
+ *  Admonitions
+ * ------------------------------------------------------------------ */
+
 .admonitionblock {
-  margin: 1.25em 0;
-  padding: 0.75em 1em;
-  border-left: 4px solid var(--adoc-border);
+  --admonition-color: var(--adoc-muted);
+  margin: 1.5em 0;
+  padding: 1em 1.25em 1em 2.75em;
+  position: relative;
+  border: 1px solid var(--adoc-border-soft);
+  border-left: 4px solid var(--admonition-color);
   border-radius: var(--adoc-radius);
-  background: light-dark(#f6f8fa, #161b22);
+  background: color-mix(in oklab, var(--admonition-color) 6%, var(--adoc-bg));
+  box-shadow: var(--adoc-shadow-sm);
 }
 .admonitionblock > .label,
 .admonitionblock > .title {
-  margin: 0 0 0.5em;
+  margin: 0 0 0.4em;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--admonition-color);
 }
 .admonitionblock > .content > :first-child { margin-top: 0; }
 .admonitionblock > .content > :last-child  { margin-bottom: 0; }
-.admonitionblock.note      { border-left-color: light-dark(#0969da, #58a6ff); }
-.admonitionblock.tip       { border-left-color: light-dark(#1a7f37, #3fb950); }
-.admonitionblock.important { border-left-color: light-dark(#9a6700, #d29922); }
-.admonitionblock.warning   { border-left-color: light-dark(#bc4c00, #db6d28); }
-.admonitionblock.caution   { border-left-color: light-dark(#cf222e, #f85149); }
-
-/* Source-block language hint. We don't ship a highlighter; this just
-   surfaces the language as a small label so downstream CSS / Prism /
-   Highlight.js can take over without conflict. */
-pre > code[class^="language-"]::before {
-  content: attr(class) " ";
-  display: block;
-  font-size: 0.75em;
-  color: var(--adoc-muted);
-  margin-bottom: 0.4em;
-  text-transform: lowercase;
+.admonitionblock::before {
+  content: "";
+  position: absolute;
+  left: 0.85em;
+  top: 1.05em;
+  width: 1.1em;
+  height: 1.1em;
+  background: var(--admonition-color);
+  -webkit-mask: var(--admonition-icon) center / contain no-repeat;
+          mask: var(--admonition-icon) center / contain no-repeat;
+}
+.admonitionblock.note      { --admonition-color: var(--adoc-note);
+  --admonition-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='black' d='M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 4.25a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 5.75Zm0 6.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z'/></svg>");
+}
+.admonitionblock.tip       { --admonition-color: var(--adoc-tip);
+  --admonition-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='black' d='M8 1a5 5 0 0 0-3 9v1.5a.5.5 0 0 0 .5.5h5a.5.5 0 0 0 .5-.5V10a5 5 0 0 0-3-9Zm-2 13a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3A.5.5 0 0 1 6 14Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z'/></svg>");
+}
+.admonitionblock.important { --admonition-color: var(--adoc-important);
+  --admonition-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='black' d='M8 .5a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-1 0V1A.5.5 0 0 1 8 .5Zm0 12a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z'/></svg>");
+}
+.admonitionblock.warning   { --admonition-color: var(--adoc-warning);
+  --admonition-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='black' d='M7.13 1.69a1 1 0 0 1 1.74 0l6.51 11.31A1 1 0 0 1 14.51 14.5h-13a1 1 0 0 1-.87-1.5L7.13 1.69ZM8 6a.75.75 0 0 0-.75.75v3.5a.75.75 0 0 0 1.5 0v-3.5A.75.75 0 0 0 8 6Zm0 6.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z'/></svg>");
+}
+.admonitionblock.caution   { --admonition-color: var(--adoc-caution);
+  --admonition-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='black' d='M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm-1.5 4a.75.75 0 0 1 1.06 0L8 6.94l.44-.44a.75.75 0 0 1 1.06 1.06L9.06 8l.44.44a.75.75 0 1 1-1.06 1.06L8 9.06l-.44.44A.75.75 0 0 1 6.5 8.44L6.94 8l-.44-.44a.75.75 0 0 1 0-1.06Z'/></svg>");
 }
 
-/* Table of Contents */
+/* ---------------------------------------------------------------------
+ *  Table of Contents
+ * ------------------------------------------------------------------ */
+
 #toc {
-  margin: 1.5em 0 2em;
+  margin: 2em 0 2.5em;
   padding: 1em 1.25em;
-  border-left: 3px solid var(--adoc-border);
+  border: 1px solid var(--adoc-border-soft);
   border-radius: var(--adoc-radius);
-  background: light-dark(#f6f8fa, #161b22);
+  background: var(--adoc-bg-soft);
+  font-size: 0.95em;
 }
 #toc .toc-title {
   font-weight: 600;
-  margin-bottom: 0.5em;
+  margin-bottom: 0.65em;
   color: var(--adoc-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 0.85em;
+  letter-spacing: 0.06em;
+  font-size: 0.78em;
 }
 #toc ul {
   list-style: none;
   padding-left: 0;
   margin: 0.25em 0;
 }
-#toc ul ul { padding-left: 1.25em; }
-#toc li { margin: 0.15em 0; }
-#toc a { color: var(--adoc-fg); }
-
-/* Section numbers and anchor links */
-.sectnum {
-  color: var(--adoc-muted);
-  margin-right: 0.4em;
-  font-variant-numeric: tabular-nums;
+#toc ul ul { padding-left: 1.25em; border-left: 1px solid var(--adoc-border-soft); margin-left: 0.4em; }
+#toc li { margin: 0.2em 0; }
+#toc a {
+  color: var(--adoc-fg);
+  text-decoration: none;
+  display: inline-block;
+  padding: 0.05em 0;
 }
-h1 > .anchor, h2 > .anchor, h3 > .anchor,
-h4 > .anchor, h5 > .anchor, h6 > .anchor {
+#toc a:hover { color: var(--adoc-accent); text-decoration: underline; }
+#toc .sectnum { color: var(--adoc-faint); }
+
+/* ---------------------------------------------------------------------
+ *  Section numbers & heading anchors
+ * ------------------------------------------------------------------ */
+
+.sectnum {
+  color: var(--adoc-faint);
+  margin-right: 0.5em;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+:is(h1, h2, h3, h4, h5, h6) > .anchor {
   display: inline-block;
   width: 0;
-  margin-left: -0.9em;
-  padding-right: 0.4em;
+  margin-left: -0.95em;
+  padding-right: 0.45em;
   text-decoration: none;
-  color: var(--adoc-muted);
+  color: var(--adoc-faint);
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s ease;
 }
-h1:hover > .anchor, h2:hover > .anchor, h3:hover > .anchor,
-h4:hover > .anchor, h5:hover > .anchor, h6:hover > .anchor {
-  opacity: 1;
-}
-h1 > .anchor::before, h2 > .anchor::before, h3 > .anchor::before,
-h4 > .anchor::before, h5 > .anchor::before, h6 > .anchor::before {
-  content: "#";
-}
+:is(h1, h2, h3, h4, h5, h6):hover > .anchor,
+:is(h1, h2, h3, h4, h5, h6):focus-within > .anchor { opacity: 1; }
+:is(h1, h2, h3, h4, h5, h6) > .anchor::before { content: "#"; }
 
-/* Inline highlighting */
+/* ---------------------------------------------------------------------
+ *  Source-block callouts
+ * ------------------------------------------------------------------ */
+
+.conum {
+  display: inline-block;
+  min-width: 1.25em;
+  height: 1.25em;
+  padding: 0 0.35em;
+  font-family: var(--adoc-font-mono);
+  font-size: 0.78em;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.25em;
+  color: light-dark(#ffffff, #0d1117);
+  background: var(--adoc-accent);
+  border-radius: 999px;
+  vertical-align: 0.05em;
+  user-select: none;
+}
+ol.colist {
+  margin: 0.5em 0 1.25em;
+  padding-left: 2em;
+  color: var(--adoc-fg);
+}
+ol.colist > li { margin: 0.3em 0; padding-left: 0.25em; }
+ol.colist > li::marker { color: var(--adoc-accent); font-weight: 600; }
+
+/* ---------------------------------------------------------------------
+ *  Inline highlight, sub/sup, footnote
+ * ------------------------------------------------------------------ */
+
 mark {
   background: light-dark(#fff8c5, #4d3800);
   color: inherit;
   padding: 0 0.2em;
   border-radius: 0.2em;
 }
-
-/* Subscript / superscript get a tiny size bump so they read cleanly */
 sub, sup { font-size: 0.78em; line-height: 0; }
 
-/* Inline footnote — surfaced as a parenthesised aside until we grow a
-   proper end-of-doc footnote section. */
 .footnote {
   font-size: 0.85em;
   color: var(--adoc-muted);
@@ -349,9 +565,48 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 .footnote::before { content: "["; }
 .footnote::after  { content: "]"; }
 
-/* Respect user motion preferences */
+/* ---------------------------------------------------------------------
+ *  Responsive
+ * ------------------------------------------------------------------ */
+
+@media (max-width: 600px) {
+  body { padding: 1.5rem 1rem 3rem; line-height: 1.6; }
+  body > header h1 { font-size: 1.75rem; }
+  pre { padding: 0.85em 1em; font-size: 0.825em; }
+  .admonitionblock { padding-left: 2.5em; }
+}
+
+/* ---------------------------------------------------------------------
+ *  Motion & print
+ * ------------------------------------------------------------------ */
+
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+@media print {
+  :root { color-scheme: light; }
+  body {
+    background: #fff;
+    color: #000;
+    padding: 0;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+  body > * { max-width: none; }
+  a { color: inherit; text-decoration: underline; }
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.85em; color: #555; }
+  pre, .example, aside, .admonitionblock, table, #toc {
+    box-shadow: none;
+    background: #fff !important;
+    border-color: #999 !important;
+    page-break-inside: avoid;
+  }
+  :is(h1, h2, h3, h4, h5, h6) { page-break-after: avoid; }
+  pre { white-space: pre-wrap; word-break: break-word; }
+  .anchor { display: none !important; }
+  #toc { border-style: dashed; }
 }
 </style>
 </head>

@@ -602,9 +602,10 @@ fn admonitions_paragraph_block_titled_and_source_language() {
         .count();
     assert!(inner_count >= 1, "expected a NOTE admonitionblock");
 
-    // Source listing with language → language-rust class.
-    assert!(body.contains(r#"<pre><code class="language-rust">fn main()"#));
-    // [source] without a language → plain <code>.
+    // Source listing with language → language-rust class on <code> and
+    // matching data-lang on <pre>.
+    assert!(body.contains(r#"<pre data-lang="rust"><code class="language-rust">fn main()"#));
+    // [source] without a language → plain <pre> and plain <code>.
     assert!(body.contains(r#"<pre><code>no language attribute here"#));
     // Plain listing (no [source]) → also plain <code>, untouched.
     assert!(body.contains(r#"<pre><code>plain listing"#));
