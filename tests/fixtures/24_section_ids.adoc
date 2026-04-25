@@ -1,0 +1,31 @@
+= Section IDs
+
+== Auto-generated
+
+Some content.
+
+== Hello, World!
+
+More content.
+
+== Auto-generated
+
+Another section with a duplicated title.
+
+[[explicit-anchor]]
+== Explicit via legacy anchor
+
+Anchored content.
+
+[#explicit-shorthand]
+== Explicit via shorthand
+
+Shorthand-anchored content.
+
+== Cross References
+
+Auto: xref:_auto_generated[first dup].
+Punctuation: xref:_hello_world[via punctuation].
+Dedup: xref:_auto_generated_2[second dup].
+Legacy: xref:explicit-anchor[legacy form].
+Shorthand: xref:explicit-shorthand[shorthand form].

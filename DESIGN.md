@@ -159,7 +159,8 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | `include::` arguments: `lines=` (ranges, open-ended, multiple), `tags=`/`tag=` (multi, with `!name` negation), `leveloffset=` (signed, clamped) | done |
 | `include::` arguments: `indent=`, `encoding=`, tag wildcards (`*`, `**`) | **not started** |
 | Safe-mode enforcement: `safe`/`server` reject absolute paths and paths escaping `base_dir` after canonicalisation; `secure` disables `include::` | done |
-| Section IDs — auto-generated from titles or via legacy `[[anchor]]` form (the `[#id]` shorthand path is covered by block metadata; auto-gen and `[[anchor]]` are pending) | **partial** |
+| Section IDs — `[#id]` shorthand (via block metadata), `[[id]]` / `[[id, reftext]]` legacy anchor lines, and auto-generation from titles (lowercase, non-alphanumeric → `_`, deduped). Block parser rolls back metadata that turned out to belong to an outer scope (so `[[anchor]]` above a sibling-level section header attaches to the right section). | done |
+| Doc-wide ID registry + xref validation (warn on dangling, resolve `<<title text>>` to derived IDs) | **not started** — sits with the diagnostics phase |
 | Admonition blocks and admonition paragraphs | **not started** |
 | Source blocks with language attribute (callouts, syntax-highlighter hint) | **not started** |
 | Tables: column specs (`cols=`), header rows, cell formatters (`a\|`, `m\|`, `s\|`, `e\|`, `l\|`, `h\|`), `psv`/`csv`/`dsv` separators | **not started** (every row is a body row of plain inline cells) |
@@ -192,7 +193,7 @@ The current `adoc::ast` types cover what the parser produces. Several spec const
 3. ~~**Inline parser** — quotes, attribute references, cross-references, inline macros, replacements, line breaks.~~ ✓
 4. ~~**Block metadata** — parse `[attr]` lines and `.Title` lines, attach to the following block via `BlockMeta`. HTML5 renders `id`/`class`/title.~~ ✓
 5. ~~**Preprocessor** — `include::`, `ifdef`/`ifndef`/`ifeval`/`endif`, attribute entries evaluated before the parser sees them.~~ ✓
-6. **Section IDs** — auto-generate from titles, parse the legacy `[[anchor]]` form, build a doc-wide ID registry, and resolve xref targets so cross-references are no longer dangling. *Next.*
+6. ~~**Section IDs** — auto-generate from titles, parse the legacy `[[anchor]]` form, populate `meta.id` on every section.~~ ✓ (Doc-wide ID registry + xref validation deferred to the diagnostics phase.)
 7. ~~**`include::` argument forms** — `lines=`, `tags=`, `leveloffset=` over the existing include path.~~ ✓
 8. **HTML5 conformance** — match the spec's expected output for the conformance corpus: TOC, section anchors, admonition markup, source-block markup with language class, full table model. Stand up `tests/conformance/`.
 9. **Diagnostics polish** — `miette::Diagnostic` for `ParseError`/`PreprocessError`/`ConvertError` with span pointers; promote warnings (dangling xref, unknown attribute reference) into the diagnostic stream.

@@ -10,6 +10,7 @@
 mod block;
 mod cursor;
 mod header;
+mod idgen;
 mod inline;
 mod meta;
 mod subs;
@@ -36,7 +37,8 @@ pub fn parse_with(lines: &[PreprocessedLine], initial: Attributes) -> Result<Doc
     let mut cursor = cursor::Cursor::new(lines);
     let mut attributes = initial;
     let header = header::try_parse_header(&mut cursor, &mut attributes);
-    let blocks = block::parse_block_sequence(&mut cursor, &mut attributes, 0);
+    let mut blocks = block::parse_block_sequence(&mut cursor, &mut attributes, 0);
+    idgen::assign_ids(&mut blocks);
     Ok(Document {
         header,
         attributes,

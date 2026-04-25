@@ -31,7 +31,11 @@ pub fn parse_blocks(cursor: &mut Cursor, attrs: &mut Attributes, section_level: 
             }
         }
         // Collect any block metadata (.Title and [attrlist] lines) that
-        // immediately precedes the upcoming block.
+        // immediately precedes the upcoming block. Save the cursor first
+        // so we can roll back if the metadata turns out to belong to an
+        // outer scope (e.g. it sits above a same-or-higher-level section
+        // header that ends this nested call).
+        let pre_meta_pos = cursor.pos();
         let meta = collect_block_meta(cursor, attrs);
         // A blank line between metadata and the block detaches the metadata.
         // Drop and start over rather than attaching across the gap.
@@ -43,6 +47,8 @@ pub fn parse_blocks(cursor: &mut Cursor, attrs: &mut Attributes, section_level: 
         // Section headers end the enclosing section if they are same-or-higher level.
         if let Some(level) = peek_section_level(cursor) {
             if level <= section_level {
+                // Hand the meta lines back to the outer scope.
+                cursor.seek(pre_meta_pos);
                 break;
             }
             let section = parse_section(cursor, attrs, level, meta);

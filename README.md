@@ -84,13 +84,14 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - Preprocessor directives — `include::path[]` (relative to the including file's directory, cycle detection, 64-deep limit), `ifdef::name[]` / `ifndef::name[]` (block + inline form, `,` any-of, `+` all-of), `ifeval::[expr]` over numbers / quoted strings / attribute refs with `==`, `!=`, `<`, `<=`, `>`, `>=`, and `endif::[]`.
 - `include::` arguments — `lines=` (single line, range, open-ended `..-1`, multiple `;`-separated ranges), `tags=` / `tag=` (comment-leader-agnostic `tag::name[]` / `end::name[]` markers, multiple tags, `!name` negation), `leveloffset=` (signed, clamped to `1..=6`).
 - Safe modes — `unsafe` (no checks), `safe` / `server` (rejects absolute include paths and any path that escapes `--base-dir` after canonicalisation), `secure` (disables `include::` entirely).
+- Section IDs — auto-derived from titles (`_` prefix, lowercase, non-alphanumeric collapsed to `_`, deduped with `_2`/`_3`/… suffixes), or supplied explicitly via the `[#id]` shorthand or the legacy `[[id]]` / `[[id, reftext]]` block-anchor line. Anchored blocks render with `id="…"` so `xref:` targets that previously dangled now resolve.
 
 ## What's missing
 
 The big-ticket items, in roughly the order they're queued:
 
-- **Section IDs** — auto-generated from titles or via the legacy `[[anchor]]` form, plus a doc-wide registry so xref targets stop dangling. (The `[#id]` shorthand path is already covered by block metadata.)
 - **`include::` argument tail** — `indent=`, `encoding=`, and tag wildcards (`*`, `**`). The common arguments (`lines=`, `tags=`, `leveloffset=`) are in.
+- **Doc-wide ID registry + xref validation** — section IDs land on the AST nodes today, but there's no centralised registry yet, so dangling xrefs render silently (the `<a href>` is emitted but the target doesn't exist). Validation belongs with the diagnostics work.
 - **Admonitions** — `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION` (paragraph-style and block-style).
 - **Source blocks with language**, syntax-highlighter hints, callouts.
 - **Full tables** — `cols=`, header rows, cell formatters (`a`, `m`, `s`, `e`, `l`, `h`), CSV/DSV separators.

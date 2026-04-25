@@ -368,6 +368,59 @@ fn preprocessor_conditionals_and_include() {
 }
 
 #[test]
+fn section_ids_auto_explicit_and_xrefs() {
+    let (doc, html) = render("24_section_ids.adoc");
+
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    let sections: Vec<&adoc::ast::Section> = doc
+        .blocks
+        .iter()
+        .filter_map(|b| match b {
+            Block::Section(s) => Some(s),
+            _ => None,
+        })
+        .collect();
+
+    let ids: Vec<&str> = sections
+        .iter()
+        .map(|s| s.meta.id.as_deref().unwrap_or(""))
+        .collect();
+
+    // Auto IDs are derived; the second "Auto-generated" gets a numeric suffix.
+    // Explicit forms are preserved verbatim.
+    assert_eq!(
+        ids,
+        vec![
+            "_auto_generated",
+            "_hello_world",
+            "_auto_generated_2",
+            "explicit-anchor",
+            "explicit-shorthand",
+            "_cross_references",
+        ]
+    );
+
+    // HTML carries each id on the section opening tag.
+    for id in &ids {
+        let needle = format!(r#"<section id="{id}">"#);
+        assert!(
+            body.contains(&needle),
+            "missing section opener {needle}\n{body}"
+        );
+    }
+
+    // Xrefs render as anchor hrefs that match the assigned IDs.
+    assert!(body.contains(r##"<a href="#_auto_generated">first dup</a>"##));
+    assert!(body.contains(r##"<a href="#_hello_world">via punctuation</a>"##));
+    assert!(body.contains(r##"<a href="#_auto_generated_2">second dup</a>"##));
+    assert!(body.contains(r##"<a href="#explicit-anchor">legacy form</a>"##));
+    assert!(body.contains(r##"<a href="#explicit-shorthand">shorthand form</a>"##));
+}
+
+#[test]
 fn preprocessor_include_arguments() {
     let (_doc, html) = render("23_include_args.adoc");
 

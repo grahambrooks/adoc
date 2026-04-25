@@ -19,17 +19,26 @@ use super::cursor::Cursor;
 use super::inline;
 use super::subs::Subs;
 
-/// Consume metadata lines (`.Title`, `[attrlist]`) until a non-metadata line.
+/// Consume metadata lines (`.Title`, `[attrlist]`, `[[anchor]]`) until a
+/// non-metadata line.
 ///
-/// Stops at the first line that is neither a block title nor an attribute
-/// list. Does not skip blank lines — the caller decides what to do with the
-/// (potentially orphaned) result.
+/// Stops at the first line that is neither a block title, an attribute
+/// list, nor a legacy block anchor. Does not skip blank lines — the
+/// caller decides what to do with the (potentially orphaned) result.
 pub fn collect_block_meta(cursor: &mut Cursor, attrs: &Attributes) -> BlockMeta {
     let mut meta = BlockMeta::default();
     while let Some(line) = cursor.peek() {
         let text = line.text.as_str();
         if let Some(title) = try_parse_block_title(text, attrs) {
             meta.title = Some(title);
+            cursor.advance();
+            continue;
+        }
+        if let Some((id, reftext)) = try_parse_block_anchor(text) {
+            meta.id = Some(id);
+            if let Some(rt) = reftext {
+                meta.named.insert("reftext".into(), rt);
+            }
             cursor.advance();
             continue;
         }
@@ -41,6 +50,30 @@ pub fn collect_block_meta(cursor: &mut Cursor, attrs: &Attributes) -> BlockMeta 
         break;
     }
     meta
+}
+
+/// Legacy block anchor: `[[name]]` or `[[name, reftext]]`. Must occupy a
+/// whole line (modulo trailing whitespace).
+fn try_parse_block_anchor(text: &str) -> Option<(String, Option<String>)> {
+    let trimmed = text.trim();
+    let inner = trimmed.strip_prefix("[[")?.strip_suffix("]]")?;
+    let (id, reftext) = match inner.split_once(',') {
+        Some((i, r)) => (i.trim(), Some(r.trim().to_string())),
+        None => (inner.trim(), None),
+    };
+    if id.is_empty() {
+        return None;
+    }
+    // Anchor names are conservatively the same shape as attribute names.
+    let mut chars = id.chars();
+    let first = chars.next()?;
+    if !(first.is_ascii_alphanumeric() || first == '_') {
+        return None;
+    }
+    if !chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+        return None;
+    }
+    Some((id.to_string(), reftext))
 }
 
 /// `.Title` lines: single `.` followed by a non-space, non-`.` character.

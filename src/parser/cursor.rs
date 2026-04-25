@@ -17,6 +17,16 @@ impl<'a> Cursor<'a> {
         self.pos >= self.lines.len()
     }
 
+    /// Current position; pair with [`seek`] to roll back speculative reads
+    /// (e.g. block metadata that turned out to belong to an outer scope).
+    pub fn pos(&self) -> usize {
+        self.pos
+    }
+
+    pub fn seek(&mut self, pos: usize) {
+        self.pos = pos.min(self.lines.len());
+    }
+
     pub fn peek(&self) -> Option<&'a PreprocessedLine> {
         self.lines.get(self.pos)
     }
