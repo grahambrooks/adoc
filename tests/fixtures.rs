@@ -4,10 +4,11 @@
 //! (preprocessor + parser + HTML5 converter) and asserts structural
 //! properties that pin the v1 feature set.
 
-use adoc::ast::{AttributeValue, Block, Converter, DelimitedStyle, ListMarker, SourceId};
+use adoc::ast::{AttributeValue, Block, Converter, DelimitedStyle, ListMarker};
 use adoc::convert::html5::Html5Converter;
 use adoc::parser::parse;
 use adoc::preprocessor::Preprocessor;
+use camino::Utf8Path;
 use std::path::{Path, PathBuf};
 
 fn fixtures_dir() -> PathBuf {
@@ -19,8 +20,9 @@ fn fixtures_dir() -> PathBuf {
 fn render(name: &str) -> (adoc::ast::Document, String) {
     let path = fixtures_dir().join(name);
     let src = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path:?}: {e}"));
-    let pre = Preprocessor::default();
-    let lines = pre.run(&src, SourceId(0)).expect("preprocess");
+    let utf8_path = Utf8Path::from_path(&path).expect("utf-8 path");
+    let mut pre = Preprocessor::default();
+    let lines = pre.run(&src, utf8_path).expect("preprocess");
     let doc = parse(&lines).expect("parse");
     let html = Html5Converter::new().convert(&doc).expect("convert");
     (doc, html)
@@ -334,10 +336,42 @@ fn block_metadata_attaches_to_following_block() {
 }
 
 #[test]
+fn preprocessor_conditionals_and_include() {
+    let (doc, html) = render("22_preprocessor.adoc");
+
+    // Conditionals that resolve to true.
+    assert!(html.contains("Hello, this content is gated by a defined attribute."));
+    assert!(html.contains("This is shown because"));
+    assert!(html.contains("We are on edition 2 or later."));
+    assert!(html.contains("Localised paragraph for English."));
+
+    // Include pulled the section in.
+    let included = doc
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            Block::Section(s) if s.level == 1 => Some(s),
+            _ => None,
+        })
+        .expect("included section");
+    assert!(matches!(
+        included.title.first(),
+        Some(adoc::ast::Inline::Text(t)) if t == "Included Section"
+    ));
+
+    // Inline ifdef inside the included file emitted on the same line, so
+    // the trailing paragraph contains the substituted value.
+    assert!(html.contains("Edition number 2."));
+
+    // The closing literal paragraph is present.
+    assert!(html.contains("The end."));
+}
+
+#[test]
 fn block_metadata_orphaned_by_blank_line_is_dropped() {
     let src = "[#orphan]\n\nplain paragraph\n";
-    let pre = adoc::preprocessor::Preprocessor::default();
-    let lines = pre.run(src, SourceId(0)).expect("preprocess");
+    let mut pre = adoc::preprocessor::Preprocessor::default();
+    let lines = pre.run(src, Utf8Path::new("<input>")).expect("preprocess");
     let doc = adoc::parser::parse(&lines).expect("parse");
     let para = doc
         .blocks

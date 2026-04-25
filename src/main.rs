@@ -3,12 +3,12 @@
 use std::fs;
 use std::io::Write;
 
-use adoc::ast::{AttributeValue, Attributes, Converter, SourceId};
+use adoc::ast::{AttributeValue, Attributes, Converter};
 use adoc::convert::html5::{
     Html5Converter, Html5Options, Stylesheet, BUILTIN_CSS, BUILTIN_FILENAME,
 };
 use adoc::parser::parse_with;
-use adoc::preprocessor::Preprocessor;
+use adoc::preprocessor::{Preprocessor, SafeMode as PreprocSafeMode};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, ValueEnum};
 use miette::{miette, IntoDiagnostic};
@@ -88,18 +88,20 @@ fn main() -> miette::Result<()> {
 
     let cli_attrs = parse_cli_attributes(&cli.attributes)?;
 
-    let preproc = Preprocessor::default();
-    let lines = preproc
-        .run(&source, SourceId(0))
-        .map_err(|e| miette!("{e}"))?;
-    let doc = parse_with(&lines, cli_attrs).map_err(|e| miette!("{e}"))?;
-
     let base_dir = cli.base_dir.clone().unwrap_or_else(|| {
         input
             .parent()
             .map(Utf8PathBuf::from)
             .unwrap_or_else(|| Utf8PathBuf::from("."))
     });
+
+    let mut preproc = Preprocessor::with_attributes(cli_attrs.clone())
+        .with_base_dir(base_dir.clone())
+        .with_safe_mode(map_safe_mode(cli.safe_mode));
+    let lines = preproc
+        .run(&source, input.as_path())
+        .map_err(|e| miette!("{e}"))?;
+    let doc = parse_with(&lines, cli_attrs).map_err(|e| miette!("{e}"))?;
 
     let out_path = resolve_output_path(&cli, input);
     let stylesheet = resolve_stylesheet(&doc.attributes, &base_dir).map_err(|e| miette!("{e}"))?;
@@ -130,6 +132,15 @@ fn main() -> miette::Result<()> {
     }
 
     Ok(())
+}
+
+fn map_safe_mode(mode: SafeMode) -> PreprocSafeMode {
+    match mode {
+        SafeMode::Unsafe => PreprocSafeMode::Unsafe,
+        SafeMode::Safe => PreprocSafeMode::Safe,
+        SafeMode::Server => PreprocSafeMode::Server,
+        SafeMode::Secure => PreprocSafeMode::Secure,
+    }
 }
 
 // --- attribute parsing -----------------------------------------------------

@@ -1,0 +1,23 @@
+= Preprocessor Showcase
+:lang: en
+:edition: 2
+
+ifdef::lang[]
+Hello, this content is gated by a defined attribute.
+endif::[]
+
+ifndef::missing[]
+This is shown because `missing` is not set.
+endif::[]
+
+ifeval::[{edition} >= 2]
+We are on edition 2 or later.
+endif::[]
+
+ifeval::["{lang}" == "en"]
+Localised paragraph for English.
+endif::[]
+
+include::22_preprocessor_part.adoc[]
+
+The end.

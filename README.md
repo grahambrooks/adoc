@@ -81,13 +81,14 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - Attribute references (`{name}`) with the document attribute context.
 - Character replacements: `(C)`, `(R)`, `(TM)`, `...`, `--`, `->`, `=>`, `<-`, `<=`.
 - Block metadata — `[source,rust]`, `[NOTE]`, `[#id.role%opt]`, `[caption="…"]`, `.Title` lines — attached to the following block. The HTML5 backend emits `id`, `class`, and a `<div class="title">` accordingly.
+- Preprocessor directives — `include::path[]` (relative to the including file's directory, with cycle detection and a 64-deep limit), `ifdef::name[]` / `ifndef::name[]` (block + inline form, with `,` any-of and `+` all-of), `ifeval::[expr]` over numbers / quoted strings / attribute refs with `==`, `!=`, `<`, `<=`, `>`, `>=`, and `endif::[]`. `include::` is rejected when `--safe-mode=secure`.
 
 ## What's missing
 
 The big-ticket items, in roughly the order they're queued:
 
 - **Section IDs** — auto-generated from titles or via the legacy `[[anchor]]` form, plus a doc-wide registry so xref targets stop dangling. (The `[#id]` shorthand path is already covered by block metadata.)
-- **Preprocessor directives** — `include::`, `ifdef`, `ifndef`, `ifeval`, `endif`.
+- **`include::` argument forms** — `lines=`, `tags=`/`tag=`, `leveloffset=`, `indent=`, `encoding=`. The basic include works, but these arguments are silently ignored for now.
 - **Admonitions** — `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION` (paragraph-style and block-style).
 - **Source blocks with language**, syntax-highlighter hints, callouts.
 - **Full tables** — `cols=`, header rows, cell formatters (`a`, `m`, `s`, `e`, `l`, `h`), CSV/DSV separators.

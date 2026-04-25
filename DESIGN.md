@@ -155,7 +155,8 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | HTML5 converter: every current AST node renders; document title, authors, revision in `<header>`; debug `<!-- attributes: ... -->` trailer | done |
 | Stylesheet resolution (five modes) and `:copycss:` | done |
 | Block metadata: `[attrlist]` (positional/named/shorthand `#id.role%opt`) and `.Title` lines collected and attached to the next block via `BlockMeta`; HTML5 emits `id`/`class` and a `<div class="title">` ahead of titled blocks | done |
-| Preprocessor: line splitter only — no `include::`, no conditionals, no attribute resolution at line level | **not started** |
+| Preprocessor: `include::` (basic, with cycle detection and a depth limit), `ifdef::`/`ifndef::` (block + inline forms, `,` any-of, `+` all-of), `ifeval::` (numeric or string compare on attribute refs / literals), `endif::`; attribute entries evaluated at preprocess time so conditionals see them | done |
+| `include::` argument forms (`lines=`, `tags=`, `leveloffset=`, etc.) | **not started** (basic `include::` works; arguments are silently ignored) |
 | Section IDs — auto-generated from titles or via legacy `[[anchor]]` form (the `[#id]` shorthand path is covered by block metadata; auto-gen and `[[anchor]]` are pending) | **partial** |
 | Admonition blocks and admonition paragraphs | **not started** |
 | Source blocks with language attribute (callouts, syntax-highlighter hint) | **not started** |
@@ -188,12 +189,13 @@ The current `adoc::ast` types cover what the parser produces. Several spec const
 2. ~~**Block parser** — paragraphs, sections, lists, delimited blocks, basic tables.~~ ✓
 3. ~~**Inline parser** — quotes, attribute references, cross-references, inline macros, replacements, line breaks.~~ ✓
 4. ~~**Block metadata** — parse `[attr]` lines and `.Title` lines, attach to the following block via `BlockMeta`. HTML5 renders `id`/`class`/title.~~ ✓
-5. **Section IDs** — auto-generate from titles, parse the legacy `[[anchor]]` form, build a doc-wide ID registry, and resolve xref targets so cross-references are no longer dangling. *Next.*
-6. **Preprocessor** — `include::` resolution with the include chain wired into `Location`, `ifdef`/`ifndef`/`ifeval`/`endif`, attribute entries pulled out of the parser.
-7. **HTML5 conformance** — match the spec's expected output for the conformance corpus: TOC, section anchors, admonition markup, source-block markup with language class, full table model. Stand up `tests/conformance/`.
-8. **Diagnostics polish** — `miette::Diagnostic` for `ParseError`/`PreprocessError`/`ConvertError` with span pointers; promote warnings (dangling xref, unknown attribute reference) into the diagnostic stream.
-9. **Stdio extension model** — implement `--emit-ast` / `--from-ast`; freeze and document the JSON schema; ship a trivial example filter.
-10. **Additional backends** — DocBook, man page.
+5. ~~**Preprocessor** — `include::`, `ifdef`/`ifndef`/`ifeval`/`endif`, attribute entries evaluated before the parser sees them.~~ ✓
+6. **Section IDs** — auto-generate from titles, parse the legacy `[[anchor]]` form, build a doc-wide ID registry, and resolve xref targets so cross-references are no longer dangling. *Next.*
+7. **`include::` argument forms** — `lines=`, `tags=`, `leveloffset=`, `indent=`, `encoding=`. Bolt onto the existing include path.
+8. **HTML5 conformance** — match the spec's expected output for the conformance corpus: TOC, section anchors, admonition markup, source-block markup with language class, full table model. Stand up `tests/conformance/`.
+9. **Diagnostics polish** — `miette::Diagnostic` for `ParseError`/`PreprocessError`/`ConvertError` with span pointers; promote warnings (dangling xref, unknown attribute reference) into the diagnostic stream.
+10. **Stdio extension model** — implement `--emit-ast` / `--from-ast`; freeze and document the JSON schema; ship a trivial example filter.
+11. **Additional backends** — DocBook, man page.
 
 ## Dependencies
 

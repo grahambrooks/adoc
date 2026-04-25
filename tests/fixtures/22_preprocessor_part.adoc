@@ -1,0 +1,5 @@
+== Included Section
+
+A paragraph that lives in a separate file but ends up in the same document.
+
+ifdef::edition[Edition number {edition}.]
