@@ -1,0 +1,104 @@
+DESIGN.md
+  27508cabf0243d73 221
+tests/conformance/01_section_basic/expected.html
+  27508cabf0243d73 1-31
+README.md
+  27508cabf0243d73 175
+tests/conformance/06_admonition_paragraph/expected.html
+  27508cabf0243d73 1-44
+tests/conformance.rs
+  27508cabf0243d73 1-191
+tests/conformance/09_smart_quotes/input.adoc
+  27508cabf0243d73 1-5
+tests/conformance/04_inline_quotes/expected.html
+  27508cabf0243d73 1-18
+tests/conformance/07_source_block/input.adoc
+  27508cabf0243d73 1-11
+tests/conformance/03_listing_block/expected.html
+  27508cabf0243d73 1-19
+tests/conformance/01_section_basic/input.adoc
+  27508cabf0243d73 1-15
+tests/conformance/05_link_macro/input.adoc
+  27508cabf0243d73 1-9
+tests/conformance/11_xref_title/input.adoc
+  27508cabf0243d73 1-15
+tests/conformance/06_admonition_paragraph/expected.ast.json
+  27508cabf0243d73 1-101
+tests/conformance/10_callouts/expected.ast.json
+  27508cabf0243d73 1-66
+tests/conformance/04_inline_quotes/input.adoc
+  27508cabf0243d73 1-7
+tests/conformance/11_xref_title/expected.ast.json
+  27508cabf0243d73 1-196
+tests/conformance/08_table_simple/expected.html
+  27508cabf0243d73 1-29
+tests/conformance/06_admonition_paragraph/input.adoc
+  27508cabf0243d73 1-9
+tests/conformance/11_xref_title/expected.html
+  27508cabf0243d73 1-31
+tests/conformance/10_callouts/input.adoc
+  27508cabf0243d73 1-10
+tests/conformance/08_table_simple/input.adoc
+  27508cabf0243d73 1-9
+tests/conformance/01_section_basic/expected.ast.json
+  27508cabf0243d73 1-154
+tests/conformance/09_smart_quotes/expected.ast.json
+  27508cabf0243d73 1-54
+tests/conformance/00_paragraph/expected.html
+  27508cabf0243d73 1-16
+tests/conformance/07_source_block/expected.html
+  27508cabf0243d73 1-18
+tests/conformance/09_smart_quotes/expected.html
+  27508cabf0243d73 1-17
+tests/conformance/05_link_macro/expected.html
+  27508cabf0243d73 1-19
+tests/conformance/10_callouts/expected.html
+  27508cabf0243d73 1-23
+tests/conformance/README.md
+  27508cabf0243d73 1-90
+tests/conformance/00_paragraph/input.adoc
+  27508cabf0243d73 1-3
+CLAUDE.md
+  27508cabf0243d73 72-77
+tests/conformance/00_paragraph/expected.ast.json
+  27508cabf0243d73 1-38
+tests/conformance/03_listing_block/input.adoc
+  27508cabf0243d73 1-9
+tests/conformance/02_unordered_list/input.adoc
+  27508cabf0243d73 1-6
+tests/conformance/02_unordered_list/expected.ast.json
+  27508cabf0243d73 1-79
+tests/conformance/03_listing_block/expected.ast.json
+  27508cabf0243d73 1-53
+tests/conformance/07_source_block/expected.ast.json
+  27508cabf0243d73 1-45
+tests/conformance/08_table_simple/expected.ast.json
+  27508cabf0243d73 1-118
+tests/conformance/02_unordered_list/expected.html
+  27508cabf0243d73 1-26
+tests/conformance/05_link_macro/expected.ast.json
+  27508cabf0243d73 1-128
+tests/conformance/04_inline_quotes/expected.ast.json
+  27508cabf0243d73 1-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "adf5a7ea466ca368279bed13b0f7bff54fbbea73",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 1933,
+      "total_deletions": 14,
+      "accepted_lines": 2066,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/41ecb7f1858efa8698b17eee705391ad349ae94220b3aa63e42dbde67fa87b2c"
+    }
+  }
+}
