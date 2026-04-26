@@ -434,6 +434,151 @@ pub trait Converter {
     fn convert(&self, doc: &Document) -> Result<String, ConvertError>;
 }
 
+/// Walk the document and rewrite any `Inline::Xref` whose target string
+/// matches a section's plain-text title (case-sensitive) to instead point
+/// at that section's id. Mirrors Asciidoctor's `<<Section Title>>` form,
+/// which auto-resolves to the derived id without an explicit `[#…]`.
+///
+/// Targets that already refer to a known id are left alone. Targets that
+/// match neither an id nor a title pass through verbatim — the converter
+/// emits the dangling href as-is and `validate_xrefs` warns about it.
+pub fn resolve_title_xrefs(doc: &mut Document) {
+    let mut title_to_id: std::collections::BTreeMap<String, String> =
+        std::collections::BTreeMap::new();
+    let mut existing_ids: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    collect_section_titles(&doc.blocks, &mut title_to_id, &mut existing_ids);
+    if title_to_id.is_empty() {
+        return;
+    }
+    rewrite_xref_targets_in_blocks(&mut doc.blocks, &title_to_id, &existing_ids);
+}
+
+fn collect_section_titles(
+    blocks: &[Block],
+    title_to_id: &mut std::collections::BTreeMap<String, String>,
+    existing_ids: &mut std::collections::BTreeSet<String>,
+) {
+    for b in blocks {
+        if let Block::Section(s) = b {
+            if let Some(id) = s.meta.id.as_deref() {
+                existing_ids.insert(id.to_string());
+                let title = inlines_to_plain(&s.title);
+                let trimmed = title.trim();
+                if !trimmed.is_empty() {
+                    // First section with a given title wins — duplicates
+                    // are rare, and the spec doesn't require disambiguating
+                    // them (auto-id handles that on the id side already).
+                    title_to_id
+                        .entry(trimmed.to_string())
+                        .or_insert_with(|| id.to_string());
+                }
+            }
+            collect_section_titles(&s.blocks, title_to_id, existing_ids);
+        }
+    }
+}
+
+fn rewrite_xref_targets_in_blocks(
+    blocks: &mut [Block],
+    title_to_id: &std::collections::BTreeMap<String, String>,
+    existing_ids: &std::collections::BTreeSet<String>,
+) {
+    for b in blocks {
+        match b {
+            Block::Section(s) => {
+                rewrite_xref_targets_in_inlines(&mut s.title, title_to_id, existing_ids);
+                rewrite_xref_targets_in_blocks(&mut s.blocks, title_to_id, existing_ids);
+            }
+            Block::Paragraph(p) => {
+                rewrite_xref_targets_in_inlines(&mut p.inlines, title_to_id, existing_ids);
+            }
+            Block::List(l) => {
+                for item in &mut l.items {
+                    rewrite_xref_targets_in_inlines(&mut item.principal, title_to_id, existing_ids);
+                    rewrite_xref_targets_in_blocks(&mut item.blocks, title_to_id, existing_ids);
+                }
+            }
+            Block::DescriptionList(d) => {
+                for item in &mut d.items {
+                    rewrite_xref_targets_in_inlines(&mut item.term, title_to_id, existing_ids);
+                    rewrite_xref_targets_in_blocks(
+                        &mut item.description,
+                        title_to_id,
+                        existing_ids,
+                    );
+                }
+            }
+            Block::Delimited(d) => {
+                if let DelimitedContent::Blocks { blocks } = &mut d.content {
+                    rewrite_xref_targets_in_blocks(blocks, title_to_id, existing_ids);
+                }
+            }
+            Block::Table(t) => {
+                for row in &mut t.rows {
+                    for cell in &mut row.cells {
+                        rewrite_xref_targets_in_inlines(
+                            &mut cell.inlines,
+                            title_to_id,
+                            existing_ids,
+                        );
+                        rewrite_xref_targets_in_blocks(&mut cell.blocks, title_to_id, existing_ids);
+                    }
+                }
+            }
+            Block::Colist(c) => {
+                for item in &mut c.items {
+                    rewrite_xref_targets_in_inlines(&mut item.inlines, title_to_id, existing_ids);
+                }
+            }
+            Block::DiscreteHeading(d) => {
+                rewrite_xref_targets_in_inlines(&mut d.title, title_to_id, existing_ids);
+            }
+        }
+    }
+}
+
+fn rewrite_xref_targets_in_inlines(
+    inlines: &mut [Inline],
+    title_to_id: &std::collections::BTreeMap<String, String>,
+    existing_ids: &std::collections::BTreeSet<String>,
+) {
+    for i in inlines {
+        match i {
+            Inline::Xref { target, text } => {
+                // Title-based xref only fires when the target isn't
+                // already a known id — explicit ids take precedence.
+                if !existing_ids.contains(target.as_str()) {
+                    if let Some(id) = title_to_id.get(target.as_str()) {
+                        // Keep the original target as the visible link
+                        // text when no explicit text was supplied.
+                        if text.is_none() {
+                            *text = Some(vec![Inline::Text {
+                                value: target.clone(),
+                            }]);
+                        }
+                        *target = id.clone();
+                    }
+                }
+                if let Some(t) = text {
+                    rewrite_xref_targets_in_inlines(t, title_to_id, existing_ids);
+                }
+            }
+            Inline::Strong { children }
+            | Inline::Emphasis { children }
+            | Inline::Monospace { children }
+            | Inline::Subscript { children }
+            | Inline::Superscript { children }
+            | Inline::Highlight { children } => {
+                rewrite_xref_targets_in_inlines(children, title_to_id, existing_ids);
+            }
+            Inline::Link { text, .. } | Inline::Footnote { text, .. } => {
+                rewrite_xref_targets_in_inlines(text, title_to_id, existing_ids);
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Doc-wide ID registry — every section / block / inline anchor /
 /// bibliography ID, collected in a single AST walk so cross-reference
 /// resolution and validation can run without re-walking the tree.

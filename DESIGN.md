@@ -171,7 +171,7 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Block image (`image::path[alt]`) and block video / audio (`video::url[…]`, `audio::url[…]`) on their own line render as `<div class="imageblock|videoblock|audioblock">` with optional `.Title` caption | done |
 | Section IDs — `[#id]` shorthand, `[[id]]`/`[[id, reftext]]` legacy anchor lines, and auto-derivation from titles (lowercase, non-alphanumeric → `_`, deduped) | done |
 | Doc-wide ID registry (`adoc::ast::IdRegistry`) — collects section / block / inline-anchor / bibliography ids in one walk; HTML5 converter validates every xref against it and emits `tracing::warn!` for dangling targets | done |
-| `<<title text>>` (xref by title text) resolution to derived id | **not started** — needs a reverse-lookup index |
+| `<<title text>>` xref resolution — a post-parse pass rewrites targets matching a section title to that section's id; explicit ids win over title matches | done |
 
 ### Inline parser
 
@@ -225,7 +225,6 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 The current `adoc::ast` types cover what the parser produces. The remaining constructs that need new node shapes (or new fields) before the parser can emit them:
 
 - `Inline` covers every form the parser emits today; index terms and bibliography anchors land via `Inline::RawHtml` rather than typed variants. Promoting them to `Inline::IndexTerm` / `Inline::BibAnchor` would let an index-page or bibliography backend consume them directly without re-scanning HTML; queued behind diagnostics work.
-- Cross-reference resolution by title text (`<<Some Section Title>>`) needs a reverse-lookup index alongside `IdRegistry`. The id-to-section-info side is already in place; the title-to-id direction is the remaining piece.
 - Stem/math (`stem:[]`, `latexmath::[]`, `asciimath::[]`) blocks/inlines — out of v1 scope; would attach via the same pattern as `:source-highlighter:` (load MathJax/KaTeX from a CDN).
 
 ## CLI / pipeline gaps

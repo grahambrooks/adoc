@@ -478,6 +478,7 @@ fn ast_roundtrips_through_serde_json() {
         "37_table_advanced.adoc",
         "38_index_bib_tocplace.adoc",
         "39_include_wildcards_doctype.adoc",
+        "40_title_xref.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -723,6 +724,25 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn title_text_xref_resolves_to_derived_id() {
+    let (_doc, html) = render("40_title_xref.adoc");
+    let body_start = html.find("<body").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // `xref:Methods[the methods chapter]` and `<<Methods>>` both resolve
+    // to the auto-derived section id (`_methods`).
+    assert!(body.contains(r##"<a href="#_methods">the methods chapter</a>"##));
+    assert!(body.contains(r##"<a href="#_methods">Methods</a>"##));
+
+    // `<<Conclusion>>` from inside the introduction also resolves.
+    assert!(body.contains(r##"<a href="#_conclusion">Conclusion</a>"##));
+
+    // Explicit ids still take precedence over title resolution.
+    assert!(body.contains(r##"<a href="#explicit">explicit</a>"##));
 }
 
 #[test]

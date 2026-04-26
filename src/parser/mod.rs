@@ -39,9 +39,14 @@ pub fn parse_with(lines: &[PreprocessedLine], initial: Attributes) -> Result<Doc
     let header = header::try_parse_header(&mut cursor, &mut attributes);
     let mut blocks = block::parse_block_sequence(&mut cursor, &mut attributes, 0);
     idgen::assign_ids(&mut blocks);
-    Ok(Document {
+    let mut doc = Document {
         header,
         attributes,
         blocks,
-    })
+    };
+    // Final post-pass: rewrite `<<Title Text>>` xrefs whose target
+    // string matches a section title to use that section's id. Runs
+    // after id-generation so derived ids are in place.
+    crate::ast::resolve_title_xrefs(&mut doc);
+    Ok(doc)
 }

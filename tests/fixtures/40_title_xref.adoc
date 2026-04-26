@@ -1,0 +1,21 @@
+= Title-Text Cross-References
+
+See xref:Methods[the methods chapter] or just <<Methods>>. Both should
+resolve to the section's derived id.
+
+== Introduction
+
+A reference back to <<Conclusion>>.
+
+== Methods
+
+Body of the methods section.
+
+== Conclusion
+
+Body of the conclusion section.
+
+[#explicit]
+== An Explicit-Id Section
+
+Direct id: <<explicit>>.
