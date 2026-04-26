@@ -24,6 +24,29 @@ pub use subs::Subs;
 pub enum ParseError {
     #[error("parse error: {0}")]
     Message(String),
+    /// Span-carrying parse error — call sites that know the offending
+    /// source location build a [`crate::diag::Diagnostic`] and wrap it
+    /// here. Rendered by the CLI through miette so users see file:line:
+    /// col + a snippet, not just the message string.
+    #[error("{}", .0.message)]
+    Diagnostic(Box<crate::diag::Diagnostic>),
+}
+
+impl ParseError {
+    /// Build a span-carrying error from a [`crate::diag::Diagnostic`].
+    pub fn diagnostic(d: crate::diag::Diagnostic) -> Self {
+        Self::Diagnostic(Box::new(d))
+    }
+
+    /// If this error carries a [`Diagnostic`] payload, return it. Used
+    /// by the CLI to render with miette's graphical handler instead of
+    /// a plain message.
+    pub fn as_diagnostic(&self) -> Option<&crate::diag::Diagnostic> {
+        match self {
+            Self::Diagnostic(d) => Some(d),
+            _ => None,
+        }
+    }
 }
 
 pub fn parse(lines: &[PreprocessedLine]) -> Result<Document, ParseError> {

@@ -28,6 +28,17 @@ enum SafeMode {
     Secure,
 }
 
+/// How to render diagnostics on stderr.
+///
+/// `plain` (default) — graphical / narratable text, with colour when
+/// stderr is a TTY. `json` — one JSON object per diagnostic, suitable
+/// for SARIF converters / GitHub annotations / IDE consumption.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum DiagnosticFormat {
+    Plain,
+    Json,
+}
+
 #[derive(Debug, Parser)]
 #[command(name = "adoc", version, about = "Rust AsciiDoc processor")]
 struct Cli {
@@ -74,6 +85,12 @@ struct Cli {
     /// Suppress warnings.
     #[arg(short = 'q', long = "quiet")]
     quiet: bool,
+
+    /// Diagnostic output format. `plain` (default) renders the
+    /// graphical text form; `json` emits one JSON object per
+    /// diagnostic (one per line) for tooling consumption.
+    #[arg(long = "diagnostic-format", default_value = "plain")]
+    diagnostic_format: DiagnosticFormat,
 }
 
 fn main() -> miette::Result<()> {
@@ -145,7 +162,7 @@ fn main() -> miette::Result<()> {
     // get colour, source snippets, and span underlines. `--quiet`
     // suppresses them.
     if !cli.quiet {
-        render_diagnostics(diagnostics, &source_map);
+        render_diagnostics(diagnostics, &source_map, cli.diagnostic_format);
     }
 
     Ok(())
@@ -164,21 +181,42 @@ fn preprocess_error_to_report(
     miette!("{err}")
 }
 
-fn render_diagnostics(diagnostics: adoc::diag::Diagnostics, source_map: &SourceMap) {
+fn render_diagnostics(
+    diagnostics: adoc::diag::Diagnostics,
+    source_map: &SourceMap,
+    format: DiagnosticFormat,
+) {
     use std::io::IsTerminal;
     let mut stderr = std::io::stderr().lock();
-    let to_terminal = std::io::stderr().is_terminal();
-    let handler = if to_terminal {
-        miette::GraphicalReportHandler::new()
-    } else {
-        miette::GraphicalReportHandler::new_themed(miette::GraphicalTheme::unicode_nocolor())
-    };
     let mut buf = String::new();
-    for diag in diagnostics {
-        let report = diag.into_report(source_map);
-        buf.clear();
-        let _ = handler.render_report(&mut buf, report.as_ref());
-        let _ = std::io::Write::write_all(&mut stderr, buf.as_bytes());
+    match format {
+        DiagnosticFormat::Plain => {
+            let to_terminal = std::io::stderr().is_terminal();
+            let handler = if to_terminal {
+                miette::GraphicalReportHandler::new()
+            } else {
+                miette::GraphicalReportHandler::new_themed(miette::GraphicalTheme::unicode_nocolor())
+            };
+            for diag in diagnostics {
+                let report = diag.into_report(source_map);
+                buf.clear();
+                let _ = handler.render_report(&mut buf, report.as_ref());
+                let _ = std::io::Write::write_all(&mut stderr, buf.as_bytes());
+            }
+        }
+        DiagnosticFormat::Json => {
+            // miette's JSONReportHandler emits one report per call. We
+            // emit them as NDJSON (one object per line) so a stream
+            // consumer can split on \n without parsing.
+            let handler = miette::JSONReportHandler::new();
+            for diag in diagnostics {
+                let report = diag.into_report(source_map);
+                buf.clear();
+                let _ = handler.render_report(&mut buf, report.as_ref());
+                let _ = std::io::Write::write_all(&mut stderr, buf.as_bytes());
+                let _ = std::io::Write::write_all(&mut stderr, b"\n");
+            }
+        }
     }
 }
 

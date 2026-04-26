@@ -70,6 +70,7 @@ Options:
       --base-dir <DIR>          Base directory for includes
       --emit-ast                Emit serialized AST (JSON) to stdout
       --from-ast                Read serialized AST from stdin or input file
+      --diagnostic-format <F>   plain|json  (default: plain)
   -v, --verbose                 Increase log verbosity (repeatable)
   -q, --quiet                   Suppress warnings
   -h, --help
@@ -105,7 +106,7 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - Safe modes — `unsafe` (no checks), `safe` / `server` (rejects absolute include paths and any path that escapes `--base-dir` after canonicalisation), `secure` (disables `include::` entirely).
 - Section IDs — auto-derived from titles (`_` prefix, lowercase, non-alphanumeric collapsed to `_`, deduped with `_2`/`_3`/… suffixes), or supplied explicitly via the `[#id]` shorthand or the legacy `[[id]]` / `[[id, reftext]]` block-anchor line. Anchored blocks render with `id="…"` so `xref:` targets resolve.
 - Doc-wide ID registry — built once per document via `adoc::ast::IdRegistry::collect(&doc)`. Picks up section IDs, block IDs from `[#…]` shorthand, inline anchors (`anchor:id[]`), bibliography anchors (`[[[id]]]`), and `<a id="…">` emitted from `Inline::RawHtml`. The HTML5 converter validates every `<<…>>` / `xref:…[]` target against the registry and produces span-pointing diagnostics for unresolved references — see *Diagnostics* below.
-- Diagnostics — the HTML5 converter exposes `convert_with_diagnostics(&doc) -> Result<(String, Diagnostics), _>` alongside the trait-level `convert`. Each diagnostic carries a stable code (`adoc::xref::dangling`, …), a [`Location`], and optional help text; the CLI feeds them through miette's graphical handler so users see the file path, surrounding source, and an underlined span for every warning. The HTML still emits dangling hrefs — diagnostics inform, they don't suppress output. `--quiet` suppresses rendering. Source context comes from a [`SourceMap`] populated by the preprocessor as it walks `include::` directives.
+- Diagnostics — span-pointing warnings and errors with source-snippet rendering. The HTML5 converter exposes `convert_with_diagnostics(&doc) -> Result<(String, Diagnostics), _>` alongside the trait-level `convert`. Each diagnostic carries a stable code (`adoc::xref::dangling`, `adoc::preprocess::include_cycle`, `adoc::preprocess::stray_endif`, `adoc::preprocess::secure_mode`, `adoc::preprocess::absolute_include`, `adoc::preprocess::include_path`, `adoc::preprocess::include_depth`), a [`Location`], an optional help line, and a label for the underlined span. The CLI feeds them through miette so users see the file path, surrounding source, and an underlined span for every problem. Source context comes from a [`SourceMap`] populated by the preprocessor as it walks `include::` directives. `--quiet` suppresses warning rendering; errors still abort. `--diagnostic-format=json` emits one NDJSON object per diagnostic for tooling consumption (GitHub annotations, SARIF converters, IDE plugins).
 - `<<Section Title>>` xref resolution — a post-parse pass rewrites any `xref:` / `<<>>` whose target string matches a section's plain-text title to instead point at that section's id (auto-derived or explicit), and keeps the original target as the visible link text when no `[label]` was supplied. Explicit ids take precedence; targets that match neither pass through and trigger the dangling-xref warning.
 - Admonitions — paragraph form (`NOTE: text`, `TIP: …`, `IMPORTANT: …`, `WARNING: …`, `CAUTION: …`) and block form (`[NOTE]` on any paragraph or `====` example block) render as `<div class="admonitionblock kw">` with a labelled body. Bundled CSS gives each variant a coloured side-rule.
 - Source blocks with language — `[source,LANG]` on a `----` listing emits `<pre data-lang="LANG"><code class="language-LANG">…</code></pre>`. The `data-lang` attribute drives a small CSS-only language pill in the corner; the `language-LANG` class is the integration point for any client-side highlighter.
@@ -124,7 +125,6 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 
 The big-ticket items, in roughly the order they're queued:
 
-- **Real `miette::Diagnostic` errors** with span pointers — every `Location` is already on the AST; the error types just don't carry them. High-leverage UX work.
 - **Level-0 parts under `:doctype: book`** — the body-class is set today, but `= Part Title` mid-document isn't yet recognised as a part wrapper.
 - **Stem / math** (`stem:[]`, `latexmath`, `asciimath`) — deliberately out of v1 scope; would need MathJax/KaTeX integration along the same pattern as `:source-highlighter:`.
 

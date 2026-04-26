@@ -217,7 +217,7 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 
 | Area | Status |
 |---|---|
-| Real `miette::Diagnostic` errors with span pointers (locations exist on every AST node; error types don't carry them yet) | **not started** |
+| `miette::Diagnostic` for span-pointing errors and warnings — `adoc::diag::{Diagnostic, Diagnostics}` collector; `Preprocessor::source_map()` keeps file content alongside SourceId; `PreprocessError`/`ParseError` gain a `Diagnostic(...)` variant that carries a `Location`; the converter's xref pre-walk produces structured warnings; CLI renders via miette's graphical or JSON handler (`--diagnostic-format=plain\|json`) | done |
 | Conformance suite under `tests/conformance/` (expected AST + HTML5 per spec example) | **not started** — the 37-fixture corpus under `tests/fixtures/` plus `docs/showcase.adoc` cover the v1 surface in the meantime |
 
 ## AST gaps
