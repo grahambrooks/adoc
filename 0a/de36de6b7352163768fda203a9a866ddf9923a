@@ -1,0 +1,32 @@
+README.md
+  27508cabf0243d73 16-45
+Formula/adoc.rb
+  27508cabf0243d73 1-50
+DESIGN.md
+  27508cabf0243d73 252-259
+.github/workflows/release.yml
+  27508cabf0243d73 1-232
+CLAUDE.md
+  27508cabf0243d73 99-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0ade36de6b7352163768fda203a9a866ddf9923a",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 337,
+      "total_deletions": 3,
+      "accepted_lines": 480,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/6050f68271d0bd8253b531dd3911586cd8a76f4a596e5c6eaaed046f2bd2ccf3"
+    }
+  }
+}
