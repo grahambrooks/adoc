@@ -233,24 +233,86 @@ fn highlighter_attr<'a>(doc: &'a Document, name: &str, default: &'a str) -> &'a 
 fn render_highlighter_head(out: &mut String, doc: &Document) {
     match source_highlighter(doc) {
         Some("prism") => {
-            let theme = highlighter_attr(doc, "prism-theme", "prism");
+            // Light + dark theme pair, each gated by prefers-color-scheme so
+            // the highlighter follows the document's color scheme. Defaults:
+            // `prism` (light) and `prism-tomorrow` (dark). Either can be
+            // overridden with `:prism-theme:` / `:prism-dark-theme:`. Set
+            // `:prism-dark-theme!:` (falsy) to suppress the dark variant
+            // entirely if you want a single fixed theme.
+            let light = highlighter_attr(doc, "prism-theme", "prism");
             let _ = write!(
                 out,
-                "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/prismjs@1/themes/{}.min.css\">\n",
-                escape_attr(theme)
+                "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: light)\" href=\"https://cdn.jsdelivr.net/npm/prismjs@1/themes/{}.min.css\">\n",
+                escape_attr(light)
             );
+            if let Some(dark) = optional_attr(doc, "prism-dark-theme", "prism-tomorrow") {
+                let _ = write!(
+                    out,
+                    "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: dark)\" href=\"https://cdn.jsdelivr.net/npm/prismjs@1/themes/{}.min.css\">\n",
+                    escape_attr(dark)
+                );
+            }
+            // Hand off the surface (background, padding, border-radius)
+            // to our own tokens so the document and the highlighter agree.
+            out.push_str(PRISM_SURFACE_OVERRIDE);
         }
         Some("highlightjs") => {
-            let theme = highlighter_attr(doc, "highlightjs-theme", "default");
+            let light = highlighter_attr(doc, "highlightjs-theme", "github");
             let _ = write!(
                 out,
-                "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/highlight.js@11/styles/{}.min.css\">\n",
-                escape_attr(theme)
+                "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: light)\" href=\"https://cdn.jsdelivr.net/npm/highlight.js@11/styles/{}.min.css\">\n",
+                escape_attr(light)
             );
+            if let Some(dark) = optional_attr(doc, "highlightjs-dark-theme", "github-dark") {
+                let _ = write!(
+                    out,
+                    "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: dark)\" href=\"https://cdn.jsdelivr.net/npm/highlight.js@11/styles/{}.min.css\">\n",
+                    escape_attr(dark)
+                );
+            }
+            out.push_str(HLJS_SURFACE_OVERRIDE);
         }
         _ => {}
     }
 }
+
+/// Read an attribute, falling back to `default`. Returns `None` if the
+/// attribute is set to an explicit falsy value (`AttributeValue::Bool(false)`
+/// or empty string), so callers can suppress an output by setting
+/// `:name!:`.
+fn optional_attr<'a>(doc: &'a Document, name: &str, default: &'a str) -> Option<&'a str> {
+    match doc.attributes.get(name) {
+        Some(AttributeValue::Bool(false)) => None,
+        Some(AttributeValue::String(s)) if s.is_empty() => Some(default),
+        Some(AttributeValue::String(s)) => Some(s.as_str()),
+        Some(AttributeValue::Bool(true)) | None => Some(default),
+    }
+}
+
+/// Inline override that lets our `--adoc-code-bg` / `--adoc-code-fg`
+/// tokens show through Prism's default theme rules. Without this, Prism
+/// paints its own hardcoded surface and the document's light/dark mode
+/// stops applying to code blocks.
+const PRISM_SURFACE_OVERRIDE: &str = r#"<style>
+pre[class*="language-"], code[class*="language-"] {
+  background: var(--adoc-code-bg) !important;
+  color: var(--adoc-code-fg) !important;
+  text-shadow: none !important;
+}
+:not(pre) > code[class*="language-"] {
+  padding: 0.15em 0.4em;
+  border-radius: var(--adoc-radius-sm);
+}
+</style>
+"#;
+
+const HLJS_SURFACE_OVERRIDE: &str = r#"<style>
+.hljs {
+  background: var(--adoc-code-bg) !important;
+  color: var(--adoc-code-fg) !important;
+}
+</style>
+"#;
 
 fn render_highlighter_body(out: &mut String, doc: &Document) {
     match source_highlighter(doc) {

@@ -698,7 +698,19 @@ sup.footnote a:hover { text-decoration: underline; }
   #toc { border-style: dashed; }
 }
 </style>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css">
+<style>
+pre[class*="language-"], code[class*="language-"] {
+  background: var(--adoc-code-bg) !important;
+  color: var(--adoc-code-fg) !important;
+  text-shadow: none !important;
+}
+:not(pre) > code[class*="language-"] {
+  padding: 0.15em 0.4em;
+  border-radius: var(--adoc-radius-sm);
+}
+</style>
 </head>
 <body>
 <header>

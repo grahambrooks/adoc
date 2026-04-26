@@ -1101,7 +1101,14 @@ fn source_highlighter_prism_theme_attribute_overrides_default() {
 #[test]
 fn source_highlighter_highlightjs_emits_link_and_scripts() {
     let html = render_src(":source-highlighter: highlightjs\n\nhi\n");
-    assert!(html.contains("highlight.js@11/styles/default.min.css"));
+    // Default is now the github / github-dark pair, gated by
+    // prefers-color-scheme so the highlighter follows the document's mode.
+    assert!(html.contains(
+        r#"<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github.min.css">"#
+    ));
+    assert!(html.contains(
+        r#"<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css">"#
+    ));
     assert!(html.contains("highlight.js@11/lib/common.min.js"));
     assert!(html.contains("hljs.highlightAll()"));
 }
