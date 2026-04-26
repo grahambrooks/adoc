@@ -489,6 +489,9 @@ fn render_paragraph(out: &mut String, p: &Paragraph) -> Result<(), ConvertError>
     if p.meta.style.as_deref() == Some("image") {
         return render_block_image(out, p);
     }
+    if matches!(p.meta.style.as_deref(), Some("video") | Some("audio")) {
+        return render_block_av(out, p);
+    }
     render_block_title(out, &p.meta);
     writeln!(
         out,
@@ -497,6 +500,24 @@ fn render_paragraph(out: &mut String, p: &Paragraph) -> Result<(), ConvertError>
         render_inlines(&p.inlines)
     )
     .map_err(|e| ConvertError::Message(e.to_string()))
+}
+
+fn render_block_av(out: &mut String, p: &Paragraph) -> Result<(), ConvertError> {
+    let class = match p.meta.style.as_deref() {
+        Some("audio") => "audioblock",
+        _ => "videoblock",
+    };
+    writeln!(out, "<div{} class=\"{class}\">", meta_id_only(&p.meta))
+        .map_err(|e| ConvertError::Message(e.to_string()))?;
+    out.push_str(r#"<div class="content">"#);
+    out.push_str(&render_inlines(&p.inlines));
+    out.push_str("</div>\n");
+    if let Some(title) = &p.meta.title {
+        writeln!(out, r#"<div class="title">{}</div>"#, render_inlines(title))
+            .map_err(|e| ConvertError::Message(e.to_string()))?;
+    }
+    out.push_str("</div>\n");
+    Ok(())
 }
 
 fn render_block_image(out: &mut String, p: &Paragraph) -> Result<(), ConvertError> {

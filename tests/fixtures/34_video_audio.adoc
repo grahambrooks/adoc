@@ -1,0 +1,19 @@
+= Video and Audio Block Macros
+
+== Video
+
+.A captioned video
+video::demo.mp4[width=640, height=360, poster=cover.jpg]
+
+A standalone video without a caption:
+
+video::clip.webm[width=400]
+
+video::autoplay-loop.mp4[autoplay, loop, muted]
+
+== Audio
+
+.Listen to this
+audio::sample.mp3[]
+
+audio::nocontrols.ogg[loop]

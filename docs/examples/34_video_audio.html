@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Untitled</title>
+<title>Video and Audio Block Macros</title>
 <style>
 /* adoc.css — default stylesheet for HTML5 output from the adoc processor.
  *
@@ -662,16 +662,33 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 </style>
 </head>
 <body>
-<dl>
-<dt>CPU</dt>
-<dd><p>The brain of the computer.</p>
-</dd>
-<dt>RAM</dt>
-<dd><p>Random-access memory.</p>
-</dd>
-<dt>Disk</dt>
-<dd><p>Persistent storage, usually slower than RAM.</p>
-</dd>
-</dl>
+<header>
+<h1>Video and Audio Block Macros</h1>
+</header>
+<section id="_video">
+<h2>Video</h2>
+<div class="videoblock">
+<div class="content"><video src="demo.mp4" width="640" height="360" poster="cover.jpg" controls></video></div>
+<div class="title">A captioned video</div>
+</div>
+<p>A standalone video without a caption:</p>
+<div class="videoblock">
+<div class="content"><video src="clip.webm" width="400" controls></video></div>
+</div>
+<div class="videoblock">
+<div class="content"><video src="autoplay-loop.mp4" controls autoplay loop muted></video></div>
+</div>
+</section>
+<section id="_audio">
+<h2>Audio</h2>
+<div class="audioblock">
+<div class="content"><audio src="sample.mp3" controls></audio></div>
+<div class="title">Listen to this</div>
+</div>
+<div class="audioblock">
+<div class="content"><audio src="nocontrols.ogg" controls loop></audio></div>
+</div>
+</section>
+<!-- attributes: doctitle=Video and Audio Block Macros; -->
 </body>
 </html>

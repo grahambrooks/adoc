@@ -421,12 +421,19 @@ img {
 }
 
 /* Block image (`image::path[alt]`) — centred figure with optional caption. */
-.imageblock {
+.imageblock,
+.videoblock,
+.audioblock {
   margin: 1.5em 0;
   text-align: center;
 }
-.imageblock > .content > img { display: inline-block; }
-.imageblock > .title {
+.imageblock > .content > img,
+.videoblock > .content > video,
+.audioblock > .content > audio { display: inline-block; max-width: 100%; }
+.audioblock > .content > audio { width: 100%; }
+.imageblock > .title,
+.videoblock > .title,
+.audioblock > .title {
   margin-top: 0.5em;
   font-size: 0.9em;
   color: var(--adoc-muted);

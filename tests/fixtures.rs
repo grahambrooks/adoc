@@ -470,6 +470,7 @@ fn ast_roundtrips_through_serde_json() {
         "31_asciidoc_cells_and_span.adoc",
         "32_compat_links_anchors_discrete.adoc",
         "33_smart_quotes_verse.adoc",
+        "34_video_audio.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -707,6 +708,30 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn video_and_audio_block_macros() {
+    let (_doc, html) = render("34_video_audio.adoc");
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // Video block: wrapping div + <video> with width/height/poster.
+    assert!(body.contains(r#"<div class="videoblock">"#));
+    assert!(body.contains(
+        r#"<video src="demo.mp4" width="640" height="360" poster="cover.jpg" controls></video>"#
+    ));
+    // Title rendered.
+    assert!(body.contains(r#"<div class="title">A captioned video</div>"#));
+
+    // Boolean flags propagate.
+    assert!(body.contains(r#"<video src="autoplay-loop.mp4" controls autoplay loop muted>"#));
+
+    // Audio block: wrapping div + <audio>.
+    assert!(body.contains(r#"<div class="audioblock">"#));
+    assert!(body.contains(r#"<audio src="sample.mp3" controls></audio>"#));
+    assert!(body.contains(r#"<audio src="nocontrols.ogg" controls loop></audio>"#));
 }
 
 #[test]

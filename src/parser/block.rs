@@ -4,6 +4,8 @@
 //! all seven delimited block styles, and basic tables. Inline text inside
 //! blocks is resolved immediately using the accumulated attribute context.
 
+use std::collections::BTreeMap;
+
 use crate::ast::{
     Attributes, Block, BlockMeta, CellStyle, Colist, ColistItem, ColumnSpec, DelimitedBlock,
     DelimitedContent, DelimitedStyle, DescriptionList, DescriptionListItem, DiscreteHeading,
@@ -215,7 +217,120 @@ fn parse_one_block(cursor: &mut Cursor, attrs: &mut Attributes, meta: BlockMeta)
     if let Some(block_image) = try_parse_block_image(cursor, attrs, &meta) {
         return Some(block_image);
     }
+    if let Some(block_av) = try_parse_block_av(cursor, &meta, "video::") {
+        return Some(block_av);
+    }
+    if let Some(block_av) = try_parse_block_av(cursor, &meta, "audio::") {
+        return Some(block_av);
+    }
     Some(Block::Paragraph(parse_paragraph(cursor, attrs, meta)))
+}
+
+/// Recognise a `video::path[args]` or `audio::path[args]` line and
+/// produce a paragraph carrying a single [`Inline::RawHtml`] containing
+/// a `<video>` or `<audio>` element. Block-style metadata (`meta.style =
+/// "video"` / `"audio"`) lets the converter emit a wrapping div, and
+/// the preceding `.Title` becomes a caption.
+///
+/// Recognised named attributes: `width`, `height`, `poster` (video only),
+/// `start` / `end` (range fragments). Anything else is ignored. Boolean
+/// flags `autoplay`, `loop`, `controls` (default on), `muted`, `playsinline`
+/// can appear as bare values in the positional list (e.g. `[options=autoplay]`
+/// would also work but isn't required for v1).
+fn try_parse_block_av(
+    cursor: &mut Cursor,
+    meta: &BlockMeta,
+    prefix: &'static str,
+) -> Option<Block> {
+    let line = cursor.peek()?;
+    let trimmed = line.text.trim();
+    let after_prefix = trimmed.strip_prefix(prefix)?;
+    let bracket = after_prefix.find('[')?;
+    if !after_prefix.ends_with(']') {
+        return None;
+    }
+    let target = &after_prefix[..bracket];
+    if target.is_empty() {
+        return None;
+    }
+    let args_str = &after_prefix[bracket + 1..after_prefix.len() - 1];
+    let location = line.location.clone();
+    cursor.advance();
+    let kind = prefix.trim_end_matches("::"); // "video" or "audio"
+    let html = build_av_html(kind, target, args_str);
+    let mut block_meta = meta.clone();
+    block_meta.style.get_or_insert_with(|| kind.to_string());
+    Some(Block::Paragraph(Paragraph {
+        inlines: vec![Inline::RawHtml { value: html }],
+        location,
+        meta: block_meta,
+    }))
+}
+
+fn build_av_html(kind: &str, target: &str, args_str: &str) -> String {
+    use std::fmt::Write;
+    let parts: Vec<&str> = args_str.split(',').map(str::trim).collect();
+    let mut named: BTreeMap<&str, &str> = BTreeMap::new();
+    let mut flags: Vec<&str> = Vec::new();
+    for part in &parts {
+        if part.is_empty() {
+            continue;
+        }
+        if let Some((k, v)) = part.split_once('=') {
+            named.insert(k.trim(), v.trim().trim_matches('"'));
+        } else {
+            flags.push(part);
+        }
+    }
+    let mut tag = String::new();
+    let _ = write!(tag, "<{kind} src=\"{}\"", html_escape(target));
+    if let Some(w) = named.get("width") {
+        let _ = write!(tag, " width=\"{}\"", html_escape(w));
+    }
+    if let Some(h) = named.get("height") {
+        let _ = write!(tag, " height=\"{}\"", html_escape(h));
+    }
+    if kind == "video" {
+        if let Some(poster) = named.get("poster") {
+            let _ = write!(tag, " poster=\"{}\"", html_escape(poster));
+        }
+    }
+    // Boolean flags: convention here is "on by default unless suppressed".
+    let want = |name: &str, default_on: bool| {
+        if flags.iter().any(|f| *f == name) {
+            true
+        } else if flags.iter().any(|f| *f == &format!("no{name}")) {
+            false
+        } else {
+            default_on
+        }
+    };
+    if want("controls", true) {
+        tag.push_str(" controls");
+    }
+    if flags.iter().any(|f| *f == "autoplay") {
+        tag.push_str(" autoplay");
+    }
+    if flags.iter().any(|f| *f == "loop") {
+        tag.push_str(" loop");
+    }
+    if flags.iter().any(|f| *f == "muted") {
+        tag.push_str(" muted");
+    }
+    if flags.iter().any(|f| *f == "playsinline") {
+        tag.push_str(" playsinline");
+    }
+    tag.push_str("></");
+    tag.push_str(kind);
+    tag.push('>');
+    tag
+}
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 /// Recognise a standalone block image: a line of the form
