@@ -434,6 +434,68 @@ pub trait Converter {
     fn convert(&self, doc: &Document) -> Result<String, ConvertError>;
 }
 
+/// Render an inline sequence to plain text.
+///
+/// Drops formatting markup, preserves the text content of links / xrefs /
+/// footnotes / images. Used by ID derivation, the `<title>` element, the
+/// TOC pre-walk, and any other site that needs the human-readable form
+/// of inline content. Centralised here so id-generation and the converter
+/// can't drift.
+pub fn inlines_to_plain(inlines: &[Inline]) -> String {
+    let mut out = String::new();
+    for i in inlines {
+        write_plain(&mut out, i);
+    }
+    out
+}
+
+fn write_plain(out: &mut String, inline: &Inline) {
+    use std::fmt::Write;
+    match inline {
+        Inline::Text { value } => out.push_str(value),
+        Inline::Strong { children }
+        | Inline::Emphasis { children }
+        | Inline::Monospace { children }
+        | Inline::Subscript { children }
+        | Inline::Superscript { children }
+        | Inline::Highlight { children } => {
+            for child in children {
+                write_plain(out, child);
+            }
+        }
+        Inline::Link { text, .. } => {
+            for child in text {
+                write_plain(out, child);
+            }
+        }
+        Inline::Xref {
+            target,
+            text: Some(t),
+        } => {
+            if t.is_empty() {
+                out.push_str(target);
+            } else {
+                for child in t {
+                    write_plain(out, child);
+                }
+            }
+        }
+        Inline::Xref { target, text: None } => out.push_str(target),
+        Inline::Image { alt, .. } => out.push_str(alt),
+        Inline::Footnote { text, .. } => {
+            for child in text {
+                write_plain(out, child);
+            }
+        }
+        Inline::AttributeRef { name } => {
+            let _ = write!(out, "{{{name}}}");
+        }
+        Inline::LineBreak => out.push(' '),
+        Inline::Passthrough { value } => out.push_str(value),
+        Inline::RawHtml { .. } => {}
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ConvertError {
     #[error("conversion failed: {0}")]

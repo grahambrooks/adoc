@@ -15,7 +15,7 @@
 
 use std::collections::BTreeSet;
 
-use crate::ast::{Block, Inline};
+use crate::ast::Block;
 
 /// Walk `blocks`, collect every explicit ID, then assign auto-generated
 /// IDs to sections that don't have one. Auto IDs are de-duped against
@@ -100,67 +100,15 @@ pub fn derive_section_id(title: &str, existing: &BTreeSet<String>) -> String {
     }
 }
 
-/// Render an inline sequence to plain text suitable for ID derivation.
-/// Drops formatting markup, preserves text content of links/xrefs/images.
-pub fn inlines_to_plain(inlines: &[Inline]) -> String {
-    let mut out = String::new();
-    for i in inlines {
-        write_plain(&mut out, i);
-    }
-    out
-}
-
-fn write_plain(out: &mut String, inline: &Inline) {
-    match inline {
-        Inline::Text { value } => out.push_str(value),
-        Inline::Strong { children }
-        | Inline::Emphasis { children }
-        | Inline::Monospace { children }
-        | Inline::Subscript { children }
-        | Inline::Superscript { children }
-        | Inline::Highlight { children } => {
-            for child in children {
-                write_plain(out, child);
-            }
-        }
-        Inline::Link { text, .. } => {
-            for child in text {
-                write_plain(out, child);
-            }
-        }
-        Inline::Xref {
-            target,
-            text: Some(t),
-        } => {
-            if t.is_empty() {
-                out.push_str(target);
-            } else {
-                for child in t {
-                    write_plain(out, child);
-                }
-            }
-        }
-        Inline::Xref { target, text: None } => out.push_str(target),
-        Inline::Image { alt, .. } => out.push_str(alt),
-        Inline::Footnote { text, .. } => {
-            for child in text {
-                write_plain(out, child);
-            }
-        }
-        Inline::AttributeRef { name } => {
-            out.push('{');
-            out.push_str(name);
-            out.push('}');
-        }
-        Inline::LineBreak => out.push(' '),
-        Inline::Passthrough { value } => out.push_str(value),
-        Inline::RawHtml { .. } => {}
-    }
-}
+// `inlines_to_plain` lives in `crate::ast` so the parser and the converters
+// agree on the human-readable form. Re-exported here for ergonomic
+// `idgen::inlines_to_plain` access.
+pub use crate::ast::inlines_to_plain;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::Inline;
 
     fn s(name: &str) -> String {
         name.to_string()
