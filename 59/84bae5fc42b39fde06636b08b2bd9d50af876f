@@ -1,0 +1,114 @@
+docs/examples/33_smart_quotes_verse.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/18_replacements.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/39_include_wildcards_doctype_part.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/09_example_block.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/19_line_breaks.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/08_literal_block.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/02_header.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/07_listing_block.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/26_inline_extras.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/22_preprocessor_part.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/31_asciidoc_cells_and_span.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/15_inline_quotes.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/30_table_cols.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/40_title_xref.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/34_video_audio.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/23_include_args.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/01_paragraph.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/21_block_metadata.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/27_toc_sectnums.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/10_quote_block.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/13_open_block.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/22_preprocessor.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/06_description_list.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/23_include_args_part.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/24_section_ids.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/05_ordered_list.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/16_inline_macros.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/25_admonitions_source.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/28_tables_header_formatters.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/17_attribute_refs.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/32_compat_links_anchors_discrete.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/35_include_indent.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/12_passthrough_block.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/38_index_bib_tocplace.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/39_include_wildcards_doctype.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/showcase.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+src/convert/html5/assets/adoc.css
+  27508cabf0243d73 71-72,238-240,251,266,278-281,434-435
+docs/examples/14_table.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/03_sections.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/37_table_advanced.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/36_ui_macros.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/04_unordered_list.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/35_include_indent_part.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/11_sidebar_block.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/29_callouts.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+docs/examples/20_mixed.html
+  27508cabf0243d73 78-79,245-247,258,273,285-288,441-442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "5984bae5fc42b39fde06636b08b2bd9d50af876f",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 598,
+      "total_deletions": 322,
+      "accepted_lines": 744,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/5a0bc41ee7e7aef1bf7e66034b6d3afeb614cb40515e8750b974088b90cbe2c8"
+    }
+  }
+}
