@@ -51,6 +51,17 @@ impl Diagnostic {
         }
     }
 
+    pub fn error(code: &'static str, message: impl Into<String>, location: Location) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            help: None,
+            severity: Severity::Error,
+            location,
+            label: String::new(),
+        }
+    }
+
     pub fn with_help(mut self, help: impl Into<String>) -> Self {
         self.help = Some(help.into());
         self

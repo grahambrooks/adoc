@@ -97,7 +97,12 @@ fn main() -> miette::Result<()> {
         let mut preproc = Preprocessor::with_attributes(cli_attrs.clone())
             .with_base_dir(base_dir)
             .with_safe_mode(map_safe_mode(cli.safe_mode));
-        let lines = preproc.run(&source, input).map_err(|e| miette!("{e}"))?;
+        let lines = preproc.run(&source, input).map_err(|e| {
+            // Promote a span-carrying preprocess error to a real
+            // miette report so the user gets file:line:col + snippet.
+            let map = preproc.source_map();
+            preprocess_error_to_report(e, &map)
+        })?;
         let doc = parse_with(&lines, cli_attrs.clone()).map_err(|e| miette!("{e}"))?;
         (doc, preproc.source_map())
     };
@@ -144,6 +149,19 @@ fn main() -> miette::Result<()> {
     }
 
     Ok(())
+}
+
+/// Promote a [`adoc::preprocessor::PreprocessError`] into a `miette`
+/// report. Span-carrying variants become rich source-pointing reports;
+/// the message-only fallback uses the existing flat-string form.
+fn preprocess_error_to_report(
+    err: adoc::preprocessor::PreprocessError,
+    source_map: &SourceMap,
+) -> miette::Report {
+    if let Some(diag) = err.as_diagnostic() {
+        return diag.clone().into_report(source_map);
+    }
+    miette!("{err}")
 }
 
 fn render_diagnostics(diagnostics: adoc::diag::Diagnostics, source_map: &SourceMap) {

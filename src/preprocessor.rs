@@ -43,6 +43,29 @@ pub enum PreprocessError {
         #[source]
         source: std::io::Error,
     },
+    /// Span-carrying error — the call site built a [`crate::diag::Diagnostic`]
+    /// pointing at the offending source location. Rendered by the CLI
+    /// through miette so users see file:line:col + a snippet, not just
+    /// the message string.
+    #[error("{}", .0.message)]
+    Diagnostic(Box<crate::diag::Diagnostic>),
+}
+
+impl PreprocessError {
+    /// Build a span-carrying error from a [`crate::diag::Diagnostic`].
+    pub fn diagnostic(d: crate::diag::Diagnostic) -> Self {
+        Self::Diagnostic(Box::new(d))
+    }
+
+    /// If this error carries a [`Diagnostic`] payload, return it. Used
+    /// by the CLI to render with miette's graphical handler instead of
+    /// a plain message.
+    pub fn as_diagnostic(&self) -> Option<&crate::diag::Diagnostic> {
+        match self {
+            Self::Diagnostic(d) => Some(d),
+            _ => None,
+        }
+    }
 }
 
 /// Mirrors the CLI safe-mode flag enough to gate filesystem-touching
@@ -248,10 +271,14 @@ impl Preprocessor {
             }
             Directive::Endif => {
                 if state.cond_stack.is_empty() {
-                    return Err(PreprocessError::Message(format!(
-                        "endif:: at line {} without a matching ifdef/ifndef/ifeval",
-                        location.line
-                    )));
+                    return Err(PreprocessError::diagnostic(
+                        crate::diag::Diagnostic::error(
+                            "adoc::preprocess::stray_endif",
+                            "endif:: without a matching ifdef/ifndef/ifeval",
+                            location.clone(),
+                        )
+                        .with_label("no open conditional to close"),
+                    ));
                 }
                 state.cond_stack.pop();
                 Ok(())
@@ -260,7 +287,7 @@ impl Preprocessor {
                 if !state.emitting() {
                     return Ok(());
                 }
-                self.handle_include(&target, &args, source_path, state, output)
+                self.handle_include(&target, &args, source_path, location, state, output)
             }
         }
     }
@@ -295,39 +322,68 @@ impl Preprocessor {
         target: &str,
         args: &str,
         current_path: &Utf8Path,
+        directive_loc: &Location,
         state: &mut ProcessState,
         output: &mut Vec<PreprocessedLine>,
     ) -> Result<(), PreprocessError> {
         if matches!(self.safe_mode, SafeMode::Secure) {
-            return Err(PreprocessError::Message(
-                "include:: is disabled in safe mode 'secure'".into(),
+            return Err(PreprocessError::diagnostic(
+                crate::diag::Diagnostic::error(
+                    "adoc::preprocess::secure_mode",
+                    "include:: is disabled in safe mode 'secure'",
+                    directive_loc.clone(),
+                )
+                .with_label("include rejected by safe mode")
+                .with_help("relax with `--safe-mode safe` (or `unsafe`) if the input is trusted"),
             ));
         }
 
         let target = target.trim();
         let raw_target = Utf8PathBuf::from(target);
         if matches!(self.safe_mode, SafeMode::Safe | SafeMode::Server) && raw_target.is_absolute() {
-            return Err(PreprocessError::Message(format!(
-                "absolute include path {raw_target} rejected in safe mode"
-            )));
+            return Err(PreprocessError::diagnostic(
+                crate::diag::Diagnostic::error(
+                    "adoc::preprocess::absolute_include",
+                    format!("absolute include path `{raw_target}` rejected in safe mode"),
+                    directive_loc.clone(),
+                )
+                .with_label("absolute paths are denied by safe mode")
+                .with_help("use a relative path under --base-dir, or pass `--safe-mode unsafe`"),
+            ));
         }
 
         let resolved = self.resolve_include_path(target, current_path);
 
         if matches!(self.safe_mode, SafeMode::Safe | SafeMode::Server) {
-            self.ensure_under_base_dir(&resolved)?;
+            self.ensure_under_base_dir(&resolved)
+                .map_err(|e| upgrade_unscoped(e, directive_loc))?;
         }
 
         if state.include_chain.iter().any(|p| p == &resolved) {
-            return Err(PreprocessError::Message(format!(
-                "include cycle: {resolved}"
-            )));
+            let chain = state
+                .include_chain
+                .iter()
+                .map(|p| p.as_str())
+                .collect::<Vec<_>>()
+                .join(" → ");
+            return Err(PreprocessError::diagnostic(
+                crate::diag::Diagnostic::error(
+                    "adoc::preprocess::include_cycle",
+                    format!("include cycle detected: {chain} → {resolved}"),
+                    directive_loc.clone(),
+                )
+                .with_label("this include closes a cycle"),
+            ));
         }
         if state.include_chain.len() as u32 >= self.max_include_depth {
-            return Err(PreprocessError::Message(format!(
-                "include depth limit reached ({})",
-                self.max_include_depth
-            )));
+            return Err(PreprocessError::diagnostic(
+                crate::diag::Diagnostic::error(
+                    "adoc::preprocess::include_depth",
+                    format!("include depth limit reached ({})", self.max_include_depth),
+                    directive_loc.clone(),
+                )
+                .with_label("nesting goes too deep here"),
+            ));
         }
 
         let raw_source = read_file(&resolved)?;
@@ -360,7 +416,24 @@ impl Preprocessor {
         }
         Ok(())
     }
+}
 
+/// Promote a `PreprocessError::Message(...)` into a span-carrying
+/// `Diagnostic` variant when the caller knows the source location.
+/// Other variants pass through unchanged.
+fn upgrade_unscoped(e: PreprocessError, location: &Location) -> PreprocessError {
+    match e {
+        PreprocessError::Message(msg) => PreprocessError::diagnostic(
+            crate::diag::Diagnostic::error("adoc::preprocess::include_path", msg, location.clone())
+                .with_label("rejected by safe mode"),
+        ),
+        other => other,
+    }
+}
+
+// Reopen the impl block — `upgrade_unscoped` lives at module scope so
+// it can sit between `Preprocessor` methods and the lower helpers.
+impl Preprocessor {
     fn resolve_include_path(&self, target: &str, current_path: &Utf8Path) -> Utf8PathBuf {
         let raw = Utf8PathBuf::from(target);
         if raw.is_absolute() {
@@ -1155,7 +1228,10 @@ mod tests {
     fn endif_without_matching_if_errors() {
         let mut p = Preprocessor::default();
         let err = p.run("endif::[]\n", Utf8Path::new("<input>")).unwrap_err();
-        assert!(matches!(err, PreprocessError::Message(_)));
+        let d = err
+            .as_diagnostic()
+            .expect("should be a span-carrying error");
+        assert_eq!(d.code, "adoc::preprocess::stray_endif");
     }
 
     #[test]
@@ -1193,7 +1269,10 @@ mod tests {
         std::fs::write(&b, "include::a.adoc[]\n").unwrap();
         let mut p = Preprocessor::default();
         let err = p.run_file(Utf8Path::from_path(&a).unwrap()).unwrap_err();
-        assert!(matches!(err, PreprocessError::Message(m) if m.contains("cycle")));
+        let d = err
+            .as_diagnostic()
+            .expect("cycle should produce diagnostic");
+        assert_eq!(d.code, "adoc::preprocess::include_cycle");
     }
 
     #[test]
@@ -1205,7 +1284,10 @@ mod tests {
         std::fs::write(&top, "include::part.adoc[]\n").unwrap();
         let mut p = Preprocessor::default().with_safe_mode(SafeMode::Secure);
         let err = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap_err();
-        assert!(matches!(err, PreprocessError::Message(m) if m.contains("secure")));
+        let d = err
+            .as_diagnostic()
+            .expect("secure-mode include should diag");
+        assert_eq!(d.code, "adoc::preprocess::secure_mode");
     }
 
     #[test]
@@ -1305,9 +1387,16 @@ mod tests {
         std::fs::write(&top, format!("include::{abs_str}[]\n")).unwrap();
         let mut p = Preprocessor::default().with_safe_mode(SafeMode::Safe);
         let err = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap_err();
+        let d = err
+            .as_diagnostic()
+            .expect("safe-mode rejection should diag");
         assert!(
-            matches!(&err, PreprocessError::Message(m) if m.contains("absolute") || m.contains("escapes")),
-            "{err:?}",
+            matches!(
+                d.code,
+                "adoc::preprocess::absolute_include" | "adoc::preprocess::include_path"
+            ),
+            "got code={}",
+            d.code
         );
     }
 
@@ -1329,10 +1418,9 @@ mod tests {
             .with_base_dir(Utf8Path::from_path(&inside).unwrap().to_owned())
             .with_safe_mode(SafeMode::Safe);
         let err = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap_err();
-        assert!(
-            matches!(&err, PreprocessError::Message(m) if m.contains("escapes")),
-            "{err:?}",
-        );
+        let d = err.as_diagnostic().expect("escape rejection should diag");
+        assert_eq!(d.code, "adoc::preprocess::include_path");
+        assert!(d.message.contains("escapes"), "got message={}", d.message);
     }
 
     #[test]
