@@ -297,9 +297,9 @@ fn build_av_html(kind: &str, target: &str, args_str: &str) -> String {
     }
     // Boolean flags: convention here is "on by default unless suppressed".
     let want = |name: &str, default_on: bool| {
-        if flags.iter().any(|f| *f == name) {
+        if flags.contains(&name) {
             true
-        } else if flags.iter().any(|f| *f == &format!("no{name}")) {
+        } else if flags.iter().any(|f| *f == format!("no{name}")) {
             false
         } else {
             default_on
@@ -308,16 +308,16 @@ fn build_av_html(kind: &str, target: &str, args_str: &str) -> String {
     if want("controls", true) {
         tag.push_str(" controls");
     }
-    if flags.iter().any(|f| *f == "autoplay") {
+    if flags.contains(&"autoplay") {
         tag.push_str(" autoplay");
     }
-    if flags.iter().any(|f| *f == "loop") {
+    if flags.contains(&"loop") {
         tag.push_str(" loop");
     }
-    if flags.iter().any(|f| *f == "muted") {
+    if flags.contains(&"muted") {
         tag.push_str(" muted");
     }
-    if flags.iter().any(|f| *f == "playsinline") {
+    if flags.contains(&"playsinline") {
         tag.push_str(" playsinline");
     }
     tag.push_str("></");
@@ -537,11 +537,7 @@ fn parse_list_kind(
 ) -> Block {
     let location = cursor.current_location();
     let mut items: Vec<ListItem> = Vec::new();
-    loop {
-        let line = match cursor.peek() {
-            Some(l) => l,
-            None => break,
-        };
+    while let Some(line) = cursor.peek() {
         let text = line.text.clone();
         if text.trim().is_empty() {
             // A blank line could end the list unless the next non-blank line is a
@@ -633,11 +629,7 @@ fn parse_description_list(
 ) -> DescriptionList {
     let location = cursor.current_location();
     let mut items: Vec<DescriptionListItem> = Vec::new();
-    loop {
-        let line = match cursor.peek() {
-            Some(l) => l,
-            None => break,
-        };
+    while let Some(line) = cursor.peek() {
         let text = line.text.clone();
         if text.trim().is_empty() {
             break;
@@ -1090,10 +1082,8 @@ fn group_cells_into_rows(
                 // `rowspan` rows total — the end-of-row decrement will
                 // bring this down to `rowspan - 1` for the next row,
                 // which is exactly the count of remaining occupied rows.
-                for c in col..col + colspan {
-                    if c < cols_count {
-                        carryover[c] = rowspan;
-                    }
+                for slot in carryover.iter_mut().skip(col).take(colspan) {
+                    *slot = rowspan;
                 }
             }
             col += colspan;

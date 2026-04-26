@@ -55,15 +55,15 @@ pub(crate) fn render_highlighter_head(out: &mut String, doc: &Document) {
             // `:prism-dark-theme!:` (falsy) to suppress the dark variant
             // entirely if you want a single fixed theme.
             let light = highlighter_attr(doc, "prism-theme", "prism");
-            let _ = write!(
+            let _ = writeln!(
                 out,
-                "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: light)\" href=\"https://cdn.jsdelivr.net/npm/prismjs@1/themes/{}.min.css\">\n",
+                "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: light)\" href=\"https://cdn.jsdelivr.net/npm/prismjs@1/themes/{}.min.css\">",
                 escape_attr(light)
             );
             if let Some(dark) = optional_attr(doc, "prism-dark-theme", "prism-tomorrow") {
-                let _ = write!(
+                let _ = writeln!(
                     out,
-                    "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: dark)\" href=\"https://cdn.jsdelivr.net/npm/prismjs@1/themes/{}.min.css\">\n",
+                    "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: dark)\" href=\"https://cdn.jsdelivr.net/npm/prismjs@1/themes/{}.min.css\">",
                     escape_attr(dark)
                 );
             }
@@ -73,15 +73,15 @@ pub(crate) fn render_highlighter_head(out: &mut String, doc: &Document) {
         }
         Some("highlightjs") => {
             let light = highlighter_attr(doc, "highlightjs-theme", "github");
-            let _ = write!(
+            let _ = writeln!(
                 out,
-                "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: light)\" href=\"https://cdn.jsdelivr.net/npm/highlight.js@11/styles/{}.min.css\">\n",
+                "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: light)\" href=\"https://cdn.jsdelivr.net/npm/highlight.js@11/styles/{}.min.css\">",
                 escape_attr(light)
             );
             if let Some(dark) = optional_attr(doc, "highlightjs-dark-theme", "github-dark") {
-                let _ = write!(
+                let _ = writeln!(
                     out,
-                    "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: dark)\" href=\"https://cdn.jsdelivr.net/npm/highlight.js@11/styles/{}.min.css\">\n",
+                    "<link rel=\"stylesheet\" media=\"(prefers-color-scheme: dark)\" href=\"https://cdn.jsdelivr.net/npm/highlight.js@11/styles/{}.min.css\">",
                     escape_attr(dark)
                 );
             }

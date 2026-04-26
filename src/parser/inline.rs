@@ -316,7 +316,11 @@ impl<'a> InlineParser<'a> {
             }
             // The first content char must not be whitespace.
             let after_open = &rem[open.len()..];
-            if after_open.chars().next().is_none_or(|c| c.is_whitespace()) {
+            if after_open
+                .chars()
+                .next()
+                .map_or(true, |c| c.is_whitespace())
+            {
                 continue;
             }
             // Find the closing pair somewhere ahead.
@@ -386,7 +390,9 @@ const SMART_QUOTE_PAIRS: &[(&str, &str, &str, &str)] = &[
 ];
 
 // Constrained quotes: single-char markers, require word boundary at edges.
-const CONSTRAINED_QUOTES: &[(&str, fn(Vec<Inline>) -> Inline)] = &[
+type QuoteCtor = fn(Vec<Inline>) -> Inline;
+
+const CONSTRAINED_QUOTES: &[(&str, QuoteCtor)] = &[
     ("*", make_strong),
     ("_", make_emphasis),
     ("`", make_monospace),
@@ -397,7 +403,7 @@ const CONSTRAINED_QUOTES: &[(&str, fn(Vec<Inline>) -> Inline)] = &[
 // only inner-edge whitespace rejection — no outer word-boundary rule.
 // Subscript (`~`) and superscript (`^`) are single-char but unconstrained
 // per spec, so they live here.
-const UNCONSTRAINED_QUOTES: &[(&str, fn(Vec<Inline>) -> Inline)] = &[
+const UNCONSTRAINED_QUOTES: &[(&str, QuoteCtor)] = &[
     ("**", make_strong),
     ("__", make_emphasis),
     ("``", make_monospace),

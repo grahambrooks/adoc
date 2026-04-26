@@ -43,7 +43,7 @@ pub(crate) fn render_block(
 
 fn render_section(out: &mut String, s: &Section, ctx: &RenderCtx) -> Result<(), ConvertError> {
     let tag = heading_tag_for_level(s.level);
-    write!(out, "<section{}>\n", meta_attrs(&s.meta))
+    writeln!(out, "<section{}>", meta_attrs(&s.meta))
         .map_err(|e| ConvertError::Message(e.to_string()))?;
     render_block_title(out, &s.meta);
 

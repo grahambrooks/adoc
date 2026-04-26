@@ -18,7 +18,7 @@
 //!   per-entry summary with diff hints and the suite as a whole panics
 //!   so CI catches regressions.
 //! * Bless intentional changes:
-//!     `ADOC_CONFORMANCE_BLESS=1 cargo test --test conformance`
+//!   `ADOC_CONFORMANCE_BLESS=1 cargo test --test conformance`.
 //!   The driver overwrites `expected.ast.json` / `expected.html` for
 //!   every entry instead of comparing. Review the diff in git before
 //!   committing.

@@ -127,7 +127,7 @@ impl Html5Converter {
             .as_ref()
             .map(|h| inlines_to_plain(&h.title))
             .unwrap_or_else(|| "Untitled".to_string());
-        write!(out, "<title>{}</title>\n", escape(&title_text))
+        writeln!(out, "<title>{}</title>", escape(&title_text))
             .map_err(|e| ConvertError::Message(e.to_string()))?;
         render_stylesheet(&mut out, &self.options.stylesheet);
         render_highlighter_head(&mut out, doc);
@@ -154,7 +154,7 @@ impl Html5Converter {
 
         if let Some(header) = &doc.header {
             out.push_str("<header>\n");
-            write!(out, "<h1>{}</h1>\n", render_inlines(&header.title))
+            writeln!(out, "<h1>{}</h1>", render_inlines(&header.title))
                 .map_err(|e| ConvertError::Message(e.to_string()))?;
             if !header.authors.is_empty() {
                 out.push_str(r#"<p class="authors">"#);
@@ -189,7 +189,7 @@ impl Html5Converter {
         // `:toc-placement: auto` (the default) puts the TOC at the top
         // of `<main>`. `preamble` puts it right after the preamble div.
         if ctx.toc && ctx.toc_placement == TocPlacement::Auto {
-            render_toc(&mut out, &ctx);
+            render_toc(&mut out, ctx);
         }
 
         let body_start = out.len();
@@ -205,15 +205,15 @@ impl Html5Converter {
             out.push_str(r#"<div id="preamble">"#);
             out.push('\n');
             for block in &doc.blocks[..preamble_end] {
-                render_block(&mut out, block, &ctx)?;
+                render_block(&mut out, block, ctx)?;
             }
             out.push_str("</div>\n");
         }
         if ctx.toc && ctx.toc_placement == TocPlacement::Preamble {
-            render_toc(&mut out, &ctx);
+            render_toc(&mut out, ctx);
         }
         for block in &doc.blocks[preamble_end..] {
-            render_block(&mut out, block, &ctx)?;
+            render_block(&mut out, block, ctx)?;
         }
 
         // After the body is rendered, walk it and turn each inline
@@ -277,9 +277,9 @@ fn render_stylesheet(out: &mut String, stylesheet: &Stylesheet) {
             out.push_str("</style>\n");
         }
         Stylesheet::BuiltinLink { href } | Stylesheet::CustomLink { href } => {
-            let _ = write!(
+            let _ = writeln!(
                 out,
-                "<link rel=\"stylesheet\" href=\"{}\">\n",
+                "<link rel=\"stylesheet\" href=\"{}\">",
                 escape_attr(href)
             );
         }

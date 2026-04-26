@@ -165,7 +165,7 @@ fn starts_with_marker(t: &str, marker: char) -> bool {
     if first != Some(marker) {
         return false;
     }
-    chars.next().map_or(false, |c| c == ' ' || c == marker)
+    chars.next().is_some_and(|c| c == ' ' || c == marker)
 }
 
 fn parse_author_line(text: &str) -> Vec<Author> {
