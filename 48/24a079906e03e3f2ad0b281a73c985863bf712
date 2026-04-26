@@ -1,0 +1,34 @@
+docs/genai/AGENTS.md
+  27508cabf0243d73 1-186
+docs/genai/README.md
+  27508cabf0243d73 1-55
+docs/genai/claude-skill/SKILL.md
+  27508cabf0243d73 1-183
+docs/genai/system-prompt.md
+  27508cabf0243d73 1-66
+README.md
+  27508cabf0243d73 134-135
+docs/genai/copilot-instructions.md
+  27508cabf0243d73 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "4824a079906e03e3f2ad0b281a73c985863bf712",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 534,
+      "total_deletions": 0,
+      "accepted_lines": 680,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/676ff253f6ea5d263bf5687f7adffda18439b6db72c8e09ead5f1a37b29a6c2b"
+    }
+  }
+}
