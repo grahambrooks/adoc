@@ -69,4 +69,9 @@ The `crate::ast::inlines_to_plain` helper is the single canonical AST → plain-
 
 ## Conformance
 
-Compliance is measured against a conformance suite under `tests/conformance/` (not yet populated) — one `.adoc` input with expected AST (JSON) and expected HTML5 per feature. When adding a language feature, add a conformance fixture in the same change. The interim corpus is `tests/fixtures/` (36+ `.adoc` inputs driving structural assertions through the full pipeline) plus the rendered showcase under `docs/showcase.adoc` / `docs/showcase.html`. Asciidoctor is a sanity check, not the oracle.
+Two test corpora work together:
+
+* **`tests/fixtures/`** asserts *structural* properties — counts, presence of particular tags, AST node shape — for the 41+ `.adoc` inputs the project drives through the full pipeline. New language features earn their `#[test]` here.
+* **`tests/conformance/<entry>/`** asserts *byte-identity*. Each entry has `input.adoc`, `expected.ast.json`, and `expected.html` (rendered with no stylesheet so CSS edits don't dominate diffs). The driver lives in `tests/conformance.rs`; bless intentional changes with `ADOC_CONFORMANCE_BLESS=1 cargo test --test conformance`. New spec features should add a conformance entry in the same change as the feature.
+
+Asciidoctor is a sanity check, not the oracle. The spec is the oracle.

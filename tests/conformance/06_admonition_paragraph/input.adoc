@@ -1,0 +1,9 @@
+NOTE: A note.
+
+TIP: A tip.
+
+IMPORTANT: An important call-out.
+
+WARNING: A warning.
+
+CAUTION: A caution.

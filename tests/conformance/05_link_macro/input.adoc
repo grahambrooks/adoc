@@ -1,0 +1,9 @@
+:home: https://example.com
+
+Visit link:{home}[the homepage] or just {home} directly.
+
+Bare URL with label: https://example.com[Example].
+
+Bare autolink: https://example.com.
+
+Mailto: mailto:alice@example.com[email Alice].

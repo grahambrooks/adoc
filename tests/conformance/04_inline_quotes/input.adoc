@@ -1,0 +1,7 @@
+Constrained: *strong*, _emphasis_, `monospace`.
+
+Unconstrained: **bo**ld, __it__alic, ``mo``no.
+
+Combined: *_strong em_*, *`bold mono`*, _`italic mono`_.
+
+Specials survive: 1 < 2 && 3 > 2 stays literal.

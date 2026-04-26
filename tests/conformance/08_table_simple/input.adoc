@@ -1,0 +1,9 @@
+.A simple table
+[cols="1,2"]
+|===
+| Key | Value
+
+| name | Alice
+| role | Engineer
+| city | Remote
+|===

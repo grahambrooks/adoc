@@ -1,0 +1,66 @@
+{
+  "header": null,
+  "attributes": {},
+  "blocks": [
+    {
+      "kind": "delimited",
+      "style": "listing",
+      "content": {
+        "form": "raw",
+        "text": "fn main() {\n    let greeting = \"hello\"; <1>\n    println!(\"{greeting}, world!\"); <2> <3>\n}"
+      },
+      "location": {
+        "source": 0,
+        "byte_start": 14,
+        "byte_end": 18,
+        "line": 2,
+        "column": 1
+      },
+      "meta": {
+        "style": "source",
+        "positional": [
+          "rust"
+        ]
+      }
+    },
+    {
+      "kind": "colist",
+      "items": [
+        {
+          "number": 1,
+          "inlines": [
+            {
+              "kind": "text",
+              "value": "Bind a string slice."
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "inlines": [
+            {
+              "kind": "text",
+              "value": "Format and print."
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "inlines": [
+            {
+              "kind": "text",
+              "value": "Two callouts can share a line."
+            }
+          ]
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 114,
+        "byte_end": 138,
+        "line": 8,
+        "column": 1
+      }
+    }
+  ]
+}

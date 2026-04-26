@@ -1,0 +1,79 @@
+{
+  "header": null,
+  "attributes": {},
+  "blocks": [
+    {
+      "kind": "list",
+      "marker": "unordered",
+      "items": [
+        {
+          "depth": 1,
+          "principal": [
+            {
+              "kind": "text",
+              "value": "First top-level item"
+            }
+          ],
+          "blocks": []
+        },
+        {
+          "depth": 1,
+          "principal": [
+            {
+              "kind": "text",
+              "value": "Second top-level item"
+            }
+          ],
+          "blocks": []
+        },
+        {
+          "depth": 2,
+          "principal": [
+            {
+              "kind": "text",
+              "value": "Nested"
+            }
+          ],
+          "blocks": []
+        },
+        {
+          "depth": 2,
+          "principal": [
+            {
+              "kind": "text",
+              "value": "Also nested"
+            }
+          ],
+          "blocks": []
+        },
+        {
+          "depth": 3,
+          "principal": [
+            {
+              "kind": "text",
+              "value": "Deeply nested"
+            }
+          ],
+          "blocks": []
+        },
+        {
+          "depth": 1,
+          "principal": [
+            {
+              "kind": "text",
+              "value": "Back to top"
+            }
+          ],
+          "blocks": []
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 0,
+        "byte_end": 22,
+        "line": 1,
+        "column": 1
+      }
+    }
+  ]
+}

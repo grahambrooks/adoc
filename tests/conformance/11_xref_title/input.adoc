@@ -1,0 +1,15 @@
+= Title-Text Cross-References
+
+See <<Methods>> or xref:Methods[the methods chapter].
+
+== Introduction
+
+A reference back to <<Conclusion>>.
+
+== Methods
+
+Body of the methods section.
+
+== Conclusion
+
+Body of the conclusion section.

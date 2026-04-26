@@ -218,7 +218,7 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Area | Status |
 |---|---|
 | `miette::Diagnostic` for span-pointing errors and warnings — `adoc::diag::{Diagnostic, Diagnostics}` collector; `Preprocessor::source_map()` keeps file content alongside SourceId; `PreprocessError`/`ParseError` gain a `Diagnostic(...)` variant that carries a `Location`; the converter's xref pre-walk produces structured warnings; CLI renders via miette's graphical or JSON handler (`--diagnostic-format=plain\|json`) | done |
-| Conformance suite under `tests/conformance/` (expected AST + HTML5 per spec example) | **not started** — the 37-fixture corpus under `tests/fixtures/` plus `docs/showcase.adoc` cover the v1 surface in the meantime |
+| Conformance suite under `tests/conformance/` — driver in `tests/conformance.rs` walks every `<entry>/` dir, runs `input.adoc` through the full pipeline, and compares both the serialized AST and the HTML output against `expected.ast.json` / `expected.html` (HTML rendered with `Stylesheet::None` so diffs show content not CSS). Bless mode (`ADOC_CONFORMANCE_BLESS=1 cargo test --test conformance`) regenerates expected files. Starter corpus has 12 entries spanning paragraphs, sections, lists, listing blocks, inline quotes, link macro, admonitions, source blocks, tables, smart quotes, callouts, and `<<Title>>` xref resolution; new spec features should add a conformance entry in the same change. | done (scaffold + 12 entries) |
 
 ## AST gaps
 

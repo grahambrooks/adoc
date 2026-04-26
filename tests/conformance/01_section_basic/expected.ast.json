@@ -1,0 +1,154 @@
+{
+  "header": {
+    "title": [
+      {
+        "kind": "text",
+        "value": "Document Title"
+      }
+    ],
+    "authors": [],
+    "revision": null,
+    "location": {
+      "source": 0,
+      "byte_start": 0,
+      "byte_end": 16,
+      "line": 1,
+      "column": 1
+    }
+  },
+  "attributes": {
+    "doctitle": "Document Title"
+  },
+  "blocks": [
+    {
+      "kind": "paragraph",
+      "inlines": [
+        {
+          "kind": "text",
+          "value": "Intro paragraph."
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 18,
+        "byte_end": 34,
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "kind": "section",
+      "level": 1,
+      "title": [
+        {
+          "kind": "text",
+          "value": "Section A"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "inlines": [
+            {
+              "kind": "text",
+              "value": "Content of A."
+            }
+          ],
+          "location": {
+            "source": 0,
+            "byte_start": 50,
+            "byte_end": 63,
+            "line": 7,
+            "column": 1
+          }
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 36,
+        "byte_end": 48,
+        "line": 5,
+        "column": 1
+      },
+      "meta": {
+        "id": "_section_a"
+      }
+    },
+    {
+      "kind": "section",
+      "level": 1,
+      "title": [
+        {
+          "kind": "text",
+          "value": "Section B"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "inlines": [
+            {
+              "kind": "text",
+              "value": "Content of B."
+            }
+          ],
+          "location": {
+            "source": 0,
+            "byte_start": 79,
+            "byte_end": 92,
+            "line": 11,
+            "column": 1
+          }
+        },
+        {
+          "kind": "section",
+          "level": 2,
+          "title": [
+            {
+              "kind": "text",
+              "value": "Subsection"
+            }
+          ],
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "inlines": [
+                {
+                  "kind": "text",
+                  "value": "Nested content."
+                }
+              ],
+              "location": {
+                "source": 0,
+                "byte_start": 110,
+                "byte_end": 125,
+                "line": 15,
+                "column": 1
+              }
+            }
+          ],
+          "location": {
+            "source": 0,
+            "byte_start": 94,
+            "byte_end": 108,
+            "line": 13,
+            "column": 1
+          },
+          "meta": {
+            "id": "_subsection"
+          }
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 65,
+        "byte_end": 77,
+        "line": 9,
+        "column": 1
+      },
+      "meta": {
+        "id": "_section_b"
+      }
+    }
+  ]
+}

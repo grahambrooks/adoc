@@ -172,7 +172,7 @@ make examples         # render tests/fixtures/*.adoc to docs/examples/*.html
 make ci               # fmt-check + lint + test
 ```
 
-The integration corpus lives in `tests/fixtures/` (twenty `.adoc` inputs). A spec-derived conformance suite under `tests/conformance/` (with expected AST + HTML per feature) is queued behind block-metadata work.
+Two test corpora work together. The structural suite under `tests/fixtures/` (41+ `.adoc` inputs) drives `tests/fixtures.rs` and asserts *shape* — node counts, presence of particular tags. The conformance suite under `tests/conformance/<entry>/` asserts *byte-identity*: each entry has `input.adoc`, `expected.ast.json`, and `expected.html` (rendered with no stylesheet so CSS edits don't dominate diffs). Bless intentional changes with `ADOC_CONFORMANCE_BLESS=1 cargo test --test conformance`. Add a conformance entry alongside any new spec feature.
 
 ## Contributing
 

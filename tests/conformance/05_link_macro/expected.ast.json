@@ -1,0 +1,128 @@
+{
+  "header": null,
+  "attributes": {
+    "home": "https://example.com"
+  },
+  "blocks": [
+    {
+      "kind": "paragraph",
+      "inlines": [
+        {
+          "kind": "text",
+          "value": "Visit "
+        },
+        {
+          "kind": "link",
+          "href": "https://example.com",
+          "text": [
+            {
+              "kind": "text",
+              "value": "the homepage"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": " or just https://example.com directly."
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 28,
+        "byte_end": 84,
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "kind": "paragraph",
+      "inlines": [
+        {
+          "kind": "text",
+          "value": "Bare URL with label: "
+        },
+        {
+          "kind": "link",
+          "href": "https://example.com",
+          "text": [
+            {
+              "kind": "text",
+              "value": "Example"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": "."
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 86,
+        "byte_end": 136,
+        "line": 5,
+        "column": 1
+      }
+    },
+    {
+      "kind": "paragraph",
+      "inlines": [
+        {
+          "kind": "text",
+          "value": "Bare autolink: "
+        },
+        {
+          "kind": "link",
+          "href": "https://example.com",
+          "text": [
+            {
+              "kind": "text",
+              "value": "https://example.com"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": "."
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 138,
+        "byte_end": 173,
+        "line": 7,
+        "column": 1
+      }
+    },
+    {
+      "kind": "paragraph",
+      "inlines": [
+        {
+          "kind": "text",
+          "value": "Mailto: "
+        },
+        {
+          "kind": "link",
+          "href": "mailto:alice@example.com",
+          "text": [
+            {
+              "kind": "text",
+              "value": "email Alice"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": "."
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 175,
+        "byte_end": 221,
+        "line": 9,
+        "column": 1
+      }
+    }
+  ]
+}

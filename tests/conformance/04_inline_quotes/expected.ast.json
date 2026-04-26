@@ -1,0 +1,202 @@
+{
+  "header": null,
+  "attributes": {},
+  "blocks": [
+    {
+      "kind": "paragraph",
+      "inlines": [
+        {
+          "kind": "text",
+          "value": "Constrained: "
+        },
+        {
+          "kind": "strong",
+          "children": [
+            {
+              "kind": "text",
+              "value": "strong"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": ", "
+        },
+        {
+          "kind": "emphasis",
+          "children": [
+            {
+              "kind": "text",
+              "value": "emphasis"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": ", "
+        },
+        {
+          "kind": "monospace",
+          "children": [
+            {
+              "kind": "text",
+              "value": "monospace"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": "."
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 0,
+        "byte_end": 47,
+        "line": 1,
+        "column": 1
+      }
+    },
+    {
+      "kind": "paragraph",
+      "inlines": [
+        {
+          "kind": "text",
+          "value": "Unconstrained: "
+        },
+        {
+          "kind": "strong",
+          "children": [
+            {
+              "kind": "text",
+              "value": "bo"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": "ld, "
+        },
+        {
+          "kind": "emphasis",
+          "children": [
+            {
+              "kind": "text",
+              "value": "it"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": "alic, "
+        },
+        {
+          "kind": "monospace",
+          "children": [
+            {
+              "kind": "text",
+              "value": "mo"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": "no."
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 49,
+        "byte_end": 95,
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "kind": "paragraph",
+      "inlines": [
+        {
+          "kind": "text",
+          "value": "Combined: "
+        },
+        {
+          "kind": "strong",
+          "children": [
+            {
+              "kind": "emphasis",
+              "children": [
+                {
+                  "kind": "text",
+                  "value": "strong em"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": ", "
+        },
+        {
+          "kind": "strong",
+          "children": [
+            {
+              "kind": "monospace",
+              "children": [
+                {
+                  "kind": "text",
+                  "value": "bold mono"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": ", "
+        },
+        {
+          "kind": "emphasis",
+          "children": [
+            {
+              "kind": "monospace",
+              "children": [
+                {
+                  "kind": "text",
+                  "value": "italic mono"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": "."
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 97,
+        "byte_end": 153,
+        "line": 5,
+        "column": 1
+      }
+    },
+    {
+      "kind": "paragraph",
+      "inlines": [
+        {
+          "kind": "text",
+          "value": "Specials survive: 1 < 2 && 3 > 2 stays literal."
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 155,
+        "byte_end": 202,
+        "line": 7,
+        "column": 1
+      }
+    }
+  ]
+}

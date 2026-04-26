@@ -1,0 +1,9 @@
+Before the listing.
+
+----
+fn main() {
+    println!("hello");
+}
+----
+
+After the listing.

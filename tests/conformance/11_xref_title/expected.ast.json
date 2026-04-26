@@ -1,0 +1,196 @@
+{
+  "header": {
+    "title": [
+      {
+        "kind": "text",
+        "value": "Title-Text Cross-References"
+      }
+    ],
+    "authors": [],
+    "revision": null,
+    "location": {
+      "source": 0,
+      "byte_start": 0,
+      "byte_end": 29,
+      "line": 1,
+      "column": 1
+    }
+  },
+  "attributes": {
+    "doctitle": "Title-Text Cross-References"
+  },
+  "blocks": [
+    {
+      "kind": "paragraph",
+      "inlines": [
+        {
+          "kind": "text",
+          "value": "See "
+        },
+        {
+          "kind": "xref",
+          "target": "_methods",
+          "text": [
+            {
+              "kind": "text",
+              "value": "Methods"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": " or "
+        },
+        {
+          "kind": "xref",
+          "target": "_methods",
+          "text": [
+            {
+              "kind": "text",
+              "value": "the methods chapter"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "value": "."
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 31,
+        "byte_end": 84,
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "kind": "section",
+      "level": 1,
+      "title": [
+        {
+          "kind": "text",
+          "value": "Introduction"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "inlines": [
+            {
+              "kind": "text",
+              "value": "A reference back to "
+            },
+            {
+              "kind": "xref",
+              "target": "_conclusion",
+              "text": [
+                {
+                  "kind": "text",
+                  "value": "Conclusion"
+                }
+              ]
+            },
+            {
+              "kind": "text",
+              "value": "."
+            }
+          ],
+          "location": {
+            "source": 0,
+            "byte_start": 103,
+            "byte_end": 138,
+            "line": 7,
+            "column": 1
+          }
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 86,
+        "byte_end": 101,
+        "line": 5,
+        "column": 1
+      },
+      "meta": {
+        "id": "_introduction"
+      }
+    },
+    {
+      "kind": "section",
+      "level": 1,
+      "title": [
+        {
+          "kind": "text",
+          "value": "Methods"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "inlines": [
+            {
+              "kind": "text",
+              "value": "Body of the methods section."
+            }
+          ],
+          "location": {
+            "source": 0,
+            "byte_start": 152,
+            "byte_end": 180,
+            "line": 11,
+            "column": 1
+          }
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 140,
+        "byte_end": 150,
+        "line": 9,
+        "column": 1
+      },
+      "meta": {
+        "id": "_methods"
+      }
+    },
+    {
+      "kind": "section",
+      "level": 1,
+      "title": [
+        {
+          "kind": "text",
+          "value": "Conclusion"
+        }
+      ],
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "inlines": [
+            {
+              "kind": "text",
+              "value": "Body of the conclusion section."
+            }
+          ],
+          "location": {
+            "source": 0,
+            "byte_start": 197,
+            "byte_end": 228,
+            "line": 15,
+            "column": 1
+          }
+        }
+      ],
+      "location": {
+        "source": 0,
+        "byte_start": 182,
+        "byte_end": 195,
+        "line": 13,
+        "column": 1
+      },
+      "meta": {
+        "id": "_conclusion"
+      }
+    }
+  ]
+}
