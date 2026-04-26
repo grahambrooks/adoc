@@ -75,8 +75,8 @@
     Roboto, Helvetica, Arial, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji";
   --adoc-font-mono:
-    "Geist Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Monaco,
-    Consolas, "Liberation Mono", monospace;
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
 
   /* --- Layout ------------------------------------------------------- */
   --adoc-content-width: 48rem;
@@ -242,7 +242,9 @@ code, kbd, samp, var {
 }
 
 code {
-  font-size: 0.9em;
+  /* Match surrounding text: same em size as the prose, so a `code`
+     span inside a paragraph doesn't shrink relative to the line. */
+  font-size: 1em;
   background: var(--adoc-code-bg);
   color: var(--adoc-code-fg);
   padding: 0.15em 0.4em;
@@ -253,7 +255,7 @@ code {
 kbd {
   display: inline-block;
   padding: 0.1em 0.45em;
-  font-size: 0.85em;
+  font-size: 1em;
   border: 1px solid var(--adoc-border);
   border-bottom-width: 2px;
   border-radius: var(--adoc-radius-sm);
@@ -268,7 +270,7 @@ kbd {
 b.button {
   font-family: var(--adoc-font-mono);
   font-weight: 600;
-  font-size: 0.9em;
+  font-size: 1em;
 }
 .menuseq {
   font-family: var(--adoc-font-body);
@@ -280,7 +282,10 @@ b.button {
 
 pre {
   font-family: var(--adoc-font-mono);
-  font-size: 0.875em;
+  /* Match surrounding text size so a code block reads at the same
+     scale as the prose around it — easier to scan, no eye-jump
+     between paragraph and listing. */
+  font-size: 1em;
   background: var(--adoc-code-bg);
   color: var(--adoc-code-fg);
   padding: 1em 1.25em;
@@ -433,7 +438,8 @@ td > pre, th > pre {
   padding: 0;
   border: 0;
   box-shadow: none;
-  font-size: 0.9em;
+  /* Match surrounding cell text. */
+  font-size: 1em;
 }
 
 td.halign-left,   th.halign-left   { text-align: left; }
