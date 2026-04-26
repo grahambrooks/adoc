@@ -1,0 +1,108 @@
+docs/examples/01_paragraph.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/07_listing_block.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/11_sidebar_block.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/15_inline_quotes.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/21_block_metadata.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/33_smart_quotes_verse.html
+  27508cabf0243d73 431-433,437-443
+docs/showcase.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/04_unordered_list.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/08_literal_block.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/27_toc_sectnums.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/23_include_args_part.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/16_inline_macros.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/31_asciidoc_cells_and_span.html
+  27508cabf0243d73 431-433,437-443
+README.md
+  27508cabf0243d73 92
+docs/examples/13_open_block.html
+  27508cabf0243d73 431-433,437-443
+src/convert/html5/mod.rs
+  27508cabf0243d73 492-494,505-522
+docs/examples/23_include_args.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/05_ordered_list.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/06_description_list.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/28_tables_header_formatters.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/34_video_audio.html
+  27508cabf0243d73 1-694
+docs/examples/09_example_block.html
+  27508cabf0243d73 431-433,437-443
+src/parser/block.rs
+  27508cabf0243d73 7-8,220-225,229-335
+docs/examples/02_header.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/10_quote_block.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/29_callouts.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/24_section_ids.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/32_compat_links_anchors_discrete.html
+  27508cabf0243d73 431-433,437-443
+src/convert/html5/assets/adoc.css
+  27508cabf0243d73 424-426,430-436
+tests/fixtures.rs
+  27508cabf0243d73 473,713-736
+docs/examples/03_sections.html
+  27508cabf0243d73 431-433,437-443
+tests/fixtures/34_video_audio.adoc
+  27508cabf0243d73 1-19
+docs/examples/12_passthrough_block.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/20_mixed.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/22_preprocessor.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/26_inline_extras.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/30_table_cols.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/14_table.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/22_preprocessor_part.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/25_admonitions_source.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/17_attribute_refs.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/18_replacements.html
+  27508cabf0243d73 431-433,437-443
+docs/examples/19_line_breaks.html
+  27508cabf0243d73 431-433,437-443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "619d96c0d229ac39109c0c2d61c20ac3ebf3040c",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 1254,
+      "total_deletions": 120,
+      "accepted_lines": 1389,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/f56991860999b9b393847e0b2c1b081421e5276f76aa16f97922662066169ca5"
+    }
+  }
+}
