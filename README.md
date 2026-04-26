@@ -131,6 +131,8 @@ Two re-runs over the same source produce identical hashes; an edit to a single b
 
 **Sandboxing untrusted generated content.** `--safe-mode safe --base-dir <dir>` rejects any `include::` that escapes the directory tree or uses an absolute path, so a hallucinated `include::../../etc/passwd[]` is denied at the preprocessor — even if the LLM produces it. `secure` disables `include::` entirely.
 
+**Author-side instruction templates.** [`docs/genai/`](docs/genai/) ships drop-in instruction files for the major AI authoring tools — `AGENTS.md` (Codex / Cursor / aider), `.github/copilot-instructions.md` (Copilot), a `claude-skill/` folder (Claude Code / Claude Desktop), and a flat `system-prompt.md` for ad-hoc API calls. They cover the working subset of AsciiDoc, the lint-loop, the unsupported constructs to avoid, and the `<<id>>`-in-backticks footgun. Copy what your tools read into your downstream project; `docs/genai/README.md` documents the layout.
+
 ## What works today
 
 - Document header: title, multiple authors with optional emails, revision (`vN, date: remark`), attribute entries.
