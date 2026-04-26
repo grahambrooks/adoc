@@ -1,0 +1,24 @@
+Makefile
+  27508cabf0243d73 9,18,57-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "c2a9b30732e6a0669fc6010f8710ec707cda18a9",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 208,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/1aae9264ec5bad4e9865b2d96d98815843aeb798c326bc9fb429959c02f737a3"
+    }
+  }
+}
