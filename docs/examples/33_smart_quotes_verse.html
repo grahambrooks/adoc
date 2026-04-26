@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Untitled</title>
+<title>Smart Quotes and Verse Blocks</title>
 <style>
 /* adoc.css — default stylesheet for HTML5 output from the adoc processor.
  *
@@ -655,15 +655,33 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 </style>
 </head>
 <body>
-<table>
-<thead>
-<tr><th>Name</th><th>Role</th><th>Location</th></tr>
-</thead>
-<tbody>
-<tr><td>Alice</td><td>Engineer</td><td>Remote</td></tr>
-<tr><td>Bob</td><td>Designer</td><td>Office</td></tr>
-<tr><td>Carol</td><td>Manager</td><td>Hybrid</td></tr>
-</tbody>
-</table>
+<header>
+<h1>Smart Quotes and Verse Blocks</h1>
+</header>
+<section id="_smart_quotes">
+<h2>Smart quotes</h2>
+<p>He whispered “hello, world” and walked away.</p>
+<p>A ‘single-quoted’ aside.</p>
+<p>Don't get fooled — apostrophes in it's, you're, and don't stay literal.</p>
+<p>Smart quotes can wrap formatting: “emphasis is <em>here</em>” and “code is \<code>inside\</code>”.</p>
+</section>
+<section id="_verse_with_attribution">
+<h2>Verse with attribution</h2>
+<pre class="verseblock">The woods are lovely, dark and deep,
+But I have promises to keep,
+And miles to go before I sleep,
+And miles to go before I sleep.</pre>
+<div class="attribution">— Robert Frost<br>
+<cite>Stopping by Woods on a Snowy Evening</cite></div>
+</section>
+<section id="_quote_with_attribution">
+<h2>Quote with attribution</h2>
+<blockquote>
+<p>The most beautiful experience we can have is the mysterious. It is the fundamental emotion that stands at the cradle of true art and true science.</p>
+<div class="attribution">— Albert Einstein<br>
+<cite>Address to the German Physical Society</cite></div>
+</blockquote>
+</section>
+<!-- attributes: doctitle=Smart Quotes and Verse Blocks; -->
 </body>
 </html>

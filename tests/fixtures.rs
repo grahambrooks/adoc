@@ -469,6 +469,7 @@ fn ast_roundtrips_through_serde_json() {
         "30_table_cols.adoc",
         "31_asciidoc_cells_and_span.adoc",
         "32_compat_links_anchors_discrete.adoc",
+        "33_smart_quotes_verse.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -706,6 +707,37 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn smart_quotes_verse_attribution() {
+    let (_doc, html) = render("33_smart_quotes_verse.adoc");
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // Smart double + single quotes.
+    assert!(body.contains("\u{201C}hello, world\u{201D}"));
+    assert!(body.contains("\u{2018}single-quoted\u{2019}"));
+
+    // Apostrophes in contractions are NOT converted.
+    assert!(body.contains("Don't"));
+    assert!(body.contains("it's"));
+    assert!(body.contains("you're"));
+
+    // Smart quotes wrap inline formatting (children parsed normally).
+    assert!(body.contains("\u{201C}emphasis is <em>here</em>\u{201D}"));
+
+    // Verse block: <pre class="verseblock"> preserves line breaks.
+    assert!(body.contains(r#"<pre class="verseblock">"#));
+    assert!(body.contains("The woods are lovely, dark and deep,\nBut I have promises to keep,"));
+
+    // Attribution lines for both verse and blockquote.
+    assert!(
+        body.contains(r#"<div class="attribution">\u{2014}"#) || body.contains("— Robert Frost")
+    );
+    assert!(body.contains("<cite>Stopping by Woods on a Snowy Evening</cite>"));
+    assert!(body.contains("— Albert Einstein"));
 }
 
 #[test]

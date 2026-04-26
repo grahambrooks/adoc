@@ -1,0 +1,29 @@
+= Smart Quotes and Verse Blocks
+
+== Smart quotes
+
+He whispered "`hello, world`" and walked away.
+
+A '`single-quoted`' aside.
+
+Don't get fooled — apostrophes in it's, you're, and don't stay literal.
+
+Smart quotes can wrap formatting: "`emphasis is _here_`" and "`code is \`inside\``".
+
+== Verse with attribution
+
+[verse, Robert Frost, Stopping by Woods on a Snowy Evening]
+____
+The woods are lovely, dark and deep,
+But I have promises to keep,
+And miles to go before I sleep,
+And miles to go before I sleep.
+____
+
+== Quote with attribution
+
+[quote, Albert Einstein, Address to the German Physical Society]
+____
+The most beautiful experience we can have is the mysterious. It is the
+fundamental emotion that stands at the cradle of true art and true science.
+____

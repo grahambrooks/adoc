@@ -309,6 +309,33 @@ blockquote > :first-child { margin-top: 0; }
 blockquote > :last-child  { margin-bottom: 0; }
 blockquote em { font-style: normal; }
 
+/* `[verse]` quote — preserve line breaks, drop the prose typography. */
+.verseblock {
+  font-family: var(--adoc-font-body);
+  font-size: 1em;
+  line-height: 1.5;
+  background: transparent;
+  border: 0;
+  border-left: 0.25em solid var(--adoc-quote-border);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0.5em 1.25em;
+  margin: 0 0 0.5em;
+  color: var(--adoc-quote-fg);
+  font-style: italic;
+  white-space: pre;
+}
+
+/* Attribution line under blockquotes and verse blocks. */
+.attribution {
+  margin: 0.25em 0 1.25em 0.25em;
+  padding-left: 1em;
+  font-size: 0.9em;
+  color: var(--adoc-muted);
+  font-style: normal;
+}
+.attribution cite { font-style: italic; }
+
 /* ---------------------------------------------------------------------
  *  Containing blocks: example, sidebar, open
  * ------------------------------------------------------------------ */

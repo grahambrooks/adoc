@@ -591,10 +591,16 @@ fn parse_delimited(
     let delim = opener.text.trim_end().to_string();
     let location = opener.location.clone();
 
-    let is_raw = matches!(
-        style,
-        DelimitedStyle::Listing | DelimitedStyle::Literal | DelimitedStyle::Passthrough
-    );
+    // `[verse]` on a quote block keeps the source verbatim (line breaks and
+    // leading whitespace matter for poetry), so it joins the raw-content
+    // styles even though its delimiter is `____`.
+    let is_verse_quote =
+        matches!(style, DelimitedStyle::Quote) && meta.style.as_deref() == Some("verse");
+    let is_raw = is_verse_quote
+        || matches!(
+            style,
+            DelimitedStyle::Listing | DelimitedStyle::Literal | DelimitedStyle::Passthrough
+        );
 
     if is_raw {
         let mut raw_lines: Vec<String> = Vec::new();

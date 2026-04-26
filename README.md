@@ -93,6 +93,8 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - `[discrete]` headings — same `==`-style title syntax, but the heading doesn't open a new section: rendered as `<hN class="discrete">` and the surrounding blocks remain siblings.
 - Attribute references (`{name}`) with the document attribute context.
 - Character replacements: `(C)`, `(R)`, `(TM)`, `...`, `--`, `->`, `=>`, `<-`, `<=`.
+- Smart quotes — `"`text`"` renders curly double quotes (`\u{201C}…\u{201D}`), `'`text`'` renders curly single quotes (`\u{2018}…\u{2019}`). Word-boundary rules mean apostrophes in contractions (`it's`, `don't`) stay literal.
+- `[verse]` quote blocks — `[verse, Author, Source]` on a `____` block preserves whitespace and line breaks (rendered as `<pre class="verseblock">`). The `[quote, …]` and `[verse, …]` positionals also produce a trailing `<div class="attribution">— Author<br><cite>Source</cite></div>` line.
 - Block metadata — `[source,rust]`, `[NOTE]`, `[#id.role%opt]`, `[caption="…"]`, `.Title` lines — attached to the following block. The HTML5 backend emits `id`, `class`, and a `<div class="title">` accordingly.
 - Preprocessor directives — `include::path[]` (relative to the including file's directory, cycle detection, 64-deep limit), `ifdef::name[]` / `ifndef::name[]` (block + inline form, `,` any-of, `+` all-of), `ifeval::[expr]` over numbers / quoted strings / attribute refs with `==`, `!=`, `<`, `<=`, `>`, `>=`, and `endif::[]`.
 - `include::` arguments — `lines=` (single line, range, open-ended `..-1`, multiple `;`-separated ranges), `tags=` / `tag=` (comment-leader-agnostic `tag::name[]` / `end::name[]` markers, multiple tags, `!name` negation), `leveloffset=` (signed, clamped to `1..=6`).

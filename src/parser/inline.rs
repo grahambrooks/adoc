@@ -77,6 +77,12 @@ impl<'a> InlineParser<'a> {
                     self.pos += consumed;
                     continue;
                 }
+                if let Some((inlines, consumed)) = self.try_smart_quote(remaining, &buf) {
+                    flush(&mut buf, &mut out);
+                    out.extend(inlines);
+                    self.pos += consumed;
+                    continue;
+                }
                 if let Some((inline, consumed)) = self.try_quote(remaining, &buf) {
                     flush(&mut buf, &mut out);
                     out.push(inline);
@@ -265,6 +271,66 @@ impl<'a> InlineParser<'a> {
         None
     }
 
+    // --- smart quotes ---
+
+    /// Recognise the AsciiDoc smart-quote forms and emit them as a sequence
+    /// of inlines: opening Unicode quote, parsed inner content, closing
+    /// Unicode quote.
+    ///
+    /// * `"\`text\`"` → `\u{201C}text\u{201D}`  (curly double quotes)
+    /// * `'\`text\`'` → `\u{2018}text\u{2019}`  (curly single quotes)
+    ///
+    /// The opening marker requires word-boundary semantics (the char before
+    /// the `"` or `'` must not be alphanumeric, mirroring constrained-quote
+    /// rules) so common contractions like `it's` and quoted speech inside
+    /// a word don't trigger.
+    fn try_smart_quote(&self, rem: &str, buf: &str) -> Option<(Vec<Inline>, usize)> {
+        for (open, close, lq, rq) in SMART_QUOTE_PAIRS {
+            if !rem.starts_with(open) {
+                continue;
+            }
+            // Word-boundary on the LEFT.
+            let prev = buf.chars().last();
+            let left_ok = prev
+                .map(|c| !c.is_alphanumeric() && c != '_')
+                .unwrap_or(true);
+            if !left_ok {
+                continue;
+            }
+            // The first content char must not be whitespace.
+            let after_open = &rem[open.len()..];
+            if after_open.chars().next().is_none_or(|c| c.is_whitespace()) {
+                continue;
+            }
+            // Find the closing pair somewhere ahead.
+            let Some(close_idx) = after_open.find(close) else {
+                continue;
+            };
+            // Closing pair must not be immediately preceded by whitespace.
+            let inner = &after_open[..close_idx];
+            if inner
+                .chars()
+                .last()
+                .map(char::is_whitespace)
+                .unwrap_or(true)
+            {
+                continue;
+            }
+            let parsed = parse(inner, self.attrs, self.subs);
+            let mut out = Vec::with_capacity(parsed.len() + 2);
+            out.push(Inline::Text {
+                value: lq.to_string(),
+            });
+            out.extend(parsed);
+            out.push(Inline::Text {
+                value: rq.to_string(),
+            });
+            let consumed = open.len() + close_idx + close.len();
+            return Some((out, consumed));
+        }
+        None
+    }
+
     // --- replacements ---
 
     fn try_replacement(&self, rem: &str) -> Option<(&'static str, usize)> {
@@ -293,6 +359,14 @@ fn is_attribute_name(s: &str) -> bool {
     }
     chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
+
+/// Smart-quote pairs: (open marker, close marker, opening Unicode quote,
+/// closing Unicode quote). Tried in order so the longer/double form wins
+/// before the single form when both could match.
+const SMART_QUOTE_PAIRS: &[(&str, &str, &str, &str)] = &[
+    ("\"`", "`\"", "\u{201C}", "\u{201D}"),
+    ("'`", "`'", "\u{2018}", "\u{2019}"),
+];
 
 // Constrained quotes: single-char markers, require word boundary at edges.
 const CONSTRAINED_QUOTES: &[(&str, fn(Vec<Inline>) -> Inline)] = &[

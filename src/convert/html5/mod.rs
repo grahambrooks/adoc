@@ -650,7 +650,25 @@ fn render_delimited(
             for b in blocks {
                 render_block(out, b, ctx)?;
             }
+            render_quote_attribution(out, &d.meta);
             out.push_str("</blockquote>\n");
+            Ok(())
+        }
+        // `[verse]` on a quote block: whitespace and line breaks matter
+        // (poetry, song lyrics, code-shaped prose), so the inner text
+        // is captured raw and rendered escaped inside `<pre class=
+        // "verseblock">`. Inline formatting inside verse is intentionally
+        // suppressed in v1 — most verse content doesn't use it.
+        (DelimitedStyle::Quote, DelimitedContent::Raw { text })
+            if d.meta.style.as_deref() == Some("verse") =>
+        {
+            writeln!(
+                out,
+                r#"<pre{a} class="verseblock">{}</pre>"#,
+                escape(text.trim_end_matches('\n'))
+            )
+            .map_err(|e| ConvertError::Message(e.to_string()))?;
+            render_quote_attribution(out, &d.meta);
             Ok(())
         }
         (DelimitedStyle::Sidebar, DelimitedContent::Blocks { blocks }) => {
@@ -834,6 +852,27 @@ fn merge_class_attr(meta: &BlockMeta, intrinsic: &str) -> String {
     classes.extend(meta.roles.iter().map(|r| escape_attr(r)));
     let _ = write!(out, r#" class="{}""#, classes.join(" "));
     out
+}
+
+/// Render the optional `[quote, Author, Source]` attribution under a
+/// `<blockquote>` or verse block. The first positional after the style is
+/// the author; the second is the source (book, song, etc.). Empty when no
+/// attribution is supplied.
+fn render_quote_attribution(out: &mut String, meta: &BlockMeta) {
+    let author = meta.positional.first().map(String::as_str).unwrap_or("");
+    let source = meta.positional.get(1).map(String::as_str).unwrap_or("");
+    if author.is_empty() && source.is_empty() {
+        return;
+    }
+    out.push_str(r#"<div class="attribution">"#);
+    out.push_str("\u{2014} ");
+    out.push_str(&escape(author));
+    if !source.is_empty() {
+        out.push_str("<br>\n<cite>");
+        out.push_str(&escape(source));
+        out.push_str("</cite>");
+    }
+    out.push_str("</div>\n");
 }
 
 fn render_block_title(out: &mut String, meta: &BlockMeta) {
