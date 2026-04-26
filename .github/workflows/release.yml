@@ -1,0 +1,232 @@
+name: Release
+
+# Calver-tagged release: builds the `adoc` binary for four targets,
+# attaches the archives to a GitHub Release, and refreshes the
+# `Formula/adoc.rb` Homebrew tap with the new version + SHA256s.
+#
+# Trigger manually from the Actions tab:
+#   - "Run workflow" → optional `version` input (e.g. 2026.4.26).
+#     If left blank, today's UTC date is used in `YYYY.M.D` form.
+#
+# A push to a tag matching `[0-9]{4}.[0-9]+.[0-9]+` also triggers a
+# release; the tag itself is treated as the version.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (YYYY.M.D). Leave blank to use today's UTC date."
+        required: false
+        type: string
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set.outputs.version }}
+    steps:
+      - id: set
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            v="${GITHUB_REF#refs/tags/}"
+          else
+            v="${{ inputs.version }}"
+          fi
+          if [ -z "${v:-}" ]; then
+            v="$(date -u +'%Y.%-m.%-d')"
+          fi
+          if ! echo "$v" | grep -Eq '^[0-9]{4}\.[0-9]+\.[0-9]+$'; then
+            echo "::error::version '$v' is not in YYYY.M.D form"
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $v"
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+            archive: tar.gz
+            bin: adoc
+          - os: macos-13
+            target: x86_64-apple-darwin
+            archive: tar.gz
+            bin: adoc
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+            bin: adoc
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+            bin: adoc.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Patch Cargo.toml version
+        shell: bash
+        run: |
+          set -euo pipefail
+          v="${{ needs.version.outputs.version }}"
+          # Ephemeral edit — only this CI runner sees it. The change
+          # never gets committed back; we just want `adoc --version`
+          # to report the calver string for the build artifact.
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            sed -i '' "s/^version = .*/version = \"${v}\"/" Cargo.toml
+          else
+            sed -i "s/^version = .*/version = \"${v}\"/" Cargo.toml
+          fi
+          grep '^version' Cargo.toml
+
+      - name: Build release binary
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Stage artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          v="${{ needs.version.outputs.version }}"
+          stage="adoc-${v}-${{ matrix.target }}"
+          mkdir -p "$stage"
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "$stage/"
+          if [ "${{ runner.os }}" != "Windows" ]; then
+            strip "$stage/${{ matrix.bin }}" || true
+          fi
+          # Bundle README + LICENSE if they exist; tolerate either being
+          # absent (Windows runners can rename files differently).
+          cp README.md "$stage/" 2>/dev/null || true
+          cp LICENSE "$stage/" 2>/dev/null || true
+          cp LICENSE-2.0.txt "$stage/" 2>/dev/null || true
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            7z a -mx=9 "${stage}.zip" "$stage" >/dev/null
+          else
+            tar -czf "${stage}.tar.gz" "$stage"
+          fi
+          ls -la "${stage}.${{ matrix.archive }}"
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: adoc-${{ matrix.target }}
+          path: |
+            adoc-${{ needs.version.outputs.version }}-${{ matrix.target }}.tar.gz
+            adoc-${{ needs.version.outputs.version }}-${{ matrix.target }}.zip
+          if-no-files-found: ignore
+
+  release:
+    name: Publish release + update Homebrew formula
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.version }}
+          name: ${{ needs.version.outputs.version }}
+          files: dist/*
+          generate_release_notes: true
+
+      - name: Refresh Homebrew formula
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mac_arm="dist/adoc-${VERSION}-aarch64-apple-darwin.tar.gz"
+          mac_x86="dist/adoc-${VERSION}-x86_64-apple-darwin.tar.gz"
+          linux_x86="dist/adoc-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+
+          mac_arm_sha=$(sha256sum "$mac_arm" | awk '{print $1}')
+          mac_x86_sha=$(sha256sum "$mac_x86" | awk '{print $1}')
+          linux_x86_sha=$(sha256sum "$linux_x86" | awk '{print $1}')
+
+          base="https://github.com/${REPO}/releases/download/${VERSION}"
+
+          mkdir -p Formula
+          cat > Formula/adoc.rb <<RUBY
+          class Adoc < Formula
+            desc "Rust command-line processor for the AsciiDoc Language specification"
+            homepage "https://github.com/${REPO}"
+            version "${VERSION}"
+            license "Apache-2.0"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "${base}/adoc-${VERSION}-aarch64-apple-darwin.tar.gz"
+                sha256 "${mac_arm_sha}"
+              else
+                url "${base}/adoc-${VERSION}-x86_64-apple-darwin.tar.gz"
+                sha256 "${mac_x86_sha}"
+              end
+            end
+
+            on_linux do
+              url "${base}/adoc-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+              sha256 "${linux_x86_sha}"
+            end
+
+            def install
+              bin.install "adoc"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/adoc --version")
+            end
+          end
+          RUBY
+
+          echo "Generated Formula/adoc.rb:"
+          cat Formula/adoc.rb
+
+      - name: Commit updated formula
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/adoc.rb
+          if git diff --cached --quiet; then
+            echo "Formula already up to date."
+            exit 0
+          fi
+          git commit -m "chore(release): refresh Homebrew formula for ${VERSION}"
+          # On a tag-trigger we're in detached-HEAD; push to main directly.
+          git push origin HEAD:main

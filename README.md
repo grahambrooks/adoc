@@ -13,6 +13,36 @@ A Rust command-line processor for the [AsciiDoc Language specification](https://
 
 ## Install
 
+### Homebrew (macOS / Linux)
+
+```bash
+brew install grahambrooks/adoc/adoc
+```
+
+That single command taps this repository and installs a pre-built
+binary for your platform. The tap is the same `Formula/adoc.rb` that
+lives in this repo; the [release workflow](.github/workflows/release.yml)
+keeps it in sync with each calver-tagged release.
+
+To pin to a specific version:
+
+```bash
+brew tap grahambrooks/adoc https://github.com/grahambrooks/adoc
+brew install adoc@2026.4.26   # any published tag
+```
+
+### Pre-built binaries
+
+Each release ships archives for `aarch64-apple-darwin`,
+`x86_64-apple-darwin`, `x86_64-unknown-linux-gnu`, and
+`x86_64-pc-windows-msvc` on the [Releases page]. Pick the archive for
+your target, extract `adoc` (or `adoc.exe`), put it on your `PATH`.
+Versions are calver `YYYY.M.D` — e.g. `2026.4.26`.
+
+[Releases page]: https://github.com/grahambrooks/adoc/releases
+
+### From source
+
 Requires Rust 1.80 or newer.
 
 ```bash

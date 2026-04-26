@@ -96,6 +96,20 @@ Dependency direction inside the crate: `main → {parser, preprocessor, convert:
 
 The `crate::ast::inlines_to_plain` helper is the single canonical AST → plain-text converter (used by id-generation, the converter, the `<title>` element). Don't add a third copy.
 
+## Releasing
+
+Cut a calver release (`YYYY.M.D`) by triggering the **Release** workflow under the GitHub Actions tab. Leave the `version` input blank to use today's UTC date, or supply an explicit value.
+
+The workflow:
+
+1. Builds the release binary for `aarch64-apple-darwin`, `x86_64-apple-darwin`, `x86_64-unknown-linux-gnu`, and `x86_64-pc-windows-msvc`. Each runner ephemerally patches `Cargo.toml`'s version line so `adoc --version` reports the calver string for that build.
+2. Uploads each archive (`adoc-<version>-<target>.{tar.gz|zip}`) to a GitHub Release tagged with the calver string.
+3. Regenerates `Formula/adoc.rb` with the new URLs and SHA256s and commits it back to `main` so `brew install grahambrooks/adoc/adoc` always picks up the latest version.
+
+Pushing a calver-shaped tag (`git tag 2026.4.26 && git push --tags`) also triggers the same workflow.
+
+A release does not require any source-code change. Manual `Cargo.toml` version bumps belong with feature work, not the release cycle.
+
 ## Conformance
 
 Two test corpora work together:
