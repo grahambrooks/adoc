@@ -50,10 +50,23 @@ Dependency direction inside the crate: `main → {parser, preprocessor, convert:
 - **Parser is hand-written recursive descent.** AsciiDoc's context-sensitive, line-oriented grammar made parser combinators a non-starter. Don't reach for `nom`/`chumsky`.
 - **HTML5 is currently the only backend, but the `Converter` trait exists to keep that reversible.** Don't hard-code HTML assumptions into `adoc::ast` or the parser.
 
-### What's not here yet
+### HTML5 converter layout
 
-`adoc::preprocessor` is currently a faithful line-splitter — directive handling (`include::`, `ifdef`, `ifeval`) is not yet implemented. Block metadata lines (`[source,rust]`, `.Title`), section IDs, and admonitions are also pending. See `DESIGN.md` for the full status matrix and phasing.
+`adoc::convert::html5` is split into focused submodules. Reach for the right one when adding rendering features:
+
+| Submodule | Role |
+| --- | --- |
+| `mod.rs` | `Html5Converter`, `Html5Options`, `Stylesheet`, the `Converter` impl, `render_stylesheet`. Top of the body wiring (header, preamble, `<main id="content">`, footnote section). |
+| `blocks.rs` | `render_block` dispatcher and per-variant block renderers (sections, paragraphs, lists, delimited, admonitions, callouts, discrete headings, block image / video / audio). Shared block-meta helpers (`meta_attrs`, `meta_id_only`, `merge_class_attr`, `render_block_title`). |
+| `tables.rs` | `render_table`, `render_colgroup`, `render_table_cell`. |
+| `inlines.rs` | `render_inlines` / `render_inline` for every `Inline` variant. |
+| `ctx.rs` | `RenderCtx`, the section pre-walk, `render_toc`. |
+| `highlighter.rs` | `:source-highlighter:` integration for Prism / highlight.js, including the surface-override CSS. |
+| `footnotes.rs` | Post-render rewrite of inline footnote spans into numbered refs + the end-of-doc footnote section. |
+| `escape.rs` | `escape` / `escape_attr` — used everywhere; one canonical implementation. |
+
+The `crate::ast::inlines_to_plain` helper is the single canonical AST → plain-text converter (used by id-generation, the converter, the `<title>` element). Don't add a third copy.
 
 ## Conformance
 
-Compliance is measured against a conformance suite under `tests/conformance/` (not yet populated) — one `.adoc` input with expected AST (JSON) and expected HTML5 per feature. When adding a language feature, add a conformance fixture in the same change. The interim corpus is `tests/fixtures/` (twenty `.adoc` inputs driving structural assertions through the full pipeline). Asciidoctor is a sanity check, not the oracle.
+Compliance is measured against a conformance suite under `tests/conformance/` (not yet populated) — one `.adoc` input with expected AST (JSON) and expected HTML5 per feature. When adding a language feature, add a conformance fixture in the same change. The interim corpus is `tests/fixtures/` (36+ `.adoc` inputs driving structural assertions through the full pipeline) plus the rendered showcase under `docs/showcase.adoc` / `docs/showcase.html`. Asciidoctor is a sanity check, not the oracle.

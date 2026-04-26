@@ -772,12 +772,54 @@ fn parse_table(cursor: &mut Cursor, attrs: &Attributes, meta: BlockMeta) -> Tabl
         cursor.advance();
     }
     let cols = parse_cols_spec(meta.named.get("cols").map(String::as_str));
-    let rows = parse_table_rows(&lines, attrs, &meta);
+    let format = TableFormat::from_meta(&meta);
+    let rows = match format {
+        TableFormat::Psv => parse_psv_rows(&lines, attrs, &meta, &cols),
+        TableFormat::Csv => parse_csv_rows(&lines, attrs, &meta, &cols),
+        TableFormat::Dsv(sep) => parse_dsv_rows(&lines, attrs, &meta, &cols, sep),
+    };
     Table {
         rows,
         cols,
         location,
         meta,
+    }
+}
+
+/// Tabular format selected by the `format=` named attribute (or `[%csv]`
+/// / `[%dsv]` shorthand). PSV (pipe-separated values, `|`) is the
+/// AsciiDoc default.
+#[derive(Debug, Clone, Copy)]
+enum TableFormat {
+    Psv,
+    Csv,
+    Dsv(char),
+}
+
+impl TableFormat {
+    fn from_meta(meta: &BlockMeta) -> Self {
+        let format = meta
+            .named
+            .get("format")
+            .map(|s| s.to_ascii_lowercase())
+            .or_else(|| {
+                meta.options.iter().find_map(|o| match o.as_str() {
+                    "csv" | "dsv" => Some(o.to_ascii_lowercase()),
+                    _ => None,
+                })
+            });
+        match format.as_deref() {
+            Some("csv") => TableFormat::Csv,
+            Some("dsv") => {
+                let sep = meta
+                    .named
+                    .get("separator")
+                    .and_then(|s| s.chars().next())
+                    .unwrap_or(':');
+                TableFormat::Dsv(sep)
+            }
+            _ => TableFormat::Psv,
+        }
     }
 }
 
@@ -787,6 +829,10 @@ fn parse_table(cursor: &mut Cursor, attrs: &Attributes, meta: BlockMeta) -> Tabl
 /// width, and the trailing letter (a default style) is consumed but
 /// ignored at the AST level for now (per-column default styles are
 /// queued behind cell-level style support).
+///
+/// Bare-integer shorthand: `cols="3"` (a single segment that is just a
+/// non-zero integer) means "3 columns of equal width", same as
+/// `cols="3*"`. This matches Asciidoctor's convention.
 fn parse_cols_spec(spec: Option<&str>) -> Vec<ColumnSpec> {
     let Some(spec) = spec else {
         return Vec::new();
@@ -794,6 +840,14 @@ fn parse_cols_spec(spec: Option<&str>) -> Vec<ColumnSpec> {
     let spec = spec.trim();
     if spec.is_empty() {
         return Vec::new();
+    }
+    // Single-integer shorthand — N equal columns.
+    if !spec.contains(',') {
+        if let Ok(n) = spec.parse::<u32>() {
+            if n > 0 {
+                return (0..n).map(|_| ColumnSpec::default()).collect();
+            }
+        }
     }
     let mut cols = Vec::new();
     for raw in spec.split(',') {
@@ -867,24 +921,60 @@ fn parse_cols_spec(spec: Option<&str>) -> Vec<ColumnSpec> {
     cols
 }
 
-fn parse_table_rows(lines: &[String], attrs: &Attributes, meta: &BlockMeta) -> Vec<TableRow> {
-    // Track which rows are immediately followed by a blank line — used by
-    // the spec's "first-row-then-blank-line" header heuristic.
-    let mut rows: Vec<(TableRow, bool)> = Vec::new();
+/// Parse PSV (pipe-separated) rows.
+///
+/// Walks all lines into a flat cell list, then groups cells into rows
+/// according to `cols=` (when set) or "first-row-before-blank" (when
+/// not). Cells that don't open with `|` and aren't preceded by a blank
+/// line continue the previous cell — so a single cell can span
+/// multiple source lines, which is essential for `a|` cells whose
+/// content has its own line breaks.
+///
+/// `colspan` and `rowspan` carryover are tracked during grouping so a
+/// `2.3+|` cell occupies the right slots in subsequent source rows.
+fn parse_psv_rows(
+    lines: &[String],
+    attrs: &Attributes,
+    meta: &BlockMeta,
+    cols: &[ColumnSpec],
+) -> Vec<TableRow> {
+    // Step 1: walk lines into a flat (CellPrefix, source-text) list. Track
+    // (a) the index of the first cell that follows a blank line — drives
+    // the spec's "first row then blank line ⇒ header" heuristic — and
+    // (b) the index of the first cell from a non-first `|`-line, used
+    // to infer the column count when `cols=` is unset and there is no
+    // blank line in source.
+    let mut cells: Vec<(CellPrefix, String)> = Vec::new();
+    let mut first_blank_idx: Option<usize> = None;
+    let mut first_continuation_idx: Option<usize> = None;
+    let mut blank_pending = false;
+    let mut seen_pipe_line = false;
+
     for raw in lines {
-        let trimmed = raw.trim();
-        if trimmed.is_empty() {
-            if let Some(last) = rows.last_mut() {
-                last.1 = true;
+        let trimmed_end = raw.trim_end();
+        let leading = trimmed_end.trim_start();
+        if leading.is_empty() {
+            if !cells.is_empty() {
+                blank_pending = true;
             }
             continue;
         }
-        // A row line starts with `|`; cells follow.
-        if let Some((leading_prefix, rest)) = match_row_start(trimmed) {
-            // Merge the row-leading formatter into cell 0's prefix BEFORE
-            // building cells, so a| / m| / etc. picks the right code path
-            // (recursive parse for a|, no-subs for l|, …).
+        if let Some((leading_prefix, rest)) = match_row_start(leading) {
+            if blank_pending && first_blank_idx.is_none() {
+                first_blank_idx = Some(cells.len());
+            }
+            // Mark every non-first `|`-line as a continuation point for
+            // column-count inference. Without this, two rows of cells
+            // with no blank line between them would collapse into one
+            // wide row.
+            if seen_pipe_line && first_continuation_idx.is_none() {
+                first_continuation_idx = Some(cells.len());
+            }
+            blank_pending = false;
+            seen_pipe_line = true;
             let mut splits = split_table_cells(rest);
+            // Apply the row-leading formatter to cell 0 (only fields the
+            // cell didn't already set).
             if let Some((prefix0, _)) = splits.first_mut() {
                 if prefix0.style.is_none() {
                     prefix0.style = leading_prefix.style;
@@ -898,37 +988,294 @@ fn parse_table_rows(lines: &[String], attrs: &Attributes, meta: &BlockMeta) -> V
                 if prefix0.rowspan == 1 {
                     prefix0.rowspan = leading_prefix.rowspan;
                 }
+                if prefix0.repeat == 1 {
+                    prefix0.repeat = leading_prefix.repeat;
+                }
             }
-            let cells: Vec<TableCell> = splits
-                .into_iter()
-                .map(|(prefix, src)| build_cell(prefix, src.trim(), attrs))
-                .collect();
-            rows.push((
-                TableRow {
-                    cells,
-                    kind: RowKind::Body,
-                },
-                false,
-            ));
+            cells.extend(splits);
+        } else if let Some(last) = cells.last_mut() {
+            // Continuation: append to the last cell with a newline. A
+            // pending blank line becomes a paragraph break inside the
+            // cell (only meaningful for `a|` cells; for the rest, it's
+            // just whitespace).
+            if blank_pending {
+                last.1.push('\n');
+                blank_pending = false;
+            }
+            last.1.push('\n');
+            last.1.push_str(trimmed_end);
         }
     }
 
-    // Header inference: explicit via [%header] / options=header, OR via the
-    // blank-line-after-first-row heuristic.
+    // Step 2: expand cell-repeat factors. `3*|x` becomes three cells with
+    // the same content. Done before grouping so the chunker just sees a
+    // flat sequence.
+    let cells: Vec<(CellPrefix, String)> = cells
+        .into_iter()
+        .flat_map(|(prefix, src)| {
+            let n = prefix.repeat.max(1) as usize;
+            let mut single = prefix;
+            single.repeat = 1;
+            (0..n).map(move |_| (single, src.clone()))
+        })
+        .collect();
+
+    // Step 3: determine column count.
+    //
+    // * `cols=` set: use its length (which already accounts for `N*` repeats).
+    // * `cols=` unset, blank line in source: count cells before the blank,
+    //   summing colspan, so `[2+|, x, y]` reads as 4 columns.
+    // * `cols=` unset, no blanks but multiple `|`-lines: use the
+    //   colspan-sum of cells from the first `|`-line (every line is a row).
+    // * `cols=` unset, single `|`-line: use the colspan-sum of every cell.
+    let cols_count = if !cols.is_empty() {
+        cols.len()
+    } else {
+        let upto = first_blank_idx
+            .or(first_continuation_idx)
+            .unwrap_or(cells.len());
+        cells[..upto]
+            .iter()
+            .map(|(p, _)| p.colspan as usize)
+            .sum::<usize>()
+            .max(1)
+    };
+
+    // Step 4: group cells into rows of `cols_count` columns, accounting
+    // for rowspan from earlier rows (occupied slots).
+    let rows = group_cells_into_rows(cells, cols_count, attrs);
+
+    // Step 5: header inference.
     let explicit_header = meta.options.iter().any(|o| o == "header")
         || meta
             .named
             .get("options")
             .map(|s| s.split(',').any(|p| p.trim() == "header"))
             .unwrap_or(false);
-    let inferred_header = rows.len() >= 2 && rows[0].1;
-    if explicit_header || inferred_header {
-        if let Some(first) = rows.first_mut() {
-            first.0.kind = RowKind::Header;
+    let inferred_header = first_blank_idx == Some(cols_count) && cols_count > 0;
+    apply_header(rows, explicit_header || inferred_header)
+}
+
+/// Group a flat `(prefix, text)` cell list into rows of `cols_count`
+/// columns, where a cell with `rowspan = R` occupies its column for `R`
+/// rows total (this one plus the next `R - 1`). The carryover counter
+/// holds "rows still occupied including this one" and decrements at the
+/// end of every row.
+fn group_cells_into_rows(
+    cells: Vec<(CellPrefix, String)>,
+    cols_count: usize,
+    attrs: &Attributes,
+) -> Vec<TableRow> {
+    let mut rows: Vec<TableRow> = Vec::new();
+    let mut iter = cells.into_iter().peekable();
+    let mut carryover: Vec<u32> = vec![0; cols_count];
+
+    while iter.peek().is_some() {
+        let mut row_cells: Vec<TableCell> = Vec::new();
+        let mut col = 0usize;
+
+        while col < cols_count {
+            // Skip columns occupied by a rowspan from a previous row.
+            if carryover[col] > 0 {
+                col += 1;
+                continue;
+            }
+            let Some((prefix, src)) = iter.next() else {
+                break;
+            };
+            let cell = build_cell(prefix, src.trim(), attrs);
+            let colspan = (cell.colspan as usize).min(cols_count - col);
+            let rowspan = cell.rowspan;
+            if rowspan > 1 {
+                // `rowspan` rows total — the end-of-row decrement will
+                // bring this down to `rowspan - 1` for the next row,
+                // which is exactly the count of remaining occupied rows.
+                for c in col..col + colspan {
+                    if c < cols_count {
+                        carryover[c] = rowspan;
+                    }
+                }
+            }
+            col += colspan;
+            row_cells.push(cell);
         }
+
+        for c in carryover.iter_mut() {
+            if *c > 0 {
+                *c -= 1;
+            }
+        }
+
+        if row_cells.is_empty() {
+            break;
+        }
+        rows.push(TableRow {
+            cells: row_cells,
+            kind: RowKind::Body,
+        });
     }
 
-    rows.into_iter().map(|(row, _)| row).collect()
+    rows
+}
+
+fn apply_header(mut rows: Vec<TableRow>, header: bool) -> Vec<TableRow> {
+    if header {
+        if let Some(first) = rows.first_mut() {
+            first.kind = RowKind::Header;
+        }
+    }
+    rows
+}
+
+/// CSV: cells are `,`-separated. Quoted strings (`"…"`) preserve commas
+/// and use `""` as an escape for a literal `"`. Newlines inside a quoted
+/// string continue the cell. No formatter prefixes — every cell uses
+/// the default style.
+fn parse_csv_rows(
+    lines: &[String],
+    attrs: &Attributes,
+    meta: &BlockMeta,
+    cols: &[ColumnSpec],
+) -> Vec<TableRow> {
+    parse_separated_rows(lines, attrs, meta, cols, ',', /* csv_quotes = */ true)
+}
+
+/// DSV: same shape as CSV but with a custom single-character separator
+/// (default `:`) and no quote handling.
+fn parse_dsv_rows(
+    lines: &[String],
+    attrs: &Attributes,
+    meta: &BlockMeta,
+    cols: &[ColumnSpec],
+    sep: char,
+) -> Vec<TableRow> {
+    parse_separated_rows(lines, attrs, meta, cols, sep, /* csv_quotes = */ false)
+}
+
+fn parse_separated_rows(
+    lines: &[String],
+    attrs: &Attributes,
+    meta: &BlockMeta,
+    cols: &[ColumnSpec],
+    sep: char,
+    csv_quotes: bool,
+) -> Vec<TableRow> {
+    // Walk every line and split on `sep` into cells. In CSV mode, a
+    // `"…"` quoted region preserves the separator and any embedded
+    // newlines (`""` is the escape for a literal `"`). Cells from
+    // every line are appended to one flat list and then chunked by
+    // column count downstream — same model as PSV.
+    let mut cells_text: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut in_quote = false;
+    let mut blank_lines: Vec<bool> = Vec::new(); // index of cell-after-blank
+    let mut blank_pending = false;
+    let mut first_blank_idx: Option<usize> = None;
+
+    let push_cell =
+        |cells_text: &mut Vec<String>, current: &mut String, blank_lines: &mut Vec<bool>| {
+            cells_text.push(std::mem::take(current));
+            blank_lines.push(false);
+        };
+
+    for (li, raw) in lines.iter().enumerate() {
+        if !in_quote && raw.trim().is_empty() {
+            // A blank line outside quotes ends any pending cell and
+            // marks the next cell as following a blank line.
+            if !current.is_empty() || !cells_text.is_empty() {
+                blank_pending = true;
+            }
+            continue;
+        }
+        let mut chars = raw.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if csv_quotes && ch == '"' {
+                if in_quote && chars.peek() == Some(&'"') {
+                    current.push('"');
+                    chars.next();
+                } else {
+                    in_quote = !in_quote;
+                }
+                continue;
+            }
+            if !in_quote && ch == sep {
+                push_cell(&mut cells_text, &mut current, &mut blank_lines);
+                if blank_pending && first_blank_idx.is_none() {
+                    first_blank_idx = Some(cells_text.len());
+                }
+                blank_pending = false;
+                continue;
+            }
+            current.push(ch);
+        }
+        // End-of-line: if not in a quoted region, flush the cell.
+        if !in_quote {
+            push_cell(&mut cells_text, &mut current, &mut blank_lines);
+            if blank_pending && first_blank_idx.is_none() {
+                first_blank_idx = Some(cells_text.len());
+            }
+            blank_pending = false;
+        } else {
+            // Mid-quote line break: keep the newline as part of the cell.
+            current.push('\n');
+        }
+        // Suppress unused-variable warning for `li`; it makes the loop
+        // self-documenting and may carry diagnostics one day.
+        let _ = li;
+    }
+
+    let cells: Vec<(CellPrefix, String)> = cells_text
+        .into_iter()
+        .map(|s| (CellPrefix::default(), s.trim().to_string()))
+        .collect();
+
+    if cells.is_empty() {
+        return Vec::new();
+    }
+
+    let cols_count = if !cols.is_empty() {
+        cols.len()
+    } else {
+        let first_line = lines.iter().find(|l| !l.trim().is_empty());
+        if let Some(first) = first_line {
+            count_separated(first, sep, csv_quotes).max(1)
+        } else {
+            cells.len().max(1)
+        }
+    };
+
+    let rows = group_cells_into_rows(cells, cols_count, attrs);
+
+    let explicit_header = meta.options.iter().any(|o| o == "header")
+        || meta
+            .named
+            .get("options")
+            .map(|s| s.split(',').any(|p| p.trim() == "header"))
+            .unwrap_or(false);
+    let inferred_header = first_blank_idx == Some(cols_count) && cols_count > 0;
+    apply_header(rows, explicit_header || inferred_header)
+}
+
+/// Count cells produced by a single CSV/DSV line — used to infer the
+/// column count when `cols=` isn't supplied.
+fn count_separated(line: &str, sep: char, csv_quotes: bool) -> usize {
+    let mut count = 1usize;
+    let mut in_quote = false;
+    let mut chars = line.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if csv_quotes && ch == '"' {
+            if in_quote && chars.peek() == Some(&'"') {
+                chars.next();
+            } else {
+                in_quote = !in_quote;
+            }
+            continue;
+        }
+        if !in_quote && ch == sep {
+            count += 1;
+        }
+    }
+    count
 }
 
 fn build_cell(prefix: CellPrefix, src: &str, attrs: &Attributes) -> TableCell {
@@ -996,6 +1343,9 @@ struct CellPrefix {
     style: Option<CellStyle>,
     colspan: u32,
     rowspan: u32,
+    /// `N*` repetition: emit the same cell content into `N` consecutive
+    /// columns. Default 1 (no repetition).
+    repeat: u32,
 }
 
 impl Default for CellPrefix {
@@ -1005,6 +1355,7 @@ impl Default for CellPrefix {
             style: None,
             colspan: 1,
             rowspan: 1,
+            repeat: 1,
         }
     }
 }
@@ -1071,12 +1422,40 @@ fn peel_trailing_formatter(s: &mut String) -> CellPrefix {
 
 /// Forward-parse a cell-formatter region. Returns `None` when the input
 /// does not match the grammar exactly (any leftover bytes ⇒ reject).
+///
+/// Grammar: `[repeat*][span][halign][style]` where:
+///
+/// * `repeat` = `[digits]*` — repeat factor; the same cell content is
+///   emitted into `repeat` consecutive columns.
+/// * `span`   = `[colspan_digits][.rowspan_digits]+` — `+` is required
+///   when span is present.
+/// * `halign` = `<` | `^` | `>`.
+/// * `style`  = `a` | `e` | `h` | `l` | `m` | `s`.
+///
+/// Repeat uses `*` as the trailing marker; span uses `+`. Together,
+/// `3*2+|x` repeats a colspan-2 cell three times (six columns total).
 fn parse_cell_format(s: &str) -> Option<CellPrefix> {
     if s.is_empty() {
         return None;
     }
     let bytes = s.as_bytes();
     let mut i = 0usize;
+
+    // repeat: [digits]*
+    let mut repeat: u32 = 1;
+    let repeat_start = i;
+    let mut rep_str = String::new();
+    while i < bytes.len() && bytes[i].is_ascii_digit() {
+        rep_str.push(bytes[i] as char);
+        i += 1;
+    }
+    if !rep_str.is_empty() && i < bytes.len() && bytes[i] == b'*' {
+        repeat = rep_str.parse::<u32>().unwrap_or(1).max(1);
+        i += 1;
+    } else {
+        // No `*` ⇒ the leading digits weren't a repeat factor. Reset.
+        i = repeat_start;
+    }
 
     // span: [digits][.digits]+
     let mut colspan: u32 = 1;
@@ -1143,7 +1522,7 @@ fn parse_cell_format(s: &str) -> Option<CellPrefix> {
     if i != bytes.len() {
         return None;
     }
-    if colspan == 1 && rowspan == 1 && h_align.is_none() && style.is_none() {
+    if colspan == 1 && rowspan == 1 && repeat == 1 && h_align.is_none() && style.is_none() {
         return None;
     }
     Some(CellPrefix {
@@ -1151,6 +1530,7 @@ fn parse_cell_format(s: &str) -> Option<CellPrefix> {
         style,
         colspan,
         rowspan,
+        repeat,
     })
 }
 

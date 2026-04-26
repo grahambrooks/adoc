@@ -20,7 +20,8 @@
 
 == Cell formatters
 
+[cols="1,1,1,1"]
 |===
-| plain s| strong cell e| emphasised cell
+| plain s| strong cell e| emphasised cell | trailing
 | also plain m| monospace text l| literal *not strong* h| forced th in body row
 |===

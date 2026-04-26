@@ -145,47 +145,88 @@ queued behind the diagnostics phase.
 
 ## Implementation status
 
-The original phasing assumed a strict left-to-right walk; in practice the block parser, inline parser, and HTML5 converter were built in parallel against a fixture suite, and the preprocessor was deferred. Current state:
+The original phasing assumed a strict left-to-right walk; in practice the block parser, inline parser, HTML5 converter, and preprocessor were built in parallel against a fixture suite. Current state, grouped by subsystem:
+
+### Pipeline
 
 | Area | Status |
 |---|---|
 | Workspace skeleton, CLI shell, end-to-end pipeline | done |
-| Block parser: paragraphs, sections (levels 1–5), ordered/unordered/description lists with depth and `+` continuation, all seven delimited styles, simple tables | done |
-| Inline parser: constrained + unconstrained quotes (strong/em/mono), attribute references, `link:`/`mailto:`/`xref:`/`image:` macros, http/https/ftp autolinks, shorthand `<<xref>>`, eight character replacements, hard line break (` +`) | done |
-| Header parser: title, multiple authors with optional emails, revision (`vN, date: remark`), leading/trailing attribute entries | done |
-| HTML5 converter: every current AST node renders; document title, authors, revision in `<header>`; debug `<!-- attributes: ... -->` trailer | done |
 | Stylesheet resolution (five modes) and `:copycss:` | done |
-| Block metadata: `[attrlist]` (positional/named/shorthand `#id.role%opt`) and `.Title` lines collected and attached to the next block via `BlockMeta`; HTML5 emits `id`/`class` and a `<div class="title">` ahead of titled blocks | done |
-| Preprocessor: `include::` (with cycle detection and a depth limit), `ifdef::`/`ifndef::` (block + inline forms, `,` any-of, `+` all-of), `ifeval::` (numeric or string compare on attribute refs / literals), `endif::`; attribute entries evaluated at preprocess time so conditionals see them | done |
-| `include::` arguments: `lines=` (ranges, open-ended, multiple), `tags=`/`tag=` (multi, with `!name` negation), `leveloffset=` (signed, clamped) | done |
-| `include::` arguments: `indent=`, `encoding=`, tag wildcards (`*`, `**`) | **not started** |
-| Safe-mode enforcement: `safe`/`server` reject absolute paths and paths escaping `base_dir` after canonicalisation; `secure` disables `include::` | done |
-| Section IDs — `[#id]` shorthand (via block metadata), `[[id]]` / `[[id, reftext]]` legacy anchor lines, and auto-generation from titles (lowercase, non-alphanumeric → `_`, deduped). Block parser rolls back metadata that turned out to belong to an outer scope (so `[[anchor]]` above a sibling-level section header attaches to the right section). | done |
-| Doc-wide ID registry + xref validation (warn on dangling, resolve `<<title text>>` to derived IDs) | **not started** — sits with the diagnostics phase |
-| Admonitions: paragraph shortcut (`NOTE: …`) and block-form (`[NOTE]` on any paragraph or `====` example) render as `<div class="admonitionblock kw">` with a default label or supplied title | done |
-| Source blocks with language: `[source,LANG]` adds `language-LANG` class on the inner `<code>`; downstream-highlighter friendly | done |
-| Inline extras: subscript `~`, superscript `^`, highlight `#`/`##`, passthrough `+`/`++` (HTML-escape, no subs), `pass:[]` macro (raw HTML), `footnote:[]` / `footnote:id[]` (rendered inline) | done |
-| TOC, sectnums, sectanchors driven by document attributes; computed in a single pre-walk and rendered ahead of the body | done |
-| `[discrete]` headings, `:toc-placement:`, custom TOC titles | **not started** |
-| Inline anchors (`anchor:id[]`), bibliography entries (`[[[id]]]`), numbered end-of-doc footnote section | **not started** |
-| Admonition blocks and admonition paragraphs | **not started** |
-| Source blocks with language attribute (callouts, syntax-highlighter hint) | **not started** |
-| Tables: column specs (`cols=`), header rows, cell formatters (`a\|`, `m\|`, `s\|`, `e\|`, `l\|`, `h\|`), `psv`/`csv`/`dsv` separators | **not started** (every row is a body row of plain inline cells) |
-| Inline subscript/superscript/highlight (`~x~`, `^x^`, `#x#`), inline passthroughs (`+text+`, `pass:[]`), inline footnotes, inline anchors, bibliography entries | **not started** |
-| TOC generation, discrete headings, `sectnums`/`sectanchors` honoured | **not started** |
+| `--emit-ast` / `--from-ast` wiring; AST roundtrips through `serde_json` (verified by a per-fixture render → JSON → parse-back → render byte-identity test) | done |
+| Multi-input handling — currently only the first input is processed | **not started** |
+
+### Header & block parser
+
+| Area | Status |
+|---|---|
+| Header: title, multiple authors with optional emails, revision (`vN, date: remark`), leading/trailing attribute entries | done |
+| Derived header attributes: `{doctitle}`, `{author}` / `{authors}` / `{firstname}` / `{middlename}` / `{lastname}` / `{authorinitials}` / `{email}`, `{author_N}` / `{email_N}` for additional authors, `{revnumber}` (leading `v` stripped) / `{revdate}` / `{revremark}`. User entries take precedence | done |
+| Sections (levels 1–5) with nested parsing | done |
+| Lists (ordered, unordered, description) with depth and `+` continuation | done |
+| All seven delimited styles (listing, literal, example, quote, sidebar, passthrough, open) | done |
+| `[verse]` quote blocks — raw inner text rendered in `<pre class="verseblock">`; `[quote, A, S]` / `[verse, A, S]` emit a `<div class="attribution">` | done |
+| Block metadata: `[attrlist]` (positional/named/shorthand `#id.role%opt`), `.Title` lines, `[NOTE]`-style admonition styles, attached to the next block via `BlockMeta` | done |
+| `[discrete]` headings — section title syntax that doesn't open a new section | done |
+| Block image (`image::path[alt]`) and block video / audio (`video::url[…]`, `audio::url[…]`) on their own line render as `<div class="imageblock|videoblock|audioblock">` with optional `.Title` caption | done |
+| Section IDs — `[#id]` shorthand, `[[id]]`/`[[id, reftext]]` legacy anchor lines, and auto-derivation from titles (lowercase, non-alphanumeric → `_`, deduped) | done |
+| Doc-wide ID registry + xref validation (warn on dangling, resolve `<<title text>>` to derived IDs) | **not started** — pairs with the diagnostics phase |
+
+### Inline parser
+
+| Area | Status |
+|---|---|
+| Constrained + unconstrained quotes (`*strong*`, `_em_`, `` `mono` ``, plus the `**`/`__`/`` `` `` `` `` forms) | done |
+| Attribute references (`{name}`); macros run before the attribute pass, so `link:` / `mailto:` / `xref:` macro arguments call into the same resolver explicitly | done |
+| Macros: `link:`, `mailto:`, `xref:`, `image:`, `anchor:id[]`, `kbd:[Ctrl+C]`, `btn:[OK]`, `menu:File[Save > Save As]`, shorthand `<<xref>>`, `pass:[]`, `footnote:[]` / `footnote:id[]` | done |
+| HTTP/HTTPS/FTP autolinks; bare-URL-with-label form (`https://url[label]`) | done |
+| Eight character replacements: `(C)`, `(R)`, `(TM)`, `...`, `--`, `->`, `=>`, `<-`, `<=` | done |
+| Smart quotes — `"`text`"` and `'`text`'` render as curly Unicode quotes; word-boundary rules keep contractions literal | done |
+| Subscript `~`, superscript `^`, highlight `#`/`##`, passthrough `+`/`++` (HTML-escape, no subs), hard line break (` +`) | done |
+| Inline footnotes get rewritten by the converter into numbered `<sup>` refs and gathered into a `<div id="footnotes">` end-of-doc section | done |
+| Index terms `(((primary)))` / `(((primary, secondary)))` | **not started** |
+| Bibliography entries `[[[id]]]` and citations | **not started** |
+
+### Preprocessor
+
+| Area | Status |
+|---|---|
+| `include::` with cycle detection and depth limit | done |
+| `ifdef::` / `ifndef::` (block + inline forms, `,` any-of, `+` all-of) | done |
+| `ifeval::` (numeric or string compare on attribute refs / literals) | done |
+| Attribute entries evaluated at preprocess time so conditionals see them | done |
+| `include::` arguments: `lines=`, `tags=`/`tag=`, `leveloffset=`, `indent=` | done |
+| `include::` arguments: `encoding=`, tag wildcards (`*`, `**`) | **not started** |
+| Safe-mode enforcement (`safe`/`server` reject absolute paths and `..`-escapes; `secure` disables `include::`) | done |
+
+### HTML5 converter
+
+| Area | Status |
+|---|---|
+| Every current AST node renders; document title, authors, revision in `<header>`; body wrapped in `<main id="content">`; preamble blocks grouped in `<div id="preamble">` | done |
+| TOC, sectnums, sectanchors driven by document attributes; computed in a single pre-walk | done |
+| `:toc-placement:` (currently always rendered at top of `<main>`) | **not started** |
+| Admonitions: paragraph shortcut (`NOTE: …`) and block-form render as `<div class="admonitionblock kw">` with default label or supplied title; default stylesheet ships SVG icons per kind | done |
+| Source blocks with language: `[source,LANG]` ⇒ `<pre data-lang="LANG"><code class="language-LANG">…</code></pre>`; corner-pill language label via CSS | done |
+| Source-block syntax highlighting: `:source-highlighter: prism|highlightjs` loads a light + dark theme pair gated by `prefers-color-scheme`, plus a surface override so code background follows the document tokens | done |
+| Source-block callouts (`<1>`, `<2>` …) render as `<b class="conum">(N)</b>`; sibling `<N> description` lines parse to a `Block::Colist` and render as `<ol class="colist">` | done |
+| Tables: `cols=` widths/alignments/repeats/bare-integer-N, header rows, cell formatters (`a\|`, `m\|`, `s\|`, `e\|`, `l\|`, `h\|`), per-cell alignment / span / repeat (`<m\|`, `2+\|`, `.3+\|`, `2.3+\|`, `3*\|`), AsciiDoc cells, multi-line cell continuation, rowspan-aware row chunking, CSV/DSV separators (`format=csv\|dsv` with `separator=`) | done |
 | `doctype` (article/book/manpage/inline) influencing output | **not started** |
-| `--emit-ast` / `--from-ast` wiring in `src/main.rs`; AST roundtrips through `serde_json` (verified by an integration test that renders → JSON → parse-back → render and asserts byte-identical HTML for 15 fixtures) | done |
-| Real `miette::Diagnostic` errors with span pointers (locations exist; error types don't carry them yet) | **not started** |
-| Conformance suite under `tests/conformance/` (expected AST + HTML5 per spec example) | **not started** — `tests/fixtures/` covers the v1 surface in the meantime |
+
+### Diagnostics & conformance
+
+| Area | Status |
+|---|---|
+| Real `miette::Diagnostic` errors with span pointers (locations exist on every AST node; error types don't carry them yet) | **not started** |
+| Conformance suite under `tests/conformance/` (expected AST + HTML5 per spec example) | **not started** — the 37-fixture corpus under `tests/fixtures/` plus `docs/showcase.adoc` cover the v1 surface in the meantime |
 
 ## AST gaps
 
-The current `adoc::ast` types cover what the parser produces. Several spec constructs need new node shapes (or new fields) before the parser can emit them:
+The current `adoc::ast` types cover what the parser produces. The remaining constructs that need new node shapes (or new fields) before the parser can emit them:
 
-- `Block` needs an `Admonition` variant (or a derived view over `BlockMeta::style`) carrying `note` / `tip` / `important` / `warning` / `caution`. The metadata is already captured (`meta.style = Some("NOTE")`); the next bullet just needs to render it as an admonition.
-- `Table` has per-row `kind` (Header/Body/Footer) and per-cell `style` (AsciiDoc/Monospace/Strong/Emphasis/Header/Literal). Still missing: column specs (widths/alignments) and per-cell span/repeat for `colspan`/`rowspan`. (`BlockMeta::named` already carries `cols=`, so the wiring exists when we go to read it.)
-- `Inline` has `Subscript`, `Superscript`, `Highlight`, `Footnote`, and `Passthrough`. Still missing: `Anchor` (for `anchor:id[]`), `IndexTerm`, and bibliography entries (`[[[id]]]`). `Inline::RawHtml` is reached today via `pass:[]`.
+- `Inline` is missing `IndexTerm` (for `(((primary, secondary)))`) and bibliography entries (`[[[id]]]` + citations). `Inline::RawHtml` is the escape hatch other macros (`anchor:`, `kbd:`, `btn:`, `menu:`) use today.
 - Cross-reference resolution needs a doc-wide ID registry built after parse, before convert. The registry's home is `adoc::ast` (so `Converter` impls can consult it), but populating it is a parser pass.
+- Stem/math (`stem:[]`, `latexmath::[]`, `asciimath::[]`) blocks/inlines — out of v1 scope; would attach via the same pattern as `:source-highlighter:` (load MathJax/KaTeX from a CDN).
 
 ## CLI / pipeline gaps
 
@@ -199,11 +240,12 @@ The current `adoc::ast` types cover what the parser produces. Several spec const
 4. ~~**Block metadata** — parse `[attr]` lines and `.Title` lines, attach to the following block via `BlockMeta`. HTML5 renders `id`/`class`/title.~~ ✓
 5. ~~**Preprocessor** — `include::`, `ifdef`/`ifndef`/`ifeval`/`endif`, attribute entries evaluated before the parser sees them.~~ ✓
 6. ~~**Section IDs** — auto-generate from titles, parse the legacy `[[anchor]]` form, populate `meta.id` on every section.~~ ✓ (Doc-wide ID registry + xref validation deferred to the diagnostics phase.)
-7. ~~**`include::` argument forms** — `lines=`, `tags=`, `leveloffset=` over the existing include path.~~ ✓
-8. **HTML5 conformance** — match the spec's expected output for the conformance corpus: TOC, section anchors, admonition markup, source-block markup with language class, full table model. Stand up `tests/conformance/`.
-9. **Diagnostics polish** — `miette::Diagnostic` for `ParseError`/`PreprocessError`/`ConvertError` with span pointers; promote warnings (dangling xref, unknown attribute reference) into the diagnostic stream.
-10. **Stdio extension model** — implement `--emit-ast` / `--from-ast`; freeze and document the JSON schema; ship a trivial example filter.
-11. **Additional backends** — DocBook, man page.
+7. ~~**`include::` argument forms** — `lines=`, `tags=`, `leveloffset=`, `indent=`.~~ ✓ (`encoding=` and tag wildcards still queued.)
+8. ~~**HTML5 conformance** — TOC, section anchors, admonition markup, source-block markup with language class, full table model (cols, cell formatters, span, repeat, multi-line cells, CSV/DSV).~~ ✓ Conformance suite under `tests/conformance/` still queued.
+9. ~~**HTML5 polish** — `<main id="content">` wrapper, preamble grouping, smart quotes, verse blocks with attribution, block image / video / audio, kbd/btn/menu UI macros, derived header attributes, `[discrete]` headings, inline anchors, light/dark-aware syntax-highlighter integration, end-of-doc footnote section.~~ ✓
+10. **Diagnostics polish** — `miette::Diagnostic` for `ParseError`/`PreprocessError`/`ConvertError` with span pointers; doc-wide ID registry that powers xref validation; promote warnings (dangling xref, unknown attribute reference) into the diagnostic stream.
+11. **Stdio extension model** — freeze and document the JSON schema (the wiring is done; documentation isn't); ship a trivial example filter.
+12. **Additional backends** — DocBook, man page.
 
 ## Dependencies
 

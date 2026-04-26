@@ -416,6 +416,8 @@ fn tables_header_inference_and_cell_formatters() {
         Some(adoc::ast::CellStyle::Emphasis)
     );
     // Row 1: cells[0] plain, cells[1] m|, cells[2] l|, cells[3] h|.
+    // (cols=1,1,1,1 forces 4-column grouping so the second source line
+    // stays a single 4-cell row.)
     assert_eq!(
         formatters.rows[1].cells[1].style,
         Some(adoc::ast::CellStyle::Monospace)
@@ -473,6 +475,7 @@ fn ast_roundtrips_through_serde_json() {
         "34_video_audio.adoc",
         "35_include_indent.adoc",
         "36_ui_macros.adoc",
+        "37_table_advanced.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -718,6 +721,45 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn tables_rowspan_multiline_repeat_csv_dsv() {
+    let (_doc, html) = render("37_table_advanced.adoc");
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // 1) Rowspan: row 2 has the spanning cell (col 0), row 3 has only
+    //    2 cells (G, H) because col 0 is occupied by the rowspan above.
+    assert!(body.contains(r#"<td rowspan="2">spans rows 2 and 3</td>"#));
+    assert!(body.contains("<tr><td>G</td><td>H</td></tr>"));
+    // Row 4 has all three cells again (rowspan exhausted).
+    assert!(body.contains("<tr><td>I</td><td>J</td><td>K</td></tr>"));
+
+    // 2) Multi-line PSV cell: the `a|` cell collects content from
+    //    multiple source lines (including a blank-line paragraph break)
+    //    into one nested-block cell.
+    assert!(body.contains("<p>Multi-line content:</p>"));
+    assert!(body.contains("<li>item one</li>"));
+    assert!(body.contains("<li>item two</li>"));
+    assert!(body.contains("<p>A trailing paragraph.</p>"));
+
+    // 3) Cell repetition: `3*| same value` produces three cells.
+    assert_eq!(body.matches("<td>same value</td>").count(), 3);
+
+    // 4) CSV: header inferred from `[%header]`, comma-separated cells,
+    //    quoted cell preserves its embedded comma.
+    assert!(body.contains("<th>Item</th><th>Price</th><th>In stock</th>"));
+    assert!(body.contains("<td>with, comma</td>"));
+    assert!(body.contains("<td>Apple</td><td>1.20</td><td>12</td>"));
+
+    // 5) DSV with default `:` separator, two columns inferred.
+    assert!(body.contains("<tr><td>key</td><td>value</td></tr>"));
+    assert!(body.contains("<tr><td>alpha</td><td>1</td></tr>"));
+
+    // 6) DSV with custom `;` separator.
+    assert!(body.contains("<tr><td>left</td><td>right</td></tr>"));
 }
 
 #[test]

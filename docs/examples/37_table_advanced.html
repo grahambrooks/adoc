@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tables: Headers and Cell Formatters</title>
+<title>Tables: Rowspan, Multi-line Cells, Repetition, CSV/DSV</title>
 <style>
 /* adoc.css — default stylesheet for HTML5 output from the adoc processor.
  *
@@ -708,49 +708,93 @@ sup.footnote a:hover { text-decoration: underline; }
 </head>
 <body>
 <header>
-<h1>Tables: Headers and Cell Formatters</h1>
+<h1>Tables: Rowspan, Multi-line Cells, Repetition, CSV/DSV</h1>
 </header>
 <main id="content">
-<section id="_inferred_header_blank_line_after_first_row">
-<h2>Inferred header (blank line after first row)</h2>
-<table>
-<thead>
-<tr><th>Name</th><th>Role</th><th>Location</th></tr>
-</thead>
-<tbody>
-<tr><td>Alice</td><td>Engineer</td><td>Remote</td></tr>
-<tr><td>Bob</td><td>Designer</td><td>Office</td></tr>
-</tbody>
-</table>
-</section>
-<section id="_explicit_header_via_header">
-<h2>Explicit header via [%header]</h2>
-<table>
-<thead>
-<tr><th>Item</th><th>Price</th><th>Stock</th></tr>
-</thead>
-<tbody>
-<tr><td>Apple</td><td>1</td><td>12</td></tr>
-<tr><td>Pear</td><td>2</td><td>7</td></tr>
-</tbody>
-</table>
-</section>
-<section id="_cell_formatters">
-<h2>Cell formatters</h2>
+<section id="_rowspan_layout">
+<h2>Rowspan layout</h2>
 <table>
 <colgroup>
-<col style="width: 25.0000%;">
-<col style="width: 25.0000%;">
-<col style="width: 25.0000%;">
-<col style="width: 25.0000%;">
+<col>
+<col>
+<col>
 </colgroup>
 <tbody>
-<tr><td>plain</td><td><strong>strong cell</strong></td><td><em>emphasised cell</em></td><td>trailing</td></tr>
-<tr><td>also plain</td><td><code>monospace text</code></td><td><pre>literal *not strong*</pre></td><th>forced th in body row</th></tr>
+<tr><td>A</td><td>B</td><td>C</td></tr>
+<tr><td rowspan="2">spans rows 2 and 3</td><td>E</td><td>F</td></tr>
+<tr><td>G</td><td>H</td></tr>
+<tr><td>I</td><td>J</td><td>K</td></tr>
+</tbody>
+</table>
+</section>
+<section id="_multi_line_psv_cells">
+<h2>Multi-line PSV cells</h2>
+<table>
+<colgroup>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr><td>name</td><td><p>Multi-line content:</p>
+<ul>
+<li>item one</li>
+<li>item two</li>
+</ul>
+<p>A trailing paragraph.</p>
+</td></tr>
+<tr><td>compact</td><td>one-liner</td></tr>
+</tbody>
+</table>
+</section>
+<section id="_cell_repetition_with_3">
+<h2>Cell repetition with <code>3*|</code></h2>
+<table>
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr><td>A</td><td>B</td><td>C</td></tr>
+<tr><td>same value</td><td>same value</td><td>same value</td></tr>
+</tbody>
+</table>
+</section>
+<section id="_csv_format">
+<h2>CSV format</h2>
+<table>
+<thead>
+<tr><th>Item</th><th>Price</th><th>In stock</th></tr>
+</thead>
+<tbody>
+<tr><td>Apple</td><td>1.20</td><td>12</td></tr>
+<tr><td>Pear</td><td>with, comma</td><td>7</td></tr>
+<tr><td>Plum</td><td>2.40</td><td>3</td></tr>
+</tbody>
+</table>
+</section>
+<section id="_dsv_format_with_default_separator">
+<h2>DSV format with default <code>:</code> separator</h2>
+<table>
+<tbody>
+<tr><td>key</td><td>value</td></tr>
+<tr><td>alpha</td><td>1</td></tr>
+<tr><td>beta</td><td>2</td></tr>
+<tr><td>gamma</td><td>3</td></tr>
+</tbody>
+</table>
+</section>
+<section id="_dsv_with_a_custom_separator">
+<h2>DSV with a custom separator</h2>
+<table>
+<tbody>
+<tr><td>left</td><td>right</td></tr>
+<tr><td>1</td><td>2</td></tr>
+<tr><td>3</td><td>4</td></tr>
 </tbody>
 </table>
 </section>
 </main>
-<!-- attributes: doctitle=Tables: Headers and Cell Formatters; -->
+<!-- attributes: doctitle=Tables: Rowspan, Multi-line Cells, Repetition, CSV/DSV; -->
 </body>
 </html>
