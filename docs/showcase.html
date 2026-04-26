@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -718,6 +725,7 @@ pre[class*="language-"], code[class*="language-"] {
 <p class="authors">Alice Author, Bob Builder</p>
 <p class="revision">v1.0.0 · 2026-04-25 · First public showcase</p>
 </header>
+<main id="content">
 <div id="toc" class="toc">
 <div class="toc-title">Table of Contents</div>
 <ul>
@@ -736,7 +744,9 @@ pre[class*="language-"], code[class*="language-"] {
 <li><a href="#_footnotes_character_pairs_and_a_final_word"><span class="sectnum">13</span> Footnotes, character pairs, and a final word</a></li>
 </ul>
 </div>
+<div id="preamble">
 <p>This document is the canonical demonstration of what the <code>adoc</code> processor can render. Every feature in the README's <em>What works today</em> section appears below, in roughly the order a reader is likely to meet them. The whole file is rendered with <code>adoc docs/showcase.adoc</code> and the result lives at <code>docs/showcase.html</code>.</p>
+</div>
 <section id="intro">
 <h2><a class="anchor" href="#intro"></a><span class="sectnum">1</span> Document header and metadata</h2>
 <p>The header above carries a title, two authors with email addresses, a revision line (<code>v1.0.0, 2026-04-25: First public showcase</code>), and a block of attribute entries. Attributes are referenced inline with curly braces — for example, you are reading version 0.1.0 of adoc, and the homepage is https://github.com/grahambrooks/adoc.</p>
@@ -1019,6 +1029,7 @@ adoc --emit-ast docs/showcase.adoc \
 <div class="footnote" id="_footnotedef_1"><a href="#_footnoteref_1">1</a>. The AsciiDoc Language specification at <a href="https://docs.asciidoctor.org/asciidoc/latest/">https://docs.asciidoctor.org/asciidoc/latest/</a></div>
 <div class="footnote" id="_footnotedef_2"><a href="#_footnoteref_2">2</a>. </div>
 </div>
+</main>
 <!-- attributes: author=Alice Author; author_2=Bob Builder; authorinitials=AA; authors=Alice Author, Bob Builder; description=A single AsciiDoc document exercising every feature the adoc processor implements today.; doctitle=The adoc Showcase: Every Supported Feature in One Document; edition=2; email=alice@example.com; email_2=bob@example.com; firstname=Alice; homepage=https://github.com/grahambrooks/adoc; keywords=asciidoc, adoc, html5, showcase; lang=en; lastname=Author; prism-theme=prism; product=adoc; product-version=0.1.0; revdate=2026-04-25; revnumber=1.0.0; revremark=First public showcase; sectanchors=true; sectnums=true; source-highlighter=prism; toc=true; -->
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js"></script>

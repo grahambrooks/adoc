@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -705,6 +712,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <p class="authors">Alice Author, Bob Builder</p>
 <p class="revision">v3.1.4 · 2026-04-25 · Compat round</p>
 </header>
+<main id="content">
 <section id="_derived_header_attributes">
 <h2>Derived header attributes</h2>
 <p>Title is Compatibility Round: Links, Anchors, Discrete Headings, Block Images. First author is Alice Author (Alice Author, initials AA, email alice@example.com). All authors: Alice Author, Bob Builder. Second author: Bob Builder. Revision v3.1.4 on 2026-04-25 — Compat round.</p>
@@ -726,6 +734,7 @@ sup.footnote a:hover { text-decoration: underline; }
 </div>
 <p>A following paragraph.</p>
 </section>
+</main>
 <!-- attributes: author=Alice Author; author_2=Bob Builder; authorinitials=AA; authors=Alice Author, Bob Builder; doctitle=Compatibility Round: Links, Anchors, Discrete Headings, Block Images; email=alice@example.com; firstname=Alice; home=https://example.com; lastname=Author; revdate=2026-04-25; revnumber=3.1.4; revremark=Compat round; -->
 </body>
 </html>

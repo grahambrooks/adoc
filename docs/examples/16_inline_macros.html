@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -700,11 +707,15 @@ sup.footnote a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
+<main id="content">
+<div id="preamble">
 <p>Visit <a href="https://example.com">https://example.com</a> for more info.</p>
 <p>An explicit link: <a href="https://example.com">Example Site</a>.</p>
 <p>Mail me at <a href="mailto:alice@example.com">Alice</a>.</p>
 <p>Cross reference to <a href="#intro">Introduction</a> or <a href="#intro">intro</a>.</p>
 <p>Image: <img src="logo.png" alt="Logo" width="100" height="50">.</p>
 <p>Inline monospace with <code>code here</code>.</p>
+</div>
+</main>
 </body>
 </html>

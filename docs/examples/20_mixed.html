@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -705,6 +712,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <p class="authors">Graham Brooks</p>
 <p class="revision">v0.1.0 · 2026-04-18</p>
 </header>
+<main id="content">
 <div id="toc" class="toc">
 <div class="toc-title">Table of Contents</div>
 <ul>
@@ -714,7 +722,9 @@ sup.footnote a:hover { text-decoration: underline; }
 </li>
 </ul>
 </div>
+<div id="preamble">
 <p>A short <strong>introduction</strong> paragraph with a link to <a href="https://asciidoc.org">https://asciidoc.org</a>.</p>
+</div>
 <section id="_features">
 <h2>Features</h2>
 <p>adoc supports:</p>
@@ -739,6 +749,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <p id="features">More features to come.</p>
 </section>
 </section>
+</main>
 <!-- attributes: author=Graham Brooks; authorinitials=GB; authors=Graham Brooks; doctitle=The adoc User Guide; email=graham@example.com; firstname=Graham; icons=font; lastname=Brooks; revdate=2026-04-18; revnumber=0.1.0; toc=true; -->
 </body>
 </html>

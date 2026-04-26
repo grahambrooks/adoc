@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -703,6 +710,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <header>
 <h1>UI Macros: kbd, btn, menu</h1>
 </header>
+<main id="content">
 <section id="_kbd">
 <h2>kbd</h2>
 <p>Press <span class="keyseq"><kbd>Ctrl</kbd>+<kbd>C</kbd></span> to copy and <span class="keyseq"><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></span> to open the palette.</p>
@@ -716,6 +724,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <h2>menu</h2>
 <p>Open <span class="menuseq"><span class="menu">File</span> › <span class="menuitem">Save As</span></span> or <span class="menuseq"><span class="menu">Edit</span> › <span class="menuitem">Find</span> › <span class="menuitem">Replace</span> › <span class="menuitem">All</span></span>.</p>
 </section>
+</main>
 <!-- attributes: doctitle=UI Macros: kbd, btn, menu; -->
 </body>
 </html>

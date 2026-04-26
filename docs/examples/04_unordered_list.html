@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -700,6 +707,8 @@ sup.footnote a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
+<main id="content">
+<div id="preamble">
 <ul>
 <li>First item</li>
 <li>Second item</li>
@@ -713,5 +722,7 @@ sup.footnote a:hover { text-decoration: underline; }
 </ul>
 <li>Back to top level</li>
 </ul>
+</div>
+</main>
 </body>
 </html>

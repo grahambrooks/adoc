@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -700,9 +707,13 @@ sup.footnote a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
+<main id="content">
+<div id="preamble">
 <p>This paragraph has <strong>strong</strong>, <em>emphasis</em>, and <code>monospace</code> text.</p>
 <p>You can also combine <strong><em>strong emphasis</em></strong> and <code><strong>strong mono</strong></code>.</p>
 <p>Unconstrained forms: <strong>s</strong>trong, <em>e</em>mphasis, <code>m</code>onospace for mid-word.</p>
 <p>Special characters like 1 &lt; 2 and AT&amp;T should be escaped.</p>
+</div>
+</main>
 </body>
 </html>

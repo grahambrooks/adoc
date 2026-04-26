@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -703,6 +710,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <header>
 <h1>AsciiDoc Cells and Cell Span</h1>
 </header>
+<main id="content">
 <section id="_a_asciidoc_cells">
 <h2>a| AsciiDoc cells</h2>
 <p>The <code>a|</code> prefix on a row makes that cell's content parse recursively as nested AsciiDoc blocks instead of a flat run of inlines.</p>
@@ -743,6 +751,7 @@ sup.footnote a:hover { text-decoration: underline; }
 </tbody>
 </table>
 </section>
+</main>
 <!-- attributes: doctitle=AsciiDoc Cells and Cell Span; -->
 </body>
 </html>

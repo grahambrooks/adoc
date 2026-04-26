@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -703,6 +710,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <header>
 <h1>TOC, Sectnums, Sectanchors</h1>
 </header>
+<main id="content">
 <div id="toc" class="toc">
 <div class="toc-title">Table of Contents</div>
 <ul>
@@ -746,6 +754,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <h2><a class="anchor" href="#_conclusion"></a><span class="sectnum">4</span> Conclusion</h2>
 <p>Body of conclusion.</p>
 </section>
+</main>
 <!-- attributes: doctitle=TOC, Sectnums, Sectanchors; sectanchors=true; sectnums=true; toc=true; -->
 </body>
 </html>

@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -703,6 +710,8 @@ sup.footnote a:hover { text-decoration: underline; }
 <header>
 <h1>Block Metadata Showcase</h1>
 </header>
+<main id="content">
+<div id="preamble">
 <div class="title">A titled paragraph</div>
 <p id="first" class="lead">A paragraph with a block title, an explicit id, and a role.</p>
 <div class="admonitionblock note">
@@ -727,10 +736,12 @@ sup.footnote a:hover { text-decoration: underline; }
 <tr><td>Pear</td><td>2</td></tr>
 </tbody>
 </table>
+</div>
 <section id="feature">
 <h2>Feature Section</h2>
 <p>This section has an explicit id.</p>
 </section>
+</main>
 <!-- attributes: doctitle=Block Metadata Showcase; -->
 </body>
 </html>

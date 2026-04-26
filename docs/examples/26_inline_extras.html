@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -703,16 +710,20 @@ sup.footnote a:hover { text-decoration: underline; }
 <header>
 <h1>Inline Extras</h1>
 </header>
+<main id="content">
+<div id="preamble">
 <p>H<sub>2</sub>O is one molecule; E=mc<sup>2</sup> another.</p>
 <p>The <mark>highlighted phrase</mark> should stand out.</p>
 <p>Constrained passthrough *keeps stars* and {attrs} verbatim.</p>
 <p>Unconstrained **double stars** also pass through.</p>
 <p>Use <kbd>Ctrl</kbd>+<kbd>C</kbd> to inject HTML literally.</p>
 <p>A <sup class="footnote" id="_footnoteref_1">[<a href="#_footnotedef_1">1</a>]</sup> mid-sentence; another with <sup class="footnote" id="_footnoteref_2">[<a href="#_footnotedef_2">2</a>]</sup>.</p>
+</div>
 <div id="footnotes"><hr>
 <div class="footnote" id="_footnotedef_1"><a href="#_footnoteref_1">1</a>. anchored thought</div>
 <div class="footnote" id="_footnotedef_2"><a href="#_footnoteref_2">2</a>. an id</div>
 </div>
+</main>
 <!-- attributes: doctitle=Inline Extras; -->
 </body>
 </html>

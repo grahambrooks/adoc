@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -703,6 +710,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <header>
 <h1>Tables: Headers and Cell Formatters</h1>
 </header>
+<main id="content">
 <section id="_inferred_header_blank_line_after_first_row">
 <h2>Inferred header (blank line after first row)</h2>
 <table>
@@ -736,6 +744,7 @@ sup.footnote a:hover { text-decoration: underline; }
 </tbody>
 </table>
 </section>
+</main>
 <!-- attributes: doctitle=Tables: Headers and Cell Formatters; -->
 </body>
 </html>

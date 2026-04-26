@@ -106,12 +106,35 @@ impl Converter for Html5Converter {
             out.push_str("</header>\n");
         }
 
+        // The whole document body lives inside `<main id="content">` so
+        // every block has the same enclosing context — the TOC and any
+        // pre-section prose share the section content's surface, instead
+        // of sitting as bare body children.
+        out.push_str(r#"<main id="content">"#);
+        out.push('\n');
+
         if ctx.toc {
             render_toc(&mut out, &ctx);
         }
 
         let body_start = out.len();
-        for block in &doc.blocks {
+        // Group leading non-section blocks (the "preamble") into a single
+        // `<div id="preamble">` so the renderer matches Asciidoctor's
+        // structural convention.
+        let first_section_idx = doc
+            .blocks
+            .iter()
+            .position(|b| matches!(b, Block::Section(_)));
+        let preamble_end = first_section_idx.unwrap_or(doc.blocks.len());
+        if preamble_end > 0 {
+            out.push_str(r#"<div id="preamble">"#);
+            out.push('\n');
+            for block in &doc.blocks[..preamble_end] {
+                render_block(&mut out, block, &ctx)?;
+            }
+            out.push_str("</div>\n");
+        }
+        for block in &doc.blocks[preamble_end..] {
             render_block(&mut out, block, &ctx)?;
         }
 
@@ -134,6 +157,7 @@ impl Converter for Html5Converter {
             }
             out.push_str("</div>\n");
         }
+        out.push_str("</main>\n");
 
         if !doc.attributes.is_empty() {
             // Emit document attributes as an HTML comment so round-tripping

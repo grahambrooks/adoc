@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -703,7 +710,10 @@ sup.footnote a:hover { text-decoration: underline; }
 <header>
 <h1>Document Title</h1>
 </header>
+<main id="content">
+<div id="preamble">
 <p>Preamble paragraph.</p>
+</div>
 <section id="_level_1_section">
 <h2>Level 1 Section</h2>
 <p>Content in section one.</p>
@@ -724,6 +734,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <h2>Another Level 1</h2>
 <p>Back up a level.</p>
 </section>
+</main>
 <!-- attributes: doctitle=Document Title; -->
 </body>
 </html>

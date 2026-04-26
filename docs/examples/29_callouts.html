@@ -127,6 +127,13 @@ body > * {
   margin-right: auto;
 }
 
+/* `<main id="content">` wraps the document body so every section, the
+   TOC, and any pre-section preamble share the same enclosing context.
+   `<div id="preamble">` is a structural-only wrapper; no decoration. */
+main#content { display: block; }
+#preamble { display: block; }
+#preamble > :first-child { margin-top: 0; }
+
 /* Long URLs and inline code shouldn't push the layout. */
 p, li, dd, blockquote, .footnote {
   overflow-wrap: anywhere;
@@ -703,6 +710,7 @@ sup.footnote a:hover { text-decoration: underline; }
 <header>
 <h1>Source-block Callouts</h1>
 </header>
+<main id="content">
 <section id="_listing_with_callouts">
 <h2>Listing with callouts</h2>
 <pre data-lang="rust"><code class="language-rust">fn main() {
@@ -738,6 +746,7 @@ column two  <b class="conum">(2)</b></pre>
 <li value="2">Right side.</li>
 </ol>
 </section>
+</main>
 <!-- attributes: doctitle=Source-block Callouts; -->
 </body>
 </html>
