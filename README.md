@@ -87,7 +87,10 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - All seven delimited block styles: listing, literal, example, quote, sidebar, passthrough, open.
 - Simple tables (one cell per `|` delimiter; column specs and cell formatters are not yet handled).
 - Constrained and unconstrained inline quotes: `*strong*`, `_emphasis_`, `` `monospace` ``, plus `**`/`__`/```` `` ```` forms.
-- Inline macros: `link:`, `mailto:`, `xref:`, `image:`, shorthand `<<xref>>`, and `http(s)`/`ftp` autolinks.
+- Inline macros: `link:`, `mailto:`, `xref:`, `image:`, `anchor:id[]`, shorthand `<<xref>>`, and `http(s)`/`ftp` autolinks. `link:{attr}[label]` substitutes attribute references in the URL; `https://url[label]` is also accepted (bare URL with explicit text).
+- Block image — `image::path[alt, width, height]` on its own line renders as `<div class="imageblock">` with optional `.Title` caption.
+- Derived header attributes — `{doctitle}`, `{author}`, `{authors}`, `{firstname}`, `{middlename}`, `{lastname}`, `{authorinitials}`, `{email}`, `{author_2}` / `{email_2}` for additional authors, and `{revnumber}` (with leading `v` stripped), `{revdate}`, `{revremark}`. User-supplied attribute entries take precedence.
+- `[discrete]` headings — same `==`-style title syntax, but the heading doesn't open a new section: rendered as `<hN class="discrete">` and the surrounding blocks remain siblings.
 - Attribute references (`{name}`) with the document attribute context.
 - Character replacements: `(C)`, `(R)`, `(TM)`, `...`, `--`, `->`, `=>`, `<-`, `<=`.
 - Block metadata — `[source,rust]`, `[NOTE]`, `[#id.role%opt]`, `[caption="…"]`, `.Title` lines — attached to the following block. The HTML5 backend emits `id`, `class`, and a `<div class="title">` accordingly.
@@ -113,10 +116,10 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 The big-ticket items, in roughly the order they're queued:
 
 - **`include::` argument tail** — `indent=`, `encoding=`, and tag wildcards (`*`, `**`). The common arguments (`lines=`, `tags=`, `leveloffset=`) are in.
-- **`[discrete]` headings** and `:toc-placement:` (always top for now).
+- **`:toc-placement:`** — TOC currently always renders at the top.
 - **Doc-wide ID registry + xref validation** — section IDs land on the AST nodes today, but there's no centralised registry yet, so dangling xrefs render silently (the `<a href>` is emitted but the target doesn't exist). Validation belongs with the diagnostics work.
 - **Tables — remaining bits**: row span (`.3+|`, `2.3+|`) parses today but doesn't influence row layout; multi-line cell continuation; cell repetition (`3*|`); CSV/DSV separators (`format=csv|dsv` with custom separator).
-- **Inline anchors** (`anchor:id[]`), bibliography entries (`[[[id]]]`), and the numbered end-of-doc footnote section.
+- **Bibliography entries** (`[[[id]]]`) and the numbered end-of-doc footnote section.
 - **TOC, discrete headings, `sectnums`, `sectanchors`.**
 - **`--emit-ast` / `--from-ast`** wiring for the stdio extension model.
 - **Real `miette::Diagnostic` errors** with span pointers (locations are already plumbed; error types just don't carry them yet).

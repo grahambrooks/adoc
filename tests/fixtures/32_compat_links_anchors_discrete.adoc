@@ -1,0 +1,35 @@
+= Compatibility Round: Links, Anchors, Discrete Headings, Block Images
+Alice Author <alice@example.com>; Bob Builder
+v3.1.4, 2026-04-25: Compat round
+:home: https://example.com
+
+== Derived header attributes
+
+Title is {doctitle}.
+First author is {author} ({firstname} {lastname}, initials {authorinitials}, email {email}).
+All authors: {authors}.
+Second author: {author_2}.
+Revision v{revnumber} on {revdate} — {revremark}.
+
+== Links
+
+Visit link:{home}[Example] (attribute substitutes in the URL).
+
+Visit https://example.com[Example] (bare URL with label).
+
+Visit https://example.com directly.
+
+Inline anchor here: anchor:my-anchor[]. Now you can xref:my-anchor[jump back].
+
+[discrete]
+=== A discrete heading
+
+This paragraph remains in the same scope as the section above — the discrete
+heading didn't open a new section.
+
+== Block image
+
+.A standalone block image
+image::diagram.png[Diagram, 400, 200]
+
+A following paragraph.

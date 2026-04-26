@@ -117,10 +117,13 @@ impl<'a> InlineParser<'a> {
     // --- macros ---
 
     fn try_macro(&self, rem: &str) -> Option<(Inline, usize)> {
-        if let Some(m) = parse_prefix_macro(rem, "link:") {
+        if let Some(m) = parse_anchor_macro(rem) {
             return Some(m);
         }
-        if let Some(m) = parse_prefix_macro(rem, "mailto:") {
+        if let Some(m) = parse_prefix_macro(rem, "link:", self.attrs) {
+            return Some(m);
+        }
+        if let Some(m) = parse_prefix_macro(rem, "mailto:", self.attrs) {
             return Some(m);
         }
         if let Some(m) = parse_image_macro(rem) {
@@ -168,24 +171,48 @@ impl<'a> InlineParser<'a> {
 
     fn try_autolink(&self, rem: &str) -> Option<(Inline, usize)> {
         for scheme in ["https://", "http://", "ftp://"] {
-            if rem.starts_with(scheme) {
-                let end = rem
-                    .find(|c: char| c.is_whitespace() || matches!(c, '[' | ']' | '<' | '>'))
-                    .unwrap_or(rem.len());
-                if end > scheme.len() {
-                    let url = &rem[..end];
-                    // Trim trailing punctuation that's unlikely to be part of the URL.
-                    let trimmed = url.trim_end_matches(|c: char| ".,;:!?".contains(c));
-                    let text = trimmed.to_string();
+            if !rem.starts_with(scheme) {
+                continue;
+            }
+            let end = rem
+                .find(|c: char| c.is_whitespace() || matches!(c, '[' | ']' | '<' | '>'))
+                .unwrap_or(rem.len());
+            if end <= scheme.len() {
+                continue;
+            }
+            let url = &rem[..end];
+            let trimmed = url.trim_end_matches(|c: char| ".,;:!?".contains(c));
+            // Optional `[label]` form: `https://url[label]` becomes a
+            // labelled link rather than a raw autolink.
+            if rem[trimmed.len()..].starts_with('[') {
+                let after = &rem[trimmed.len()..];
+                if let Some(close_rel) = find_unescaped(after, ']') {
+                    let label_src = &after[1..close_rel];
+                    let consumed = trimmed.len() + close_rel + 1;
+                    let label = label_src.split(',').next().unwrap_or("").trim();
+                    let text_value = if label.is_empty() {
+                        trimmed.to_string()
+                    } else {
+                        substitute_attrs(label, self.attrs)
+                    };
                     return Some((
                         Inline::Link {
-                            href: text.clone(),
-                            text: vec![Inline::Text { value: text }],
+                            href: trimmed.to_string(),
+                            text: vec![Inline::Text { value: text_value }],
                         },
-                        trimmed.len(),
+                        consumed,
                     ));
                 }
             }
+            // Fall back to a bare autolink.
+            let text = trimmed.to_string();
+            return Some((
+                Inline::Link {
+                    href: text.clone(),
+                    text: vec![Inline::Text { value: text }],
+                },
+                trimmed.len(),
+            ));
         }
         None
     }
@@ -386,7 +413,7 @@ const REPLACEMENTS: &[(&str, &str)] = &[
 
 // --- macro helpers ---
 
-fn parse_prefix_macro(rem: &str, prefix: &str) -> Option<(Inline, usize)> {
+fn parse_prefix_macro(rem: &str, prefix: &str, attrs: &Attributes) -> Option<(Inline, usize)> {
     if !rem.starts_with(prefix) {
         return None;
     }
@@ -402,22 +429,91 @@ fn parse_prefix_macro(rem: &str, prefix: &str) -> Option<(Inline, usize)> {
     let attrs_end = find_unescaped(&after[target_end..], ']')?;
     let attrs_str = &after[target_end + 1..target_end + attrs_end];
     let consumed = prefix.len() + target_end + attrs_end + 1;
+    // Attribute references in the target are resolved at macro time; the
+    // 6-group substitution pipeline runs attributes *after* macros, so the
+    // macro itself has to do this lookup or `link:{homepage}[...]` would
+    // emit `{homepage}` as the href.
+    let target = substitute_attrs(target, attrs);
     let href = if prefix == "mailto:" {
         format!("mailto:{target}")
     } else {
-        target.to_string()
+        target.clone()
     };
     let text_src = attrs_str.split(',').next().unwrap_or("").trim();
-    let text = if text_src.is_empty() {
-        vec![Inline::Text {
-            value: target.to_string(),
-        }]
+    let text_value = if text_src.is_empty() {
+        target
     } else {
-        vec![Inline::Text {
-            value: text_src.to_string(),
-        }]
+        substitute_attrs(text_src, attrs)
     };
+    let text = vec![Inline::Text { value: text_value }];
     Some((Inline::Link { href, text }, consumed))
+}
+
+/// `anchor:id[]` and `anchor:id[reftext]` — emits an empty `<a>` so the
+/// id becomes a link target. The optional reftext is currently dropped
+/// (a doc-wide xref registry would consume it for label substitution).
+fn parse_anchor_macro(rem: &str) -> Option<(Inline, usize)> {
+    let prefix = "anchor:";
+    if !rem.starts_with(prefix) {
+        return None;
+    }
+    let after = &rem[prefix.len()..];
+    let target_end = after.find('[')?;
+    let id = &after[..target_end];
+    if id.is_empty() || !is_attribute_name(id) {
+        return None;
+    }
+    let attrs_end = find_unescaped(&after[target_end..], ']')?;
+    let consumed = prefix.len() + target_end + attrs_end + 1;
+    Some((
+        Inline::RawHtml {
+            value: format!(r#"<a id="{}"></a>"#, escape_html_attr(id)),
+        },
+        consumed,
+    ))
+}
+
+fn escape_html_attr(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+/// Resolve `{name}` attribute references in a flat string. Used by macro
+/// helpers that run before the regular attribute-substitution pass.
+/// Unknown names are left literal.
+fn substitute_attrs(s: &str, attrs: &Attributes) -> String {
+    let mut out = String::with_capacity(s.len());
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'{' {
+            if let Some(close_rel) = s[i + 1..].find('}') {
+                let name = &s[i + 1..i + 1 + close_rel];
+                if is_attribute_name(name) {
+                    if let Some(AttributeValue::String(v)) = attrs.get(name) {
+                        out.push_str(v);
+                        i += 1 + close_rel + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+        let ch_len = utf8_char_len(bytes[i]);
+        out.push_str(&s[i..i + ch_len]);
+        i += ch_len;
+    }
+    out
+}
+
+fn utf8_char_len(b: u8) -> usize {
+    match b {
+        0..=0x7F => 1,
+        0xC0..=0xDF => 2,
+        0xE0..=0xEF => 3,
+        _ => 4,
+    }
 }
 
 fn parse_image_macro(rem: &str) -> Option<(Inline, usize)> {
@@ -425,8 +521,16 @@ fn parse_image_macro(rem: &str) -> Option<(Inline, usize)> {
     if !rem.starts_with(prefix) {
         return None;
     }
+    // Reject the block form (`image::`) here — the block parser handles
+    // those before falling through to inline parsing.
     let after = &rem[prefix.len()..];
-    let target_end = after.find('[')?;
+    if after.starts_with(':') {
+        return None;
+    }
+    let target_end = after.find(|c: char| c == '[' || c.is_whitespace())?;
+    if !after[target_end..].starts_with('[') {
+        return None;
+    }
     let target = &after[..target_end];
     if target.is_empty() {
         return None;

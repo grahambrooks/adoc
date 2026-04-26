@@ -55,12 +55,91 @@ pub fn try_parse_header(cursor: &mut Cursor, attrs: &mut Attributes) -> Option<H
     consume_attribute_entries(cursor, attrs);
 
     let title = inline::parse(&title_text, attrs, Subs::HEADER);
+    set_derived_attributes(attrs, &title_text, &authors, revision.as_ref());
     Some(Header {
         title,
         authors,
         revision,
         location,
     })
+}
+
+/// Populate the AsciiDoc-spec derived attributes:
+/// `{doctitle}`, `{author}`, `{email}`, `{firstname}`, `{lastname}`,
+/// `{middlename}`, `{authorinitials}`, `{authors}`, plus `{author_N}` /
+/// `{email_N}` for additional authors. Revision metadata is exposed as
+/// `{revnumber}`, `{revdate}`, `{revremark}` (with the leading `v` stripped
+/// from the number, matching Asciidoctor).
+///
+/// User-supplied attribute entries take precedence — the inserts here only
+/// happen when the user didn't already set the same name.
+fn set_derived_attributes(
+    attrs: &mut Attributes,
+    title: &str,
+    authors: &[Author],
+    revision: Option<&Revision>,
+) {
+    set_if_absent(attrs, "doctitle", title);
+    if let Some(first) = authors.first() {
+        set_if_absent(attrs, "author", &first.name);
+        if let Some(email) = first.email.as_deref() {
+            set_if_absent(attrs, "email", email);
+        }
+        let parts: Vec<&str> = first.name.split_whitespace().collect();
+        match parts.len() {
+            0 => {}
+            1 => {
+                set_if_absent(attrs, "firstname", parts[0]);
+            }
+            2 => {
+                set_if_absent(attrs, "firstname", parts[0]);
+                set_if_absent(attrs, "lastname", parts[1]);
+            }
+            _ => {
+                set_if_absent(attrs, "firstname", parts[0]);
+                set_if_absent(attrs, "middlename", &parts[1..parts.len() - 1].join(" "));
+                set_if_absent(attrs, "lastname", parts[parts.len() - 1]);
+            }
+        }
+        let initials: String = parts.iter().filter_map(|p| p.chars().next()).collect();
+        if !initials.is_empty() {
+            set_if_absent(attrs, "authorinitials", &initials);
+        }
+    }
+    let names_joined = authors
+        .iter()
+        .map(|a| a.name.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    if !names_joined.is_empty() {
+        set_if_absent(attrs, "authors", &names_joined);
+    }
+    for (idx, a) in authors.iter().enumerate().skip(1) {
+        let n = idx + 1;
+        set_if_absent(attrs, &format!("author_{n}"), &a.name);
+        if let Some(email) = a.email.as_deref() {
+            set_if_absent(attrs, &format!("email_{n}"), email);
+        }
+    }
+    if let Some(rev) = revision {
+        if let Some(num) = rev.number.as_deref() {
+            // Asciidoctor strips the leading `v` from `{revnumber}`.
+            let trimmed = num.strip_prefix('v').unwrap_or(num).trim();
+            set_if_absent(attrs, "revnumber", trimmed);
+        }
+        if let Some(date) = rev.date.as_deref() {
+            set_if_absent(attrs, "revdate", date);
+        }
+        if let Some(remark) = rev.remark.as_deref() {
+            set_if_absent(attrs, "revremark", remark);
+        }
+    }
+}
+
+fn set_if_absent(attrs: &mut Attributes, name: &str, value: &str) {
+    if !attrs.contains_key(name) {
+        attrs.insert(name.to_string(), AttributeValue::String(value.to_string()));
+    }
 }
 
 fn is_title_line(text: &str) -> bool {

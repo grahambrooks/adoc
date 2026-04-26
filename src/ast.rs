@@ -64,6 +64,10 @@ pub enum Block {
     Delimited(DelimitedBlock),
     Table(Table),
     Colist(Colist),
+    /// A `[discrete]` heading — uses the section title syntax but doesn't
+    /// open a new section: the renderer emits the heading and the surrounding
+    /// blocks remain siblings of the heading rather than being nested under it.
+    DiscreteHeading(DiscreteHeading),
 }
 
 /// Metadata attached to a block via `.Title` and `[...]` lines.
@@ -227,6 +231,17 @@ pub enum HAlign {
     Left,
     Center,
     Right,
+}
+
+/// A `[discrete]` heading: semantically a leaf — same syntax as a section
+/// title but flat in the document tree.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscreteHeading {
+    pub level: u8,
+    pub title: Vec<Inline>,
+    pub location: Location,
+    #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
+    pub meta: BlockMeta,
 }
 
 /// Callout list — the `<N> description` siblings of a `[source]` / listing /

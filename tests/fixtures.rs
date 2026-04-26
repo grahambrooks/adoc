@@ -468,6 +468,7 @@ fn ast_roundtrips_through_serde_json() {
         "29_callouts.adoc",
         "30_table_cols.adoc",
         "31_asciidoc_cells_and_span.adoc",
+        "32_compat_links_anchors_discrete.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -705,6 +706,73 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn derived_header_attributes_link_substitution_anchors_discrete_blockimage() {
+    let (doc, html) = render("32_compat_links_anchors_discrete.adoc");
+
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // Derived header attributes resolve.
+    assert!(body.contains("Title is Compatibility Round"));
+    assert!(body.contains("First author is Alice Author"));
+    assert!(body.contains("Alice Author (Alice Author, initials AA"));
+    assert!(body.contains("All authors: Alice Author, Bob Builder"));
+    assert!(body.contains("Second author: Bob Builder"));
+    assert!(body.contains("Revision v3.1.4 on 2026-04-25 — Compat round"));
+
+    // link: with attribute reference in the URL.
+    assert!(body.contains(r#"<a href="https://example.com">Example</a>"#));
+
+    // Bare URL with [label] form.
+    assert!(
+        body.matches(r#"<a href="https://example.com">Example</a>"#)
+            .count()
+            >= 2
+    );
+
+    // Inline anchor renders an empty <a id="…">.
+    assert!(body.contains(r#"<a id="my-anchor"></a>"#));
+
+    // Discrete heading: <hN class="discrete"> sitting inside the parent
+    // <section>, not opening a new <section>.
+    assert!(body.contains(r#"<h3 class="discrete">A discrete heading</h3>"#));
+
+    // Block image: standalone <div class="imageblock"> with title.
+    assert!(body.contains(r#"<div class="imageblock">"#));
+    assert!(body.contains(r#"<img src="diagram.png" alt="Diagram" width="400" height="200">"#));
+    assert!(body.contains(r#"<div class="title">A standalone block image</div>"#));
+
+    // AST shape: discrete heading is a top-level Block::DiscreteHeading
+    // sibling of the surrounding section's children, not a Block::Section.
+    let section_blocks = doc
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            Block::Section(s) => {
+                let title_text = match s.title.first() {
+                    Some(adoc::ast::Inline::Text { value }) => value.as_str(),
+                    _ => "",
+                };
+                if title_text.contains("discrete")
+                    || s.blocks
+                        .iter()
+                        .any(|b| matches!(b, Block::DiscreteHeading(_)))
+                {
+                    Some(&s.blocks)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .expect("expected a section containing the discrete heading");
+    assert!(section_blocks
+        .iter()
+        .any(|b| matches!(b, Block::DiscreteHeading(d) if d.level == 2)));
 }
 
 #[test]

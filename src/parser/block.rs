@@ -6,8 +6,9 @@
 
 use crate::ast::{
     Attributes, Block, BlockMeta, CellStyle, Colist, ColistItem, ColumnSpec, DelimitedBlock,
-    DelimitedContent, DelimitedStyle, DescriptionList, DescriptionListItem, HAlign, Inline, List,
-    ListItem, ListMarker, Location, Paragraph, RowKind, Section, Table, TableCell, TableRow,
+    DelimitedContent, DelimitedStyle, DescriptionList, DescriptionListItem, DiscreteHeading,
+    HAlign, Inline, List, ListItem, ListMarker, Location, Paragraph, RowKind, Section, Table,
+    TableCell, TableRow,
 };
 
 use super::cursor::Cursor;
@@ -44,10 +45,16 @@ pub fn parse_blocks(cursor: &mut Cursor, attrs: &mut Attributes, section_level: 
             Some(line) if line.text.trim().is_empty() => continue,
             _ => {}
         }
-        // Section headers end the enclosing section if they are same-or-higher level.
+        // Section headers end the enclosing section if they are same-or-higher
+        // level — except `[discrete]` headings, which use section syntax but
+        // are flat (no nested scope), so they never close the outer section.
         if let Some(level) = peek_section_level(cursor) {
+            if meta.style.as_deref() == Some("discrete") {
+                let dh = parse_discrete_heading(cursor, attrs, level, meta);
+                out.push(Block::DiscreteHeading(dh));
+                continue;
+            }
             if level <= section_level {
-                // Hand the meta lines back to the outer scope.
                 cursor.seek(pre_meta_pos);
                 break;
             }
@@ -147,6 +154,24 @@ fn section_level_of(text: &str) -> Option<u8> {
     }
 }
 
+fn parse_discrete_heading(
+    cursor: &mut Cursor,
+    attrs: &Attributes,
+    level: u8,
+    meta: BlockMeta,
+) -> DiscreteHeading {
+    let line = cursor.advance().expect("caller peeked a section header");
+    let location = line.location.clone();
+    let title_src = line.text[(level as usize + 1) + 1..].trim();
+    let title = inline::parse(title_src, attrs, Subs::NORMAL);
+    DiscreteHeading {
+        level,
+        title,
+        location,
+        meta,
+    }
+}
+
 fn parse_section(
     cursor: &mut Cursor,
     attrs: &mut Attributes,
@@ -187,7 +212,59 @@ fn parse_one_block(cursor: &mut Cursor, attrs: &mut Attributes, meta: BlockMeta)
             cursor, attrs, meta,
         )));
     }
+    if let Some(block_image) = try_parse_block_image(cursor, attrs, &meta) {
+        return Some(block_image);
+    }
     Some(Block::Paragraph(parse_paragraph(cursor, attrs, meta)))
+}
+
+/// Recognise a standalone block image: a line of the form
+/// `image::path[args]` with no surrounding text. The block adopts the
+/// preceding `.Title` and any `[#id.role]` shorthand. Renders as a
+/// paragraph carrying a single [`Inline::Image`] and `meta.style =
+/// "image"` so the converter can emit `<div class="imageblock">`.
+fn try_parse_block_image(
+    cursor: &mut Cursor,
+    attrs: &Attributes,
+    meta: &BlockMeta,
+) -> Option<Block> {
+    let line = cursor.peek()?;
+    let trimmed = line.text.trim();
+    let after_prefix = trimmed.strip_prefix("image::")?;
+    let bracket = after_prefix.find('[')?;
+    if !after_prefix.ends_with(']') {
+        return None;
+    }
+    let target = &after_prefix[..bracket];
+    if target.is_empty() {
+        return None;
+    }
+    let args_str = &after_prefix[bracket + 1..after_prefix.len() - 1];
+    let parts: Vec<&str> = args_str.split(',').map(str::trim).collect();
+    let alt = parts.first().copied().unwrap_or("").to_string();
+    let width = parts
+        .get(1)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+    let height = parts
+        .get(2)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+    let location = line.location.clone();
+    cursor.advance();
+    let mut block_meta = meta.clone();
+    block_meta.style.get_or_insert_with(|| "image".to_string());
+    let _ = attrs; // Reserved for future attribute substitution on target.
+    Some(Block::Paragraph(Paragraph {
+        inlines: vec![Inline::Image {
+            target: target.to_string(),
+            alt,
+            width,
+            height,
+        }],
+        location,
+        meta: block_meta,
+    }))
 }
 
 // --- paragraphs -------------------------------------------------------------

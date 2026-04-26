@@ -181,6 +181,10 @@ h6 { font-size: 0.9rem; color: var(--adoc-muted); text-transform: uppercase; let
 /* Sections inherit content width from body > *; nested sections flow inline. */
 section > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 1.5em; }
 
+/* `[discrete]` headings — same visual rhythm but no underline (the
+   underline implies a section bound, which a discrete heading doesn't open). */
+:is(h1, h2, h3, h4, h5, h6).discrete { border-bottom: 0; padding-bottom: 0; }
+
 /* ---------------------------------------------------------------------
  *  Paragraphs & inline
  * ------------------------------------------------------------------ */
@@ -394,6 +398,19 @@ img {
   max-width: 100%;
   height: auto;
   border-radius: var(--adoc-radius-sm);
+}
+
+/* Block image (`image::path[alt]`) — centred figure with optional caption. */
+.imageblock {
+  margin: 1.5em 0;
+  text-align: center;
+}
+.imageblock > .content > img { display: inline-block; }
+.imageblock > .title {
+  margin-top: 0.5em;
+  font-size: 0.9em;
+  color: var(--adoc-muted);
+  font-style: italic;
 }
 
 hr {
@@ -624,6 +641,6 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 <p>Edition number 2.</p>
 <p>The end.</p>
 </section>
-<!-- attributes: edition=2; lang=en; -->
+<!-- attributes: doctitle=Preprocessor Showcase; edition=2; lang=en; -->
 </body>
 </html>

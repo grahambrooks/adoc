@@ -46,6 +46,7 @@ fn block_id(block: &Block) -> Option<&str> {
         Block::Delimited(d) => d.meta.id.as_deref(),
         Block::Table(t) => t.meta.id.as_deref(),
         Block::Colist(c) => c.meta.id.as_deref(),
+        Block::DiscreteHeading(d) => d.meta.id.as_deref(),
     }
 }
 

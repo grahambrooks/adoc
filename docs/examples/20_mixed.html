@@ -181,6 +181,10 @@ h6 { font-size: 0.9rem; color: var(--adoc-muted); text-transform: uppercase; let
 /* Sections inherit content width from body > *; nested sections flow inline. */
 section > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 1.5em; }
 
+/* `[discrete]` headings — same visual rhythm but no underline (the
+   underline implies a section bound, which a discrete heading doesn't open). */
+:is(h1, h2, h3, h4, h5, h6).discrete { border-bottom: 0; padding-bottom: 0; }
+
 /* ---------------------------------------------------------------------
  *  Paragraphs & inline
  * ------------------------------------------------------------------ */
@@ -394,6 +398,19 @@ img {
   max-width: 100%;
   height: auto;
   border-radius: var(--adoc-radius-sm);
+}
+
+/* Block image (`image::path[alt]`) — centred figure with optional caption. */
+.imageblock {
+  margin: 1.5em 0;
+  text-align: center;
+}
+.imageblock > .content > img { display: inline-block; }
+.imageblock > .title {
+  margin-top: 0.5em;
+  font-size: 0.9em;
+  color: var(--adoc-muted);
+  font-style: italic;
 }
 
 hr {
@@ -650,6 +667,6 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 <p id="features">More features to come.</p>
 </section>
 </section>
-<!-- attributes: icons=font; toc=true; -->
+<!-- attributes: author=Graham Brooks; authorinitials=GB; authors=Graham Brooks; doctitle=The adoc User Guide; email=graham@example.com; firstname=Graham; icons=font; lastname=Brooks; revdate=2026-04-18; revnumber=0.1.0; toc=true; -->
 </body>
 </html>

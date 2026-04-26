@@ -405,7 +405,45 @@ fn render_block(out: &mut String, block: &Block, ctx: &RenderCtx) -> Result<(), 
             render_colist(out, c);
             Ok(())
         }
+        Block::DiscreteHeading(d) => render_discrete_heading(out, d),
     }
+}
+
+fn render_discrete_heading(
+    out: &mut String,
+    d: &crate::ast::DiscreteHeading,
+) -> Result<(), ConvertError> {
+    let tag = match d.level {
+        1 => "h2",
+        2 => "h3",
+        3 => "h4",
+        4 => "h5",
+        _ => "h6",
+    };
+    let id_attr = d
+        .meta
+        .id
+        .as_deref()
+        .map(|id| format!(r#" id="{}""#, escape_attr(id)))
+        .unwrap_or_default();
+    let class_attr = if d.meta.roles.is_empty() {
+        r#" class="discrete""#.to_string()
+    } else {
+        let roles = d
+            .meta
+            .roles
+            .iter()
+            .map(|r| escape_attr(r))
+            .collect::<Vec<_>>()
+            .join(" ");
+        format!(r#" class="discrete {roles}""#)
+    };
+    writeln!(
+        out,
+        "<{tag}{id_attr}{class_attr}>{}</{tag}>",
+        render_inlines(&d.title)
+    )
+    .map_err(|e| ConvertError::Message(e.to_string()))
 }
 
 fn render_section(out: &mut String, s: &Section, ctx: &RenderCtx) -> Result<(), ConvertError> {
@@ -448,6 +486,9 @@ fn render_paragraph(out: &mut String, p: &Paragraph) -> Result<(), ConvertError>
     if let Some(kw) = admonition_keyword(&p.meta) {
         return render_admonition_paragraph(out, p, kw);
     }
+    if p.meta.style.as_deref() == Some("image") {
+        return render_block_image(out, p);
+    }
     render_block_title(out, &p.meta);
     writeln!(
         out,
@@ -456,6 +497,20 @@ fn render_paragraph(out: &mut String, p: &Paragraph) -> Result<(), ConvertError>
         render_inlines(&p.inlines)
     )
     .map_err(|e| ConvertError::Message(e.to_string()))
+}
+
+fn render_block_image(out: &mut String, p: &Paragraph) -> Result<(), ConvertError> {
+    writeln!(out, "<div{} class=\"imageblock\">", meta_id_only(&p.meta))
+        .map_err(|e| ConvertError::Message(e.to_string()))?;
+    out.push_str(r#"<div class="content">"#);
+    out.push_str(&render_inlines(&p.inlines));
+    out.push_str("</div>\n");
+    if let Some(title) = &p.meta.title {
+        writeln!(out, r#"<div class="title">{}</div>"#, render_inlines(title))
+            .map_err(|e| ConvertError::Message(e.to_string()))?;
+    }
+    out.push_str("</div>\n");
+    Ok(())
 }
 
 fn render_admonition_paragraph(

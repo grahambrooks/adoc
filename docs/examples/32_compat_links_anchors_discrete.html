@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Include Argument Showcase</title>
+<title>Compatibility Round: Links, Anchors, Discrete Headings, Block Images</title>
 <style>
 /* adoc.css — default stylesheet for HTML5 output from the adoc processor.
  *
@@ -629,23 +629,31 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 </head>
 <body>
 <header>
-<h1>Include Argument Showcase</h1>
+<h1>Compatibility Round: Links, Anchors, Discrete Headings, Block Images</h1>
+<p class="authors">Alice Author, Bob Builder</p>
+<p class="revision">v3.1.4 · 2026-04-25 · Compat round</p>
 </header>
-<section id="_lines_selector">
-<h2>Lines selector</h2>
-<p>second third fourth</p>
+<section id="_derived_header_attributes">
+<h2>Derived header attributes</h2>
+<p>Title is Compatibility Round: Links, Anchors, Discrete Headings, Block Images. First author is Alice Author (Alice Author, initials AA, email alice@example.com). All authors: Alice Author, Bob Builder. Second author: Bob Builder. Revision v3.1.4 on 2026-04-25 — Compat round.</p>
 </section>
-<section id="_tag_selector">
-<h2>Tag selector</h2>
-<p>selected by tag</p>
+<section id="_links">
+<h2>Links</h2>
+<p>Visit <a href="https://example.com">Example</a> (attribute substitutes in the URL).</p>
+<p>Visit <a href="https://example.com">Example</a> (bare URL with label).</p>
+<p>Visit <a href="https://example.com">https://example.com</a> directly.</p>
+<p>Inline anchor here: <a id="my-anchor"></a>. Now you can <a href="#my-anchor">jump back</a>.</p>
+<h3 class="discrete">A discrete heading</h3>
+<p>This paragraph remains in the same scope as the section above — the discrete heading didn't open a new section.</p>
 </section>
-<section id="_level_offset">
-<h2>Level offset</h2>
-<section id="_section_two">
-<h3>Section Two</h3>
-<p>content under section two</p>
+<section id="_block_image">
+<h2>Block image</h2>
+<div class="imageblock">
+<div class="content"><img src="diagram.png" alt="Diagram" width="400" height="200"></div>
+<div class="title">A standalone block image</div>
+</div>
+<p>A following paragraph.</p>
 </section>
-</section>
-<!-- attributes: doctitle=Include Argument Showcase; -->
+<!-- attributes: author=Alice Author; author_2=Bob Builder; authorinitials=AA; authors=Alice Author, Bob Builder; doctitle=Compatibility Round: Links, Anchors, Discrete Headings, Block Images; email=alice@example.com; firstname=Alice; home=https://example.com; lastname=Author; revdate=2026-04-25; revnumber=3.1.4; revremark=Compat round; -->
 </body>
 </html>
