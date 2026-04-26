@@ -1,0 +1,38 @@
+src/convert/html5/ctx.rs
+  27508cabf0243d73 19-23,36-44,55-66,81
+docs/examples/38_index_bib_tocplace.html
+  27508cabf0243d73 1-739
+README.md
+  27508cabf0243d73 90-92
+tests/fixtures.rs
+  27508cabf0243d73 479,727-762
+tests/fixtures/38_index_bib_tocplace.adoc
+  27508cabf0243d73 1-20
+src/parser/inline.rs
+  27508cabf0243d73 131-136,567-632
+src/convert/html5/mod.rs
+  27508cabf0243d73 37,143-145,166-167
+DESIGN.md
+  27508cabf0243d73 182-183,208,227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "1a87c6ada51c70ae0f22772d1c6c468e1b504df3",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 922,
+      "total_deletions": 22,
+      "accepted_lines": 1053,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/9065b17e7f0113d034d14ce2849587116749a6bfcf097851123d78f16e806e9d"
+    }
+  }
+}
