@@ -34,7 +34,7 @@ use std::fmt::Write;
 use crate::ast::{inlines_to_plain, AttributeValue, Block, ConvertError, Converter, Document};
 
 use self::blocks::render_block;
-use self::ctx::{render_toc, RenderCtx, TocPlacement};
+use self::ctx::{render_toc, validate_xrefs, RenderCtx, TocPlacement};
 use self::escape::{escape, escape_attr};
 use self::footnotes::number_footnotes;
 use self::highlighter::{render_highlighter_body, render_highlighter_head};
@@ -89,6 +89,11 @@ impl Html5Converter {
 impl Converter for Html5Converter {
     fn convert(&self, doc: &Document) -> Result<String, ConvertError> {
         let ctx = RenderCtx::new(doc);
+        // Validate cross-references against the registry before rendering
+        // so dangling-xref warnings show up in the order they appear in
+        // the source. Output isn't suppressed — the `<a href>` is still
+        // emitted, since users may build the missing anchor downstream.
+        validate_xrefs(doc, &ctx.ids);
         let mut out = String::new();
         out.push_str("<!doctype html>\n<html lang=\"en\">\n<head>\n");
         out.push_str(r#"<meta charset="utf-8">"#);

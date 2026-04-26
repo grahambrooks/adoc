@@ -9,7 +9,9 @@
 use std::collections::BTreeMap;
 use std::fmt::Write;
 
-use crate::ast::{inlines_to_plain, AttributeValue, Block, Document};
+use crate::ast::{
+    inlines_to_plain, AttributeValue, Block, DelimitedContent, Document, IdRegistry, Inline,
+};
 
 use super::escape::{escape, escape_attr};
 
@@ -31,6 +33,9 @@ pub(crate) struct RenderCtx {
     pub(crate) section_numbers: BTreeMap<String, String>,
     /// In-order TOC entries (one per section).
     pub(crate) toc_entries: Vec<TocEntry>,
+    /// Doc-wide ID registry — used by the inline renderer to validate
+    /// xref targets and warn (via `tracing`) on dangling references.
+    pub(crate) ids: IdRegistry,
 }
 
 /// Where in the document the TOC is inserted. `Auto` is the v1 default
@@ -76,6 +81,7 @@ impl RenderCtx {
             &mut section_numbers,
             &mut toc_entries,
         );
+        let ids = IdRegistry::collect(doc);
         Self {
             toc,
             toc_placement,
@@ -83,6 +89,7 @@ impl RenderCtx {
             sectanchors,
             section_numbers,
             toc_entries,
+            ids,
         }
     }
 
@@ -197,4 +204,83 @@ pub(crate) fn render_toc(out: &mut String, ctx: &RenderCtx) {
 pub(crate) fn is_truthy(v: Option<&AttributeValue>) -> bool {
     matches!(v, Some(AttributeValue::Bool(true)))
         || matches!(v, Some(AttributeValue::String(s)) if !s.is_empty() && !s.eq_ignore_ascii_case("false"))
+}
+
+/// Walk every inline in the document and emit a `tracing::warn!` for
+/// each xref whose target id isn't in the registry. Run once during
+/// `convert()`; the inline renderer stays target-blind.
+///
+/// Run at warn level so users get a readable diagnostic stream when
+/// they invoke with `RUST_LOG=warn` (or the CLI's `-v` flag); the
+/// rendered HTML still emits the dangling href so output is unchanged.
+pub(crate) fn validate_xrefs(doc: &Document, ids: &IdRegistry) {
+    walk_validate_blocks(&doc.blocks, ids);
+}
+
+fn walk_validate_blocks(blocks: &[Block], ids: &IdRegistry) {
+    for b in blocks {
+        match b {
+            Block::Section(s) => {
+                walk_validate_inlines(&s.title, ids);
+                walk_validate_blocks(&s.blocks, ids);
+            }
+            Block::Paragraph(p) => walk_validate_inlines(&p.inlines, ids),
+            Block::List(l) => {
+                for item in &l.items {
+                    walk_validate_inlines(&item.principal, ids);
+                    walk_validate_blocks(&item.blocks, ids);
+                }
+            }
+            Block::DescriptionList(d) => {
+                for item in &d.items {
+                    walk_validate_inlines(&item.term, ids);
+                    walk_validate_blocks(&item.description, ids);
+                }
+            }
+            Block::Delimited(d) => {
+                if let DelimitedContent::Blocks { blocks } = &d.content {
+                    walk_validate_blocks(blocks, ids);
+                }
+            }
+            Block::Table(t) => {
+                for row in &t.rows {
+                    for cell in &row.cells {
+                        walk_validate_inlines(&cell.inlines, ids);
+                        walk_validate_blocks(&cell.blocks, ids);
+                    }
+                }
+            }
+            Block::Colist(c) => {
+                for item in &c.items {
+                    walk_validate_inlines(&item.inlines, ids);
+                }
+            }
+            Block::DiscreteHeading(d) => walk_validate_inlines(&d.title, ids),
+        }
+    }
+}
+
+fn walk_validate_inlines(inlines: &[Inline], ids: &IdRegistry) {
+    for i in inlines {
+        match i {
+            Inline::Xref { target, text } => {
+                if !target.is_empty() && !ids.contains(target) {
+                    tracing::warn!(target = %target, "dangling xref");
+                }
+                if let Some(t) = text {
+                    walk_validate_inlines(t, ids);
+                }
+            }
+            Inline::Strong { children }
+            | Inline::Emphasis { children }
+            | Inline::Monospace { children }
+            | Inline::Subscript { children }
+            | Inline::Superscript { children }
+            | Inline::Highlight { children } => walk_validate_inlines(children, ids),
+            Inline::Link { text, .. } | Inline::Footnote { text, .. } => {
+                walk_validate_inlines(text, ids);
+            }
+            _ => {}
+        }
+    }
 }

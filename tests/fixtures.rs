@@ -726,6 +726,44 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
 }
 
 #[test]
+fn id_registry_collects_section_block_anchor_and_bibliography_ids() {
+    use adoc::ast::IdRegistry;
+
+    // Mix every id source: explicit section id, derived section id,
+    // an inline anchor, a bibliography anchor, and a block id via
+    // shorthand `[#…]`.
+    let src = r#"= Doc
+:doctype: article
+
+[#intro]
+== Intro
+
+A paragraph with anchor:my-anchor[].
+
+== Auto Id Section
+
+[#prices]
+.Prices
+|===
+| A | B
+|===
+
+* [[[knuth1968]]] Knuth, Donald.
+"#;
+    let mut pre = adoc::preprocessor::Preprocessor::default();
+    let lines = pre.run(src, Utf8Path::new("<input>")).expect("preprocess");
+    let doc = adoc::parser::parse(&lines).expect("parse");
+    let ids = IdRegistry::collect(&doc);
+
+    assert!(ids.contains("intro"));
+    assert!(ids.contains("_auto_id_section"));
+    assert!(ids.contains("my-anchor"));
+    assert!(ids.contains("knuth1968"));
+    assert!(ids.contains("prices"));
+    assert!(!ids.contains("nonexistent"));
+}
+
+#[test]
 fn include_tag_wildcards_encoding_doctype() {
     let (_doc, html) = render("39_include_wildcards_doctype.adoc");
 

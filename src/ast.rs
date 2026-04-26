@@ -434,6 +434,150 @@ pub trait Converter {
     fn convert(&self, doc: &Document) -> Result<String, ConvertError>;
 }
 
+/// Doc-wide ID registry — every section / block / inline anchor /
+/// bibliography ID, collected in a single AST walk so cross-reference
+/// resolution and validation can run without re-walking the tree.
+///
+/// Built once per document (after parsing, before converting). Membership
+/// is checked via [`IdRegistry::contains`].
+#[derive(Debug, Default, Clone)]
+pub struct IdRegistry {
+    ids: std::collections::BTreeSet<String>,
+}
+
+impl IdRegistry {
+    pub fn collect(doc: &Document) -> Self {
+        let mut reg = IdRegistry::default();
+        reg.walk_blocks(&doc.blocks);
+        reg
+    }
+
+    pub fn contains(&self, id: &str) -> bool {
+        self.ids.contains(id)
+    }
+
+    pub fn ids(&self) -> impl Iterator<Item = &str> {
+        self.ids.iter().map(String::as_str)
+    }
+
+    fn walk_blocks(&mut self, blocks: &[Block]) {
+        for b in blocks {
+            self.walk_block(b);
+        }
+    }
+
+    fn walk_block(&mut self, b: &Block) {
+        match b {
+            Block::Section(s) => {
+                self.add_meta(&s.meta);
+                self.walk_inlines(&s.title);
+                self.walk_blocks(&s.blocks);
+            }
+            Block::Paragraph(p) => {
+                self.add_meta(&p.meta);
+                self.walk_inlines(&p.inlines);
+            }
+            Block::List(l) => {
+                self.add_meta(&l.meta);
+                for item in &l.items {
+                    self.walk_inlines(&item.principal);
+                    self.walk_blocks(&item.blocks);
+                }
+            }
+            Block::DescriptionList(d) => {
+                self.add_meta(&d.meta);
+                for item in &d.items {
+                    self.walk_inlines(&item.term);
+                    self.walk_blocks(&item.description);
+                }
+            }
+            Block::Delimited(d) => {
+                self.add_meta(&d.meta);
+                if let DelimitedContent::Blocks { blocks } = &d.content {
+                    self.walk_blocks(blocks);
+                }
+            }
+            Block::Table(t) => {
+                self.add_meta(&t.meta);
+                for row in &t.rows {
+                    for cell in &row.cells {
+                        self.walk_inlines(&cell.inlines);
+                        self.walk_blocks(&cell.blocks);
+                    }
+                }
+            }
+            Block::Colist(c) => {
+                self.add_meta(&c.meta);
+                for item in &c.items {
+                    self.walk_inlines(&item.inlines);
+                }
+            }
+            Block::DiscreteHeading(d) => {
+                self.add_meta(&d.meta);
+                self.walk_inlines(&d.title);
+            }
+        }
+    }
+
+    fn add_meta(&mut self, meta: &BlockMeta) {
+        if let Some(id) = &meta.id {
+            self.ids.insert(id.clone());
+        }
+    }
+
+    fn walk_inlines(&mut self, inlines: &[Inline]) {
+        for i in inlines {
+            self.walk_inline(i);
+        }
+    }
+
+    fn walk_inline(&mut self, i: &Inline) {
+        match i {
+            Inline::Strong { children }
+            | Inline::Emphasis { children }
+            | Inline::Monospace { children }
+            | Inline::Subscript { children }
+            | Inline::Superscript { children }
+            | Inline::Highlight { children } => self.walk_inlines(children),
+            Inline::Link { text, .. } => self.walk_inlines(text),
+            Inline::Footnote { text, .. } => self.walk_inlines(text),
+            Inline::Xref { text: Some(t), .. } => self.walk_inlines(t),
+            Inline::RawHtml { value } => {
+                // `anchor:id[]`, `[[[id]]]`, and similar inline macros
+                // emit `<a id="…">` directly. Pull every `id="…"` out
+                // of the rendered fragment so they're discoverable from
+                // the registry without a typed AST variant.
+                self.scan_id_attrs(value);
+            }
+            Inline::Text { .. }
+            | Inline::Xref { text: None, .. }
+            | Inline::Image { .. }
+            | Inline::AttributeRef { .. }
+            | Inline::LineBreak
+            | Inline::Passthrough { .. } => {}
+        }
+    }
+
+    fn scan_id_attrs(&mut self, html: &str) {
+        let mut i = 0;
+        let bytes = html.as_bytes();
+        while i + 4 <= bytes.len() {
+            if &bytes[i..i + 4] == b"id=\"" {
+                let start = i + 4;
+                if let Some(end_rel) = html[start..].find('"') {
+                    let id = &html[start..start + end_rel];
+                    if !id.is_empty() {
+                        self.ids.insert(id.to_string());
+                    }
+                    i = start + end_rel + 1;
+                    continue;
+                }
+            }
+            i += 1;
+        }
+    }
+}
+
 /// Render an inline sequence to plain text.
 ///
 /// Drops formatting markup, preserves the text content of links / xrefs /
