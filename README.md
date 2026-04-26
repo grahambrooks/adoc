@@ -124,9 +124,14 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 The big-ticket items, in roughly the order they're queued:
 
 - **Real `miette::Diagnostic` errors** with span pointers — every `Location` is already on the AST; the error types just don't carry them. High-leverage UX work.
-- **`<<id>>` macro suppression inside backticks** — currently spec-compliant but counterintuitive; users expect `\`\<<x>>\`` to render literal `<<x>>` without escaping.
 - **Level-0 parts under `:doctype: book`** — the body-class is set today, but `= Part Title` mid-document isn't yet recognised as a part wrapper.
 - **Stem / math** (`stem:[]`, `latexmath`, `asciimath`) — deliberately out of v1 scope; would need MathJax/KaTeX integration along the same pattern as `:source-highlighter:`.
+
+### Spec footguns worth knowing about
+
+These aren't bugs — they're spec-compliant — but they trip new users:
+
+- **`<<id>>` inside `` `monospace` ``**. Backticks apply every substitution, including macros, so `` `<<intro>>` `` renders as a clickable xref styled as monospace, not as literal `<<intro>>` text. Use the constrained-passthrough `+` to keep it literal: `` `+<<intro>>+` ``.
 
 See [DESIGN.md](DESIGN.md) for the full inventory and rationale.
 
