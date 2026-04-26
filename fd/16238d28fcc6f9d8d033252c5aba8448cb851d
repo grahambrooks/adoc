@@ -1,0 +1,40 @@
+src/preprocessor.rs
+  27508cabf0243d73 495-500,513-518,537,715-721,724-728,761,764-774
+tests/fixtures/39_include_wildcards_doctype_part.adoc
+  27508cabf0243d73 1-9
+docs/examples/39_include_wildcards_doctype.html
+  27508cabf0243d73 1-736
+tests/fixtures.rs
+  27508cabf0243d73 480,728-775
+README.md
+  27508cabf0243d73 103-104,127
+DESIGN.md
+  27508cabf0243d73 198,213
+docs/examples/39_include_wildcards_doctype_part.html
+  27508cabf0243d73 1-716
+tests/fixtures/39_include_wildcards_doctype.adoc
+  27508cabf0243d73 1-20
+src/convert/html5/mod.rs
+  27508cabf0243d73 107-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "fd16238d28fcc6f9d8d033252c5aba8448cb851d",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 1602,
+      "total_deletions": 22,
+      "accepted_lines": 1736,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/a024f519cb881a1db9f943525b8ed279ebade03b2bbb57815d73bb60f7533f29"
+    }
+  }
+}
