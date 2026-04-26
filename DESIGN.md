@@ -195,8 +195,7 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | `ifdef::` / `ifndef::` (block + inline forms, `,` any-of, `+` all-of) | done |
 | `ifeval::` (numeric or string compare on attribute refs / literals) | done |
 | Attribute entries evaluated at preprocess time so conditionals see them | done |
-| `include::` arguments: `lines=`, `tags=`/`tag=`, `leveloffset=`, `indent=` | done |
-| `include::` arguments: `encoding=`, tag wildcards (`*`, `**`) | **not started** |
+| `include::` arguments: `lines=`, `tags=`/`tag=` (with `!name` negation, `*` any-tagged, `**` all), `leveloffset=`, `indent=`, `encoding=` (accepted; v1 always reads UTF-8) | done |
 | Safe-mode enforcement (`safe`/`server` reject absolute paths and `..`-escapes; `secure` disables `include::`) | done |
 
 ### HTML5 converter
@@ -211,7 +210,7 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Source-block syntax highlighting: `:source-highlighter: prism|highlightjs` loads a light + dark theme pair gated by `prefers-color-scheme`, plus a surface override so code background follows the document tokens | done |
 | Source-block callouts (`<1>`, `<2>` …) render as `<b class="conum">(N)</b>`; sibling `<N> description` lines parse to a `Block::Colist` and render as `<ol class="colist">` | done |
 | Tables: `cols=` widths/alignments/repeats/bare-integer-N, header rows, cell formatters (`a\|`, `m\|`, `s\|`, `e\|`, `l\|`, `h\|`), per-cell alignment / span / repeat (`<m\|`, `2+\|`, `.3+\|`, `2.3+\|`, `3*\|`), AsciiDoc cells, multi-line cell continuation, rowspan-aware row chunking, CSV/DSV separators (`format=csv\|dsv` with `separator=`) | done |
-| `doctype` (article/book/manpage/inline) influencing output | **not started** |
+| `:doctype:` — `article` (default) / `book` / `manpage` / `inline` surfaces as a body class so themes can target it; level-0 part parsing for `book` is queued | partial |
 
 ### Diagnostics & conformance
 

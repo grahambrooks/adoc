@@ -1,0 +1,9 @@
+untagged-1
+// tag::keep[]
+inside-keep
+// end::keep[]
+untagged-2
+// tag::skip[]
+inside-skip
+// end::skip[]
+untagged-3

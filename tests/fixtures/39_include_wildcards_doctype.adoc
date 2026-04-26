@@ -1,0 +1,20 @@
+= Include Wildcards and Doctype
+:doctype: book
+
+== `tags=*` — every tagged region
+
+----
+include::39_include_wildcards_doctype_part.adoc[tags=*]
+----
+
+== `tags=**;!skip` — everything except the `skip` region
+
+----
+include::39_include_wildcards_doctype_part.adoc[tags=**;!skip]
+----
+
+== `encoding=` is accepted but a no-op (we always read UTF-8)
+
+----
+include::39_include_wildcards_doctype_part.adoc[tags=keep,encoding=utf-8]
+----

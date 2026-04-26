@@ -104,7 +104,26 @@ impl Converter for Html5Converter {
             .map_err(|e| ConvertError::Message(e.to_string()))?;
         render_stylesheet(&mut out, &self.options.stylesheet);
         render_highlighter_head(&mut out, doc);
-        out.push_str("</head>\n<body>\n");
+        // Surface a non-default doctype as a body class so themes can
+        // target `body.doctype-book` / `.doctype-manpage` etc. The
+        // `article` default keeps the output unchanged. Level-0 part
+        // parsing for `book` is the bigger user-facing feature and is
+        // queued.
+        let doctype = doc
+            .attributes
+            .get("doctype")
+            .and_then(AttributeValue::as_str)
+            .filter(|s| !s.is_empty() && *s != "article");
+        match doctype {
+            Some(d) => {
+                let _ = write!(
+                    out,
+                    "</head>\n<body class=\"doctype-{}\">\n",
+                    escape_attr(d)
+                );
+            }
+            None => out.push_str("</head>\n<body>\n"),
+        }
 
         if let Some(header) = &doc.header {
             out.push_str("<header>\n");

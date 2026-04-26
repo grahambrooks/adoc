@@ -477,6 +477,7 @@ fn ast_roundtrips_through_serde_json() {
         "36_ui_macros.adoc",
         "37_table_advanced.adoc",
         "38_index_bib_tocplace.adoc",
+        "39_include_wildcards_doctype.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -722,6 +723,54 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn include_tag_wildcards_encoding_doctype() {
+    let (_doc, html) = render("39_include_wildcards_doctype.adoc");
+
+    // `:doctype: book` surfaces as a body class so themes can target it.
+    assert!(html.contains(r#"<body class="doctype-book">"#));
+
+    let body_start = html.find("<body").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // `tags=*` keeps tagged content from both regions, drops untagged lines.
+    assert!(body.contains("inside-keep"));
+    assert!(body.contains("inside-skip"));
+    // The first listing block must NOT contain the untagged lines.
+    let first_listing_start = body.find("<pre>").expect("first <pre>");
+    let first_listing_end = body[first_listing_start..]
+        .find("</pre>")
+        .map(|n| first_listing_start + n)
+        .expect("first </pre>");
+    let first_listing = &body[first_listing_start..first_listing_end];
+    assert!(!first_listing.contains("untagged-1"));
+
+    // `tags=**;!skip` keeps everything except the skip region.
+    let second_listing_start = body[first_listing_end..]
+        .find("<pre>")
+        .map(|n| first_listing_end + n)
+        .expect("second <pre>");
+    let second_listing_end = body[second_listing_start..]
+        .find("</pre>")
+        .map(|n| second_listing_start + n)
+        .expect("second </pre>");
+    let second_listing = &body[second_listing_start..second_listing_end];
+    assert!(second_listing.contains("untagged-1"));
+    assert!(second_listing.contains("inside-keep"));
+    assert!(!second_listing.contains("inside-skip"));
+    assert!(second_listing.contains("untagged-2"));
+    assert!(second_listing.contains("untagged-3"));
+
+    // `encoding=` accepted: tag selection still works alongside it.
+    let third_listing_start = body[second_listing_end..]
+        .find("<pre>")
+        .map(|n| second_listing_end + n)
+        .expect("third <pre>");
+    let third_listing = &body[third_listing_start..];
+    assert!(third_listing.contains("inside-keep"));
 }
 
 #[test]

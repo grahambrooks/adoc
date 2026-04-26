@@ -492,6 +492,12 @@ struct IncludeArgs {
     /// `N>0` strips the common leading whitespace and then prepends N
     /// spaces to every non-empty line.
     indent: Option<u32>,
+    /// `encoding=` is accepted for spec compatibility but treated as a
+    /// no-op in v1 — the loader always decodes as UTF-8. Stored so a
+    /// future diagnostics pass can warn when the user asked for a
+    /// non-UTF-8 encoding.
+    #[allow(dead_code)]
+    encoding: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -504,6 +510,12 @@ struct LineRange {
 struct TagSelector {
     include: Vec<String>,
     exclude: Vec<String>,
+    /// `*` wildcard — match any tagged region (a line inside *some*
+    /// `tag::name[]` … `end::name[]` block).
+    wildcard_tagged: bool,
+    /// `**` wildcard — match every line, tagged or not. Combined with
+    /// negative selectors (`!foo`) to exclude specific regions.
+    wildcard_all: bool,
 }
 
 fn parse_include_args(s: &str) -> IncludeArgs {
@@ -522,6 +534,7 @@ fn parse_include_args(s: &str) -> IncludeArgs {
             "tag" | "tags" => args.tags = Some(parse_tag_selector(v)),
             "leveloffset" => args.leveloffset = parse_leveloffset(v),
             "indent" => args.indent = v.trim().parse::<u32>().ok(),
+            "encoding" => args.encoding = Some(v.trim().to_string()),
             _ => {}
         }
     }
@@ -699,11 +712,20 @@ fn parse_tag_selector(s: &str) -> TagSelector {
         }
         if let Some(rest) = piece.strip_prefix('!') {
             let name = rest.trim();
-            if !name.is_empty() {
-                sel.exclude.push(name.to_string());
+            match name {
+                "*" | "**" => {
+                    // Negative wildcards aren't meaningful in v1 — we
+                    // accept them silently rather than failing.
+                }
+                "" => {}
+                _ => sel.exclude.push(name.to_string()),
             }
         } else {
-            sel.include.push(piece.to_string());
+            match piece {
+                "**" => sel.wildcard_all = true,
+                "*" => sel.wildcard_tagged = true,
+                _ => sel.include.push(piece.to_string()),
+            }
         }
     }
     sel
@@ -736,10 +758,20 @@ fn apply_tags_filter(source: &str, selector: &TagSelector) -> String {
         if any_excluded {
             continue;
         }
-        let any_included = active
+        let any_named_included = active
             .iter()
             .any(|a| selector.include.iter().any(|i| i == a));
-        if any_included {
+        // Wildcard rules (Asciidoctor convention):
+        //   `*`   — emit lines inside any tagged region
+        //   `**`  — emit every line (the `!name` exclusions still apply)
+        let wildcard_match = if selector.wildcard_all {
+            true
+        } else if selector.wildcard_tagged {
+            !active.is_empty()
+        } else {
+            false
+        };
+        if any_named_included || wildcard_match {
             out_lines.push(line);
         }
     }
