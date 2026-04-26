@@ -718,6 +718,13 @@ pre[class*="language-"], code[class*="language-"] {
   background: var(--adoc-code-bg) !important;
   color: var(--adoc-code-fg) !important;
   text-shadow: none !important;
+  font-family: var(--adoc-font-mono) !important;
+  font-size: 1em !important;
+}
+pre[class*="language-"] *, code[class*="language-"] * {
+  /* Prism's per-token spans inherit the typeface but some themes
+     still set `font-family` on `.token` — re-assert. */
+  font-family: inherit !important;
 }
 :not(pre) > code[class*="language-"] {
   padding: 0.15em 0.4em;

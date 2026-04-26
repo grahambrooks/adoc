@@ -112,14 +112,22 @@ pub(crate) fn render_highlighter_body(out: &mut String, doc: &Document) {
 }
 
 /// Inline override that lets our `--adoc-code-bg` / `--adoc-code-fg`
-/// tokens show through Prism's default theme rules. Without this, Prism
-/// paints its own hardcoded surface and the document's light/dark mode
-/// stops applying to code blocks.
+/// tokens show through Prism's default theme rules and keeps the
+/// document's mono stack + size in charge of code rendering. Without
+/// this, Prism paints its own hardcoded surface (Consolas/Monaco at a
+/// shrunken size) and the document's light/dark mode stops applying.
 const PRISM_SURFACE_OVERRIDE: &str = r#"<style>
 pre[class*="language-"], code[class*="language-"] {
   background: var(--adoc-code-bg) !important;
   color: var(--adoc-code-fg) !important;
   text-shadow: none !important;
+  font-family: var(--adoc-font-mono) !important;
+  font-size: 1em !important;
+}
+pre[class*="language-"] *, code[class*="language-"] * {
+  /* Prism's per-token spans inherit the typeface but some themes
+     still set `font-family` on `.token` — re-assert. */
+  font-family: inherit !important;
 }
 :not(pre) > code[class*="language-"] {
   padding: 0.15em 0.4em;
@@ -132,6 +140,11 @@ const HLJS_SURFACE_OVERRIDE: &str = r#"<style>
 .hljs {
   background: var(--adoc-code-bg) !important;
   color: var(--adoc-code-fg) !important;
+  font-family: var(--adoc-font-mono) !important;
+  font-size: 1em !important;
+}
+.hljs * {
+  font-family: inherit !important;
 }
 </style>
 "#;
