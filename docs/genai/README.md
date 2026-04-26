@@ -6,6 +6,26 @@ tools (Copilot, Claude, Codex, Cursor, aider, ...) pick up consistent,
 project-specific instructions without you having to maintain four
 copies.
 
+## Easy mode: `adoc init-genai`
+
+The fastest way to onboard a downstream project is the
+[`init-genai`](../../README.md) subcommand:
+
+```bash
+cd path/to/your/docs-project
+adoc init-genai
+```
+
+That writes all four files into the right places (`AGENTS.md` at the
+root, `.github/copilot-instructions.md`, `.claude/skills/asciidoc-
+author/SKILL.md`, `docs/adoc-system-prompt.md`). Existing files are
+preserved unless `--force` is set. Use `--dry-run` to preview, or
+`--tools=agents,claude` to install a subset.
+
+The templates the subcommand writes are the files in this directory,
+baked into the `adoc` binary at compile time — so the subcommand
+works without the `adoc` source on disk.
+
 ## What's in here
 
 | File | Where it goes | Read by |

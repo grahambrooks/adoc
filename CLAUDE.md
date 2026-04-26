@@ -44,7 +44,13 @@ Plus two CI-loop flags:
 | `--check` | Runs preprocess + parse + convert (so xref validation runs) but skips writing output. Exit code reflects success. |
 | `--werror` | Any diagnostic fails the run with a non-zero exit. Composes with `--check`. |
 
-When adding a feature, consider whether it needs a chunk-level representation. The `adoc::chunks` module is the canonical place for retrieval-shape extraction.
+And one onboarding subcommand:
+
+| Subcommand | Purpose |
+| --- | --- |
+| `adoc init-genai [TARGET]` | Drop `docs/genai/` templates (AGENTS.md, Copilot, Claude Skill, system prompt) into a downstream project. Templates are `include_str!`'d at compile time so the binary is self-contained. Selective install via `--tools=`, idempotent without `--force`. |
+
+When adding a feature, consider whether it needs a chunk-level representation. The `adoc::chunks` module is the canonical place for retrieval-shape extraction. When the feature changes author-facing rules (a new diagnostic, a new construct, a new safe-mode behaviour), update `docs/genai/AGENTS.md` first; the other genai files cross-link to it and the `init-genai` subcommand will ship the updated content with the next release.
 
 ## Architecture
 

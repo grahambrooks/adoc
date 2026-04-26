@@ -79,6 +79,12 @@ Options:
   -q, --quiet                   Suppress warnings
   -h, --help
   -V, --version
+
+Subcommands:
+  init-genai [TARGET]   Drop AI-author instruction templates (AGENTS.md,
+                        Copilot, Claude Skill, system prompt) into a
+                        downstream project. See `--help` for --tools,
+                        --force, --dry-run.
 ```
 
 Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O error.
@@ -131,7 +137,18 @@ Two re-runs over the same source produce identical hashes; an edit to a single b
 
 **Sandboxing untrusted generated content.** `--safe-mode safe --base-dir <dir>` rejects any `include::` that escapes the directory tree or uses an absolute path, so a hallucinated `include::../../etc/passwd[]` is denied at the preprocessor — even if the LLM produces it. `secure` disables `include::` entirely.
 
-**Author-side instruction templates.** [`docs/genai/`](docs/genai/) ships drop-in instruction files for the major AI authoring tools — `AGENTS.md` (Codex / Cursor / aider), `.github/copilot-instructions.md` (Copilot), a `claude-skill/` folder (Claude Code / Claude Desktop), and a flat `system-prompt.md` for ad-hoc API calls. They cover the working subset of AsciiDoc, the lint-loop, the unsupported constructs to avoid, and the `<<id>>`-in-backticks footgun. Copy what your tools read into your downstream project; `docs/genai/README.md` documents the layout.
+**Author-side instruction templates.** [`docs/genai/`](docs/genai/) ships drop-in instruction files for the major AI authoring tools — `AGENTS.md` (Codex / Cursor / aider), `.github/copilot-instructions.md` (Copilot), a `claude-skill/` folder (Claude Code / Claude Desktop), and a flat `system-prompt.md` for ad-hoc API calls. They cover the working subset of AsciiDoc, the lint-loop, the unsupported constructs to avoid, and the `<<id>>`-in-backticks footgun.
+
+The `init-genai` subcommand drops the templates straight into a downstream project — no clone-and-copy ritual:
+
+```bash
+adoc init-genai [TARGET]                  # all four files; default target = "."
+adoc init-genai --dry-run                 # preview the actions
+adoc init-genai --tools=agents,claude     # selective install
+adoc init-genai --force                   # overwrite existing files
+```
+
+Without `--force`, existing files at the target paths are left alone and reported as skipped. The templates are baked into the binary so the subcommand works in any directory without needing the `adoc` source tree on disk.
 
 ## What works today
 

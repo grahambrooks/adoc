@@ -12,7 +12,7 @@ use adoc::convert::html5::{
 use adoc::parser::parse_with;
 use adoc::preprocessor::{Preprocessor, SafeMode as PreprocSafeMode};
 use camino::{Utf8Path, Utf8PathBuf};
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 use miette::{miette, IntoDiagnostic};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -39,9 +39,61 @@ enum DiagnosticFormat {
     Json,
 }
 
+#[derive(Debug, Subcommand)]
+enum Command {
+    /// Drop AI-author instruction templates into a project that uses
+    /// `adoc` so the project's downstream AI tools (Codex, Cursor,
+    /// Copilot, Claude, ...) all pick up consistent guidance.
+    InitGenai(InitGenaiArgs),
+}
+
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
+enum GenaiTool {
+    /// `AGENTS.md` at the target root — cross-vendor source of truth.
+    Agents,
+    /// `.github/copilot-instructions.md` for GitHub Copilot.
+    Copilot,
+    /// `.claude/skills/asciidoc-author/SKILL.md` for Claude Code /
+    /// Claude Desktop.
+    Claude,
+    /// `docs/adoc-system-prompt.md` — flat ~1k-token block to paste
+    /// into ad-hoc API system prompts.
+    SystemPrompt,
+}
+
+#[derive(Debug, clap::Args)]
+struct InitGenaiArgs {
+    /// Target project directory. Defaults to the current directory.
+    #[arg(default_value = ".")]
+    target: Utf8PathBuf,
+
+    /// Which instruction sets to install. Repeatable; defaults to all
+    /// of them when omitted.
+    #[arg(long = "tools", value_enum, num_args = 1.., value_delimiter = ',')]
+    tools: Vec<GenaiTool>,
+
+    /// Overwrite files that already exist at the target paths. Without
+    /// this, existing files are left untouched and reported as
+    /// `skipped`.
+    #[arg(long = "force")]
+    force: bool,
+
+    /// Print the actions that would be taken without writing any
+    /// files. Useful for previewing in CI or pre-commit hooks.
+    #[arg(long = "dry-run")]
+    dry_run: bool,
+}
+
 #[derive(Debug, Parser)]
 #[command(name = "adoc", version, about = "Rust AsciiDoc processor")]
+#[command(args_conflicts_with_subcommands = true)]
 struct Cli {
+    /// Subcommand. When omitted, the default action is render: read
+    /// the input AsciiDoc files, run the full pipeline, and write
+    /// HTML (or whichever `--emit-*` form is requested).
+    #[command(subcommand)]
+    command: Option<Command>,
+
     /// Input AsciiDoc files.
     #[arg(required_unless_present_any = ["from_ast", "emit_ast_schema"])]
     inputs: Vec<Utf8PathBuf>,
@@ -123,6 +175,14 @@ struct Cli {
 fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     init_tracing(cli.verbose, cli.quiet);
+
+    // Subcommands run in their own world; they don't touch the
+    // convert pipeline at all.
+    if let Some(cmd) = cli.command {
+        return match cmd {
+            Command::InitGenai(args) => init_genai::run(args),
+        };
+    }
 
     // `--emit-ast-schema` is content-free — it only needs the static
     // type information from the AST module. Short-circuit before any
@@ -228,6 +288,231 @@ fn main() -> miette::Result<()> {
 fn ast_json_schema() -> miette::Result<String> {
     let schema = schemars::schema_for!(Document);
     serde_json::to_string_pretty(&schema).map_err(|e| miette!("schema serialize failed: {e}"))
+}
+
+mod init_genai {
+    //! `adoc init-genai` — copy AI-author instruction templates into a
+    //! downstream project. Templates are baked into the binary at
+    //! compile time via `include_str!` so the binary is self-
+    //! contained; the source lives at `docs/genai/` in the repo.
+
+    use camino::{Utf8Path, Utf8PathBuf};
+    use miette::miette;
+    use std::fs;
+
+    use crate::{GenaiTool, InitGenaiArgs};
+
+    const AGENTS_MD: &str = include_str!("../docs/genai/AGENTS.md");
+    const COPILOT_MD: &str = include_str!("../docs/genai/copilot-instructions.md");
+    const CLAUDE_SKILL: &str = include_str!("../docs/genai/claude-skill/SKILL.md");
+    const SYSTEM_PROMPT: &str = include_str!("../docs/genai/system-prompt.md");
+
+    pub fn run(args: InitGenaiArgs) -> miette::Result<()> {
+        let target = args.target.clone();
+        if !args.dry_run && !target.exists() {
+            return Err(miette!(
+                "target directory `{target}` does not exist (create it first or pass an existing path)"
+            ));
+        }
+        if !args.dry_run && !target.is_dir() {
+            return Err(miette!("target path `{target}` is not a directory"));
+        }
+
+        let selected = if args.tools.is_empty() {
+            vec![
+                GenaiTool::Agents,
+                GenaiTool::Copilot,
+                GenaiTool::Claude,
+                GenaiTool::SystemPrompt,
+            ]
+        } else {
+            args.tools.clone()
+        };
+
+        let plans: Vec<Plan> = selected
+            .iter()
+            .map(|t| match t {
+                GenaiTool::Agents => Plan {
+                    relative: Utf8PathBuf::from("AGENTS.md"),
+                    contents: AGENTS_MD,
+                },
+                GenaiTool::Copilot => Plan {
+                    relative: Utf8PathBuf::from(".github/copilot-instructions.md"),
+                    contents: COPILOT_MD,
+                },
+                GenaiTool::Claude => Plan {
+                    relative: Utf8PathBuf::from(".claude/skills/asciidoc-author/SKILL.md"),
+                    contents: CLAUDE_SKILL,
+                },
+                GenaiTool::SystemPrompt => Plan {
+                    relative: Utf8PathBuf::from("docs/adoc-system-prompt.md"),
+                    contents: SYSTEM_PROMPT,
+                },
+            })
+            .collect();
+
+        let mut wrote = 0usize;
+        let mut skipped = 0usize;
+        for plan in &plans {
+            let dst = target.join(&plan.relative);
+            let action = decide(&dst, args.force, args.dry_run)?;
+            match action {
+                Action::Write => {
+                    if !args.dry_run {
+                        if let Some(parent) = dst.parent() {
+                            fs::create_dir_all(parent.as_std_path())
+                                .map_err(|e| miette!("create {parent}: {e}"))?;
+                        }
+                        fs::write(dst.as_std_path(), plan.contents)
+                            .map_err(|e| miette!("write {dst}: {e}"))?;
+                    }
+                    println!(
+                        "{} {dst}",
+                        if args.dry_run { "would write" } else { "wrote" }
+                    );
+                    wrote += 1;
+                }
+                Action::Skip => {
+                    println!("skipped {dst} (already exists; pass --force to overwrite)");
+                    skipped += 1;
+                }
+            }
+        }
+
+        if !args.dry_run && wrote > 0 {
+            println!();
+            println!("Next steps:");
+            println!("  - Review the generated files and commit them.");
+            println!("  - Validate any existing AsciiDoc:");
+            println!("      adoc <file>.adoc --check --werror");
+        }
+        if args.dry_run {
+            println!();
+            println!(
+                "Dry run: {wrote} file(s) would be written, {skipped} skipped. \
+                 Re-run without --dry-run to apply."
+            );
+        }
+
+        Ok(())
+    }
+
+    struct Plan {
+        relative: Utf8PathBuf,
+        contents: &'static str,
+    }
+
+    enum Action {
+        Write,
+        Skip,
+    }
+
+    fn decide(dst: &Utf8Path, force: bool, dry_run: bool) -> miette::Result<Action> {
+        if dst.exists() {
+            if force {
+                return Ok(Action::Write);
+            }
+            // In dry-run mode we'd still report "would write" if the
+            // user passed --force, otherwise "skipped". The branch
+            // above already handles --force; the dry-run flag itself
+            // doesn't change the decision.
+            let _ = dry_run;
+            return Ok(Action::Skip);
+        }
+        Ok(Action::Write)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::fs;
+
+        fn tempdir() -> Utf8PathBuf {
+            let stamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let p = std::env::temp_dir().join(format!("adoc-init-genai-{stamp}"));
+            fs::create_dir_all(&p).unwrap();
+            Utf8PathBuf::from_path_buf(p).unwrap()
+        }
+
+        #[test]
+        fn default_run_creates_all_four_files() {
+            let dir = tempdir();
+            let args = InitGenaiArgs {
+                target: dir.clone(),
+                tools: vec![],
+                force: false,
+                dry_run: false,
+            };
+            run(args).unwrap();
+            assert!(dir.join("AGENTS.md").exists());
+            assert!(dir.join(".github/copilot-instructions.md").exists());
+            assert!(dir.join(".claude/skills/asciidoc-author/SKILL.md").exists());
+            assert!(dir.join("docs/adoc-system-prompt.md").exists());
+        }
+
+        #[test]
+        fn skips_existing_files_without_force() {
+            let dir = tempdir();
+            fs::write(dir.join("AGENTS.md").as_std_path(), "user content\n").unwrap();
+            let args = InitGenaiArgs {
+                target: dir.clone(),
+                tools: vec![GenaiTool::Agents],
+                force: false,
+                dry_run: false,
+            };
+            run(args).unwrap();
+            let body = fs::read_to_string(dir.join("AGENTS.md").as_std_path()).unwrap();
+            assert_eq!(body, "user content\n");
+        }
+
+        #[test]
+        fn force_overwrites_existing_files() {
+            let dir = tempdir();
+            fs::write(dir.join("AGENTS.md").as_std_path(), "user content\n").unwrap();
+            let args = InitGenaiArgs {
+                target: dir.clone(),
+                tools: vec![GenaiTool::Agents],
+                force: true,
+                dry_run: false,
+            };
+            run(args).unwrap();
+            let body = fs::read_to_string(dir.join("AGENTS.md").as_std_path()).unwrap();
+            assert!(body.contains("Authoring AsciiDoc"));
+        }
+
+        #[test]
+        fn dry_run_writes_no_files() {
+            let dir = tempdir();
+            let args = InitGenaiArgs {
+                target: dir.clone(),
+                tools: vec![GenaiTool::Agents, GenaiTool::Copilot],
+                force: false,
+                dry_run: true,
+            };
+            run(args).unwrap();
+            assert!(!dir.join("AGENTS.md").exists());
+            assert!(!dir.join(".github/copilot-instructions.md").exists());
+        }
+
+        #[test]
+        fn explicit_tool_selection_only_writes_those_files() {
+            let dir = tempdir();
+            let args = InitGenaiArgs {
+                target: dir.clone(),
+                tools: vec![GenaiTool::Claude],
+                force: false,
+                dry_run: false,
+            };
+            run(args).unwrap();
+            assert!(!dir.join("AGENTS.md").exists());
+            assert!(!dir.join(".github/copilot-instructions.md").exists());
+            assert!(dir.join(".claude/skills/asciidoc-author/SKILL.md").exists());
+            assert!(!dir.join("docs/adoc-system-prompt.md").exists());
+        }
+    }
 }
 
 fn preprocess_error_to_report(
