@@ -87,6 +87,9 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - All seven delimited block styles: listing, literal, example, quote, sidebar, passthrough, open.
 - Constrained and unconstrained inline quotes: `*strong*`, `_emphasis_`, `` `monospace` ``, plus `**`/`__`/```` `` ```` forms.
 - Inline macros: `link:`, `mailto:`, `xref:`, `image:`, `anchor:id[]`, `kbd:[Ctrl+C]`, `btn:[OK]`, `menu:File[Save > Save As]`, shorthand `<<xref>>`, and `http(s)`/`ftp` autolinks. `link:{attr}[label]` substitutes attribute references in the URL; `https://url[label]` is also accepted (bare URL with explicit text).
+- Index terms — `(((primary)))`, `(((primary, secondary)))`, `(((primary, secondary, tertiary)))` render as invisible `<span class="indexterm">` markers carrying `data-primary` / `data-secondary` / `data-tertiary` attributes. No visible flow text — downstream tooling can scan the markers to build an index.
+- Bibliography entries — `[[[id]]]` (triple-bracket) at the start of any inline run emits `<a id="…"></a>[id]`, so a bibliography list (`* [[[knuth1968]]] Knuth, Donald. …`) gets an anchor target plus a visible `[knuth1968]` label. `<<knuth1968>>` resolves via the same xref machinery.
+- `:toc-placement:` — `auto` (default; TOC at the top of `<main id="content">`) or `preamble` (TOC right after the preamble div, between the intro prose and the first section). `macro` / `left` / `right` fall back to `auto` in v1.
 - Block image — `image::path[alt, width, height]` on its own line renders as `<div class="imageblock">` with optional `.Title` caption.
 - Block video / audio — `video::url[width, height, poster, autoplay, loop, muted, playsinline]` and `audio::url[loop]` on their own line render as `<div class="videoblock">` / `<div class="audioblock">` wrapping a native HTML5 `<video>` / `<audio>` element. `controls` is on by default.
 - Derived header attributes — `{doctitle}`, `{author}`, `{authors}`, `{firstname}`, `{middlename}`, `{lastname}`, `{authorinitials}`, `{email}`, `{author_2}` / `{email_2}` for additional authors, and `{revnumber}` (with leading `v` stripped), `{revdate}`, `{revremark}`. User-supplied attribute entries take precedence.
@@ -119,11 +122,8 @@ The big-ticket items, in roughly the order they're queued:
 
 - **Doc-wide ID registry + xref validation** — section IDs land on AST nodes today, but there's no centralised registry yet, so dangling xrefs render silently (the `<a href>` is emitted but the target doesn't exist). Validation belongs with the diagnostics work.
 - **Real `miette::Diagnostic` errors** with span pointers — every `Location` is already on the AST; the error types just don't carry them. High-leverage UX work.
-- **Index terms** (`(((primary)))` / `(((primary, secondary)))`) — invisible markers for technical-book indexes.
-- **Bibliography entries** (`[[[id]]]`) and the citation cross-reference form.
 - **`<<id>>` macro suppression inside backticks** — currently spec-compliant but counterintuitive; users expect `\`\<<x>>\`` to render literal `<<x>>` without escaping.
 - **`include::` argument tail** — `encoding=` and tag wildcards (`*`, `**`). Common arguments (`lines=`, `tags=`, `leveloffset=`, `indent=`) are in.
-- **`:toc-placement:`** — TOC currently always renders at the top of `<main id="content">`.
 - **`:doctype: book` / `:doctype: manpage`** — wrapper differences; default behaviour matches the `article` doctype.
 - **Stem / math** (`stem:[]`, `latexmath`, `asciimath`) — deliberately out of v1 scope; would need MathJax/KaTeX integration along the same pattern as `:source-highlighter:`.
 

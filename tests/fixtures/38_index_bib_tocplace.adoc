@@ -1,0 +1,20 @@
+= Index Terms, Bibliography, TOC Placement
+:toc:
+:toc-placement: preamble
+
+This intro paragraph mentions the(((parser)))
+parser and(((substitution, six-group))) substitution pipeline.
+The TOC should appear *after* this preamble paragraph because
+`:toc-placement: preamble` is set.
+
+A three-level term: (((dependencies, parser, recursive descent))).
+
+== Some content
+
+A reference to the Knuth book: <<knuth1968>>.
+
+[bibliography]
+== References
+
+* [[[knuth1968]]] Knuth, Donald. _The Art of Computer Programming._ 1968.
+* [[[turing1936]]] Turing, A. M. On Computable Numbers. 1936.

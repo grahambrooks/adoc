@@ -179,13 +179,13 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Constrained + unconstrained quotes (`*strong*`, `_em_`, `` `mono` ``, plus the `**`/`__`/`` `` `` `` `` forms) | done |
 | Attribute references (`{name}`); macros run before the attribute pass, so `link:` / `mailto:` / `xref:` macro arguments call into the same resolver explicitly | done |
 | Macros: `link:`, `mailto:`, `xref:`, `image:`, `anchor:id[]`, `kbd:[Ctrl+C]`, `btn:[OK]`, `menu:File[Save > Save As]`, shorthand `<<xref>>`, `pass:[]`, `footnote:[]` / `footnote:id[]` | done |
+| Index terms `(((primary)))` / `(((primary, secondary)))` / `(((p, s, t)))` — invisible `<span class="indexterm">` with `data-primary`/`-secondary`/`-tertiary` attributes | done |
+| Bibliography entries `[[[id]]]` and citations via `<<id>>` (single-id) | done |
 | HTTP/HTTPS/FTP autolinks; bare-URL-with-label form (`https://url[label]`) | done |
 | Eight character replacements: `(C)`, `(R)`, `(TM)`, `...`, `--`, `->`, `=>`, `<-`, `<=` | done |
 | Smart quotes — `"`text`"` and `'`text`'` render as curly Unicode quotes; word-boundary rules keep contractions literal | done |
 | Subscript `~`, superscript `^`, highlight `#`/`##`, passthrough `+`/`++` (HTML-escape, no subs), hard line break (` +`) | done |
 | Inline footnotes get rewritten by the converter into numbered `<sup>` refs and gathered into a `<div id="footnotes">` end-of-doc section | done |
-| Index terms `(((primary)))` / `(((primary, secondary)))` | **not started** |
-| Bibliography entries `[[[id]]]` and citations | **not started** |
 
 ### Preprocessor
 
@@ -205,7 +205,7 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 |---|---|
 | Every current AST node renders; document title, authors, revision in `<header>`; body wrapped in `<main id="content">`; preamble blocks grouped in `<div id="preamble">` | done |
 | TOC, sectnums, sectanchors driven by document attributes; computed in a single pre-walk | done |
-| `:toc-placement:` (currently always rendered at top of `<main>`) | **not started** |
+| `:toc-placement:` — `auto` (default) or `preamble`; `macro` / `left` / `right` fall back to `auto` | done |
 | Admonitions: paragraph shortcut (`NOTE: …`) and block-form render as `<div class="admonitionblock kw">` with default label or supplied title; default stylesheet ships SVG icons per kind | done |
 | Source blocks with language: `[source,LANG]` ⇒ `<pre data-lang="LANG"><code class="language-LANG">…</code></pre>`; corner-pill language label via CSS | done |
 | Source-block syntax highlighting: `:source-highlighter: prism|highlightjs` loads a light + dark theme pair gated by `prefers-color-scheme`, plus a surface override so code background follows the document tokens | done |
@@ -224,7 +224,7 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 
 The current `adoc::ast` types cover what the parser produces. The remaining constructs that need new node shapes (or new fields) before the parser can emit them:
 
-- `Inline` is missing `IndexTerm` (for `(((primary, secondary)))`) and bibliography entries (`[[[id]]]` + citations). `Inline::RawHtml` is the escape hatch other macros (`anchor:`, `kbd:`, `btn:`, `menu:`) use today.
+- `Inline` covers every form the parser emits today; index terms and bibliography anchors land via `Inline::RawHtml` rather than typed variants. Promoting them to `Inline::IndexTerm` / `Inline::BibAnchor` would let an index-page or bibliography backend consume them directly without re-scanning HTML; queued behind diagnostics work.
 - Cross-reference resolution needs a doc-wide ID registry built after parse, before convert. The registry's home is `adoc::ast` (so `Converter` impls can consult it), but populating it is a parser pass.
 - Stem/math (`stem:[]`, `latexmath::[]`, `asciimath::[]`) blocks/inlines — out of v1 scope; would attach via the same pattern as `:source-highlighter:` (load MathJax/KaTeX from a CDN).
 

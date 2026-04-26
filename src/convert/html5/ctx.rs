@@ -16,6 +16,11 @@ use super::escape::{escape, escape_attr};
 pub(crate) struct RenderCtx {
     /// `:toc:` flag — render a TOC at the top of the body.
     pub(crate) toc: bool,
+    /// `:toc-placement:` — where in the document the TOC renders.
+    /// `auto` (default) puts it at the top of `<main>`; `preamble`
+    /// puts it after the preamble div; `macro` (and `left`/`right`,
+    /// which require sidebar layout) fall back to `auto` in v1.
+    pub(crate) toc_placement: TocPlacement,
     /// `:sectnums:` flag — prepend "1.2.3" to each section heading.
     #[allow(dead_code)]
     pub(crate) sectnums: bool,
@@ -28,6 +33,15 @@ pub(crate) struct RenderCtx {
     pub(crate) toc_entries: Vec<TocEntry>,
 }
 
+/// Where in the document the TOC is inserted. `Auto` is the v1 default
+/// (top of `<main id="content">`); `Preamble` puts it right after the
+/// preamble div, between the intro prose and the first section.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TocPlacement {
+    Auto,
+    Preamble,
+}
+
 pub(crate) struct TocEntry {
     pub(crate) level: u8,
     pub(crate) id: String,
@@ -38,6 +52,18 @@ pub(crate) struct TocEntry {
 impl RenderCtx {
     pub(crate) fn new(doc: &Document) -> Self {
         let toc = is_truthy(doc.attributes.get("toc"));
+        let toc_placement = match doc
+            .attributes
+            .get("toc-placement")
+            .and_then(AttributeValue::as_str)
+            .map(|s| s.to_ascii_lowercase())
+            .as_deref()
+        {
+            Some("preamble") => TocPlacement::Preamble,
+            // Anything else — including the unsupported `macro` /
+            // `left` / `right` — falls back to the v1 default.
+            _ => TocPlacement::Auto,
+        };
         let sectnums = is_truthy(doc.attributes.get("sectnums"));
         let sectanchors = is_truthy(doc.attributes.get("sectanchors"));
         let mut counter = [0u32; 7];
@@ -52,6 +78,7 @@ impl RenderCtx {
         );
         Self {
             toc,
+            toc_placement,
             sectnums,
             sectanchors,
             section_numbers,

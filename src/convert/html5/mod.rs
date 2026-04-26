@@ -34,7 +34,7 @@ use std::fmt::Write;
 use crate::ast::{inlines_to_plain, AttributeValue, Block, ConvertError, Converter, Document};
 
 use self::blocks::render_block;
-use self::ctx::{render_toc, RenderCtx};
+use self::ctx::{render_toc, RenderCtx, TocPlacement};
 use self::escape::{escape, escape_attr};
 use self::footnotes::number_footnotes;
 use self::highlighter::{render_highlighter_body, render_highlighter_head};
@@ -140,7 +140,9 @@ impl Converter for Html5Converter {
         out.push_str(r#"<main id="content">"#);
         out.push('\n');
 
-        if ctx.toc {
+        // `:toc-placement: auto` (the default) puts the TOC at the top
+        // of `<main>`. `preamble` puts it right after the preamble div.
+        if ctx.toc && ctx.toc_placement == TocPlacement::Auto {
             render_toc(&mut out, &ctx);
         }
 
@@ -160,6 +162,9 @@ impl Converter for Html5Converter {
                 render_block(&mut out, block, &ctx)?;
             }
             out.push_str("</div>\n");
+        }
+        if ctx.toc && ctx.toc_placement == TocPlacement::Preamble {
+            render_toc(&mut out, &ctx);
         }
         for block in &doc.blocks[preamble_end..] {
             render_block(&mut out, block, &ctx)?;

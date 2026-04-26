@@ -476,6 +476,7 @@ fn ast_roundtrips_through_serde_json() {
         "35_include_indent.adoc",
         "36_ui_macros.adoc",
         "37_table_advanced.adoc",
+        "38_index_bib_tocplace.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -721,6 +722,42 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn index_terms_bibliography_toc_placement() {
+    let (_doc, html) = render("38_index_bib_tocplace.adoc");
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // Index terms render as invisible <span class="indexterm">
+    // markers with data-* attributes.
+    assert!(body.contains(r#"<span class="indexterm" data-primary="parser"></span>"#));
+    assert!(body.contains(
+        r#"<span class="indexterm" data-primary="substitution" data-secondary="six-group"></span>"#
+    ));
+    assert!(body.contains(
+        r#"<span class="indexterm" data-primary="dependencies" data-secondary="parser" data-tertiary="recursive descent"></span>"#
+    ));
+
+    // Bibliography anchors render as <a id="…"></a>[id] inside the
+    // surrounding inline run.
+    assert!(body.contains(r#"<a id="knuth1968"></a>[knuth1968]"#));
+    assert!(body.contains(r#"<a id="turing1936"></a>[turing1936]"#));
+
+    // The xref to the bibliography id resolves via the same `<<id>>` form.
+    assert!(body.contains(r##"<a href="#knuth1968">knuth1968</a>"##));
+
+    // `:toc-placement: preamble` puts the TOC after the preamble div,
+    // not at the top of <main>.
+    let preamble_pos = body.find(r#"<div id="preamble">"#).expect("preamble div");
+    let toc_pos = body.find(r#"<div id="toc""#).expect("toc div");
+    let first_section_pos = body.find("<section ").expect("first section");
+    assert!(
+        preamble_pos < toc_pos && toc_pos < first_section_pos,
+        "expected order: preamble < toc < first section; got preamble={preamble_pos}, toc={toc_pos}, section={first_section_pos}"
+    );
 }
 
 #[test]

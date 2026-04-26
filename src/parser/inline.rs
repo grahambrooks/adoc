@@ -128,6 +128,12 @@ impl<'a> InlineParser<'a> {
         if let Some(m) = parse_anchor_macro(rem) {
             return Some(m);
         }
+        if let Some(m) = parse_index_term(rem) {
+            return Some(m);
+        }
+        if let Some(m) = parse_bibliography_anchor(rem) {
+            return Some(m);
+        }
         if let Some(m) = parse_kbd_macro(rem) {
             return Some(m);
         }
@@ -553,6 +559,72 @@ fn parse_anchor_macro(rem: &str) -> Option<(Inline, usize)> {
     Some((
         Inline::RawHtml {
             value: format!(r#"<a id="{}"></a>"#, escape_html_attr(id)),
+        },
+        consumed,
+    ))
+}
+
+/// `(((primary)))` or `(((primary, secondary)))` — emits an invisible
+/// indexterm marker. Renders as a `<span class="indexterm">` carrying
+/// `data-primary` (and optionally `data-secondary` / `data-tertiary`)
+/// attributes so downstream tooling can build an index. The span has no
+/// visible content — index entries don't show up in flow text.
+///
+/// (The single-paren `((flow text))` form, where the visible text *is*
+/// the index entry, isn't supported in v1.)
+fn parse_index_term(rem: &str) -> Option<(Inline, usize)> {
+    let prefix = "(((";
+    if !rem.starts_with(prefix) {
+        return None;
+    }
+    let after = &rem[prefix.len()..];
+    let close = after.find(")))")?;
+    let inner = &after[..close];
+    let consumed = prefix.len() + close + 3;
+    let parts: Vec<&str> = inner.split(',').map(str::trim).collect();
+    let primary = parts.first().copied().unwrap_or("");
+    if primary.is_empty() {
+        return None;
+    }
+    let mut html = String::from(r#"<span class="indexterm""#);
+    let _ = write!(html, r#" data-primary="{}""#, escape_html_attr(primary));
+    if let Some(secondary) = parts.get(1).filter(|s| !s.is_empty()) {
+        let _ = write!(html, r#" data-secondary="{}""#, escape_html_attr(secondary));
+    }
+    if let Some(tertiary) = parts.get(2).filter(|s| !s.is_empty()) {
+        let _ = write!(html, r#" data-tertiary="{}""#, escape_html_attr(tertiary));
+    }
+    html.push_str("></span>");
+    Some((Inline::RawHtml { value: html }, consumed))
+}
+
+/// `[[[id]]]` (triple-bracket) — bibliography anchor. Recognised at the
+/// start of any inline run. Renders as a labelled anchor `[id]` with an
+/// `id="id"` so `<<id>>` can link back. Used in bibliography lists like:
+///
+/// ```adoc
+/// * [[[knuth1968]]] Knuth, Donald. /The Art of Computer Programming./ 1968.
+/// ```
+fn parse_bibliography_anchor(rem: &str) -> Option<(Inline, usize)> {
+    let prefix = "[[[";
+    if !rem.starts_with(prefix) {
+        return None;
+    }
+    let after = &rem[prefix.len()..];
+    let close = after.find("]]]")?;
+    let inner = &after[..close];
+    let id = inner.trim();
+    if id.is_empty() || !is_attribute_name(id) {
+        return None;
+    }
+    let consumed = prefix.len() + close + 3;
+    Some((
+        Inline::RawHtml {
+            value: format!(
+                r#"<a id="{}"></a>[{}]"#,
+                escape_html_attr(id),
+                escape_html_attr(id)
+            ),
         },
         consumed,
     ))
