@@ -472,6 +472,7 @@ fn ast_roundtrips_through_serde_json() {
         "33_smart_quotes_verse.adoc",
         "34_video_audio.adoc",
         "35_include_indent.adoc",
+        "36_ui_macros.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -717,6 +718,37 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn ui_macros_kbd_btn_menu() {
+    let (_doc, html) = render("36_ui_macros.adoc");
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // kbd:[Ctrl+C] → keyseq with two <kbd> joined by `+`.
+    assert!(body.contains(r#"<span class="keyseq"><kbd>Ctrl</kbd>+<kbd>C</kbd></span>"#));
+    // 3-key sequence.
+    assert!(body.contains(r#"<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>"#));
+    // Single-key.
+    assert!(body.contains(r#"<span class="keyseq"><kbd>Enter</kbd></span>"#));
+
+    // btn:[Save].
+    assert!(body.contains(r#"<b class="button">[Save]</b>"#));
+    assert!(body.contains(r#"<b class="button">[Cancel]</b>"#));
+
+    // menu:File[Save As].
+    assert!(
+        body.contains(
+            r#"<span class="menu">File</span> \u{203A} <span class="menuitem">Save As</span>"#
+        ) || body.contains(
+            "<span class=\"menu\">File</span> \u{203A} <span class=\"menuitem\">Save As</span>"
+        )
+    );
+    // 3-step menu path.
+    assert!(body.contains("<span class=\"menuitem\">Replace</span>"));
+    assert!(body.contains("<span class=\"menuitem\">All</span>"));
 }
 
 #[test]

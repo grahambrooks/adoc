@@ -4,6 +4,8 @@
 //! Special characters are left as UTF-8 text in the AST; the HTML5 converter
 //! handles entity escaping. This keeps the AST readable and language-neutral.
 
+use std::fmt::Write;
+
 use crate::ast::{AttributeValue, Attributes, Inline};
 
 use super::subs::Subs;
@@ -124,6 +126,15 @@ impl<'a> InlineParser<'a> {
 
     fn try_macro(&self, rem: &str) -> Option<(Inline, usize)> {
         if let Some(m) = parse_anchor_macro(rem) {
+            return Some(m);
+        }
+        if let Some(m) = parse_kbd_macro(rem) {
+            return Some(m);
+        }
+        if let Some(m) = parse_btn_macro(rem) {
+            return Some(m);
+        }
+        if let Some(m) = parse_menu_macro(rem) {
             return Some(m);
         }
         if let Some(m) = parse_prefix_macro(rem, "link:", self.attrs) {
@@ -542,6 +553,91 @@ fn parse_anchor_macro(rem: &str) -> Option<(Inline, usize)> {
     Some((
         Inline::RawHtml {
             value: format!(r#"<a id="{}"></a>"#, escape_html_attr(id)),
+        },
+        consumed,
+    ))
+}
+
+/// `kbd:[Ctrl+Alt+Del]` — emit each `+`-separated key in its own `<kbd>`.
+/// `kbd:[Enter]` produces a single `<kbd>Enter</kbd>`.
+fn parse_kbd_macro(rem: &str) -> Option<(Inline, usize)> {
+    let prefix = "kbd:[";
+    if !rem.starts_with(prefix) {
+        return None;
+    }
+    let after = &rem[prefix.len()..];
+    let close = find_unescaped(&rem[prefix.len() - 1..], ']')?;
+    let inner = &after[..close - 1];
+    let consumed = prefix.len() + close;
+    let keys: Vec<&str> = inner
+        .split('+')
+        .map(str::trim)
+        .filter(|k| !k.is_empty())
+        .collect();
+    if keys.is_empty() {
+        return None;
+    }
+    let mut html = String::from(r#"<span class="keyseq">"#);
+    for (i, key) in keys.iter().enumerate() {
+        if i > 0 {
+            html.push('+');
+        }
+        let _ = write!(html, "<kbd>{}</kbd>", escape_html_attr(key));
+    }
+    html.push_str("</span>");
+    Some((Inline::RawHtml { value: html }, consumed))
+}
+
+/// `btn:[Save]` — UI button label.
+fn parse_btn_macro(rem: &str) -> Option<(Inline, usize)> {
+    let prefix = "btn:[";
+    if !rem.starts_with(prefix) {
+        return None;
+    }
+    let after = &rem[prefix.len()..];
+    let close = find_unescaped(&rem[prefix.len() - 1..], ']')?;
+    let inner = &after[..close - 1];
+    let consumed = prefix.len() + close;
+    Some((
+        Inline::RawHtml {
+            value: format!(r#"<b class="button">[{}]</b>"#, escape_html_attr(inner)),
+        },
+        consumed,
+    ))
+}
+
+/// `menu:File[Save As]` and `menu:File[Save > Save As]` — menu path.
+/// Items are split on `>` and joined with a typographic right-pointing
+/// guillemet (`›`).
+fn parse_menu_macro(rem: &str) -> Option<(Inline, usize)> {
+    let prefix = "menu:";
+    if !rem.starts_with(prefix) {
+        return None;
+    }
+    let after = &rem[prefix.len()..];
+    let bracket = after.find('[')?;
+    let target = &after[..bracket];
+    if target.is_empty() || target.contains(char::is_whitespace) {
+        return None;
+    }
+    let attrs_end = find_unescaped(&after[bracket..], ']')?;
+    let inner = &after[bracket + 1..bracket + attrs_end];
+    let consumed = prefix.len() + bracket + attrs_end + 1;
+    let mut parts = vec![target.to_string()];
+    parts.extend(inner.split('>').map(|s| s.trim().to_string()));
+    let parts: Vec<String> = parts.into_iter().filter(|s| !s.is_empty()).collect();
+    let inner_html = parts
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            let class = if i == 0 { "menu" } else { "menuitem" };
+            format!(r#"<span class="{class}">{}</span>"#, escape_html_attr(p))
+        })
+        .collect::<Vec<_>>()
+        .join(" \u{203A} ");
+    Some((
+        Inline::RawHtml {
+            value: format!(r#"<span class="menuseq">{inner_html}</span>"#),
         },
         consumed,
     ))

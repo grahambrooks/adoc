@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Video and Audio Block Macros</title>
+<title>UI Macros: kbd, btn, menu</title>
 <style>
 /* adoc.css — default stylesheet for HTML5 output from the adoc processor.
  *
@@ -701,32 +701,21 @@ sup.footnote a:hover { text-decoration: underline; }
 </head>
 <body>
 <header>
-<h1>Video and Audio Block Macros</h1>
+<h1>UI Macros: kbd, btn, menu</h1>
 </header>
-<section id="_video">
-<h2>Video</h2>
-<div class="videoblock">
-<div class="content"><video src="demo.mp4" width="640" height="360" poster="cover.jpg" controls></video></div>
-<div class="title">A captioned video</div>
-</div>
-<p>A standalone video without a caption:</p>
-<div class="videoblock">
-<div class="content"><video src="clip.webm" width="400" controls></video></div>
-</div>
-<div class="videoblock">
-<div class="content"><video src="autoplay-loop.mp4" controls autoplay loop muted></video></div>
-</div>
+<section id="_kbd">
+<h2>kbd</h2>
+<p>Press <span class="keyseq"><kbd>Ctrl</kbd>+<kbd>C</kbd></span> to copy and <span class="keyseq"><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></span> to open the palette.</p>
+<p>A single key: <span class="keyseq"><kbd>Enter</kbd></span>.</p>
 </section>
-<section id="_audio">
-<h2>Audio</h2>
-<div class="audioblock">
-<div class="content"><audio src="sample.mp3" controls></audio></div>
-<div class="title">Listen to this</div>
-</div>
-<div class="audioblock">
-<div class="content"><audio src="nocontrols.ogg" controls loop></audio></div>
-</div>
+<section id="_btn">
+<h2>btn</h2>
+<p>Click <b class="button">[Save]</b> or <b class="button">[Cancel]</b>.</p>
 </section>
-<!-- attributes: doctitle=Video and Audio Block Macros; -->
+<section id="_menu">
+<h2>menu</h2>
+<p>Open <span class="menuseq"><span class="menu">File</span> › <span class="menuitem">Save As</span></span> or <span class="menuseq"><span class="menu">Edit</span> › <span class="menuitem">Find</span> › <span class="menuitem">Replace</span> › <span class="menuitem">All</span></span>.</p>
+</section>
+<!-- attributes: doctitle=UI Macros: kbd, btn, menu; -->
 </body>
 </html>

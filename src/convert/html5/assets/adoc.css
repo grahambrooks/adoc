@@ -248,6 +248,22 @@ kbd {
   vertical-align: 0.05em;
 }
 
+/* UI macros: kbd:[…], btn:[…], menu:Path[Steps]. */
+.keyseq { white-space: nowrap; }
+.keyseq kbd + kbd { margin-left: 0; }
+b.button {
+  font-family: var(--adoc-font-mono);
+  font-weight: 600;
+  font-size: 0.9em;
+}
+.menuseq {
+  font-family: var(--adoc-font-body);
+}
+.menu, .menuitem {
+  font-weight: 600;
+  color: var(--adoc-fg);
+}
+
 pre {
   font-family: var(--adoc-font-mono);
   font-size: 0.875em;

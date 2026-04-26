@@ -1,0 +1,15 @@
+= UI Macros: kbd, btn, menu
+
+== kbd
+
+Press kbd:[Ctrl+C] to copy and kbd:[Cmd+Shift+P] to open the palette.
+
+A single key: kbd:[Enter].
+
+== btn
+
+Click btn:[Save] or btn:[Cancel].
+
+== menu
+
+Open menu:File[Save As] or menu:Edit[Find > Replace > All].

@@ -87,7 +87,7 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - All seven delimited block styles: listing, literal, example, quote, sidebar, passthrough, open.
 - Simple tables (one cell per `|` delimiter; column specs and cell formatters are not yet handled).
 - Constrained and unconstrained inline quotes: `*strong*`, `_emphasis_`, `` `monospace` ``, plus `**`/`__`/```` `` ```` forms.
-- Inline macros: `link:`, `mailto:`, `xref:`, `image:`, `anchor:id[]`, shorthand `<<xref>>`, and `http(s)`/`ftp` autolinks. `link:{attr}[label]` substitutes attribute references in the URL; `https://url[label]` is also accepted (bare URL with explicit text).
+- Inline macros: `link:`, `mailto:`, `xref:`, `image:`, `anchor:id[]`, `kbd:[Ctrl+C]`, `btn:[OK]`, `menu:File[Save > Save As]`, shorthand `<<xref>>`, and `http(s)`/`ftp` autolinks. `link:{attr}[label]` substitutes attribute references in the URL; `https://url[label]` is also accepted (bare URL with explicit text).
 - Block image — `image::path[alt, width, height]` on its own line renders as `<div class="imageblock">` with optional `.Title` caption.
 - Block video / audio — `video::url[width, height, poster, autoplay, loop, muted, playsinline]` and `audio::url[loop]` on their own line render as `<div class="videoblock">` / `<div class="audioblock">` wrapping a native HTML5 `<video>` / `<audio>` element. `controls` is on by default.
 - Derived header attributes — `{doctitle}`, `{author}`, `{authors}`, `{firstname}`, `{middlename}`, `{lastname}`, `{authorinitials}`, `{email}`, `{author_2}` / `{email_2}` for additional authors, and `{revnumber}` (with leading `v` stripped), `{revdate}`, `{revremark}`. User-supplied attribute entries take precedence.
