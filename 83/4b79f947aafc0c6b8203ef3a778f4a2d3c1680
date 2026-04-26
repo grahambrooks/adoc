@@ -1,0 +1,108 @@
+docs/examples/18_replacements.html
+  27508cabf0243d73 312-338
+docs/examples/22_preprocessor.html
+  27508cabf0243d73 312-338
+src/parser/block.rs
+  27508cabf0243d73 594-603
+tests/fixtures.rs
+  27508cabf0243d73 472,712-742
+docs/examples/04_unordered_list.html
+  27508cabf0243d73 312-338
+docs/examples/03_sections.html
+  27508cabf0243d73 312-338
+docs/examples/16_inline_macros.html
+  27508cabf0243d73 312-338
+docs/examples/17_attribute_refs.html
+  27508cabf0243d73 312-338
+docs/examples/23_include_args.html
+  27508cabf0243d73 312-338
+docs/examples/24_section_ids.html
+  27508cabf0243d73 312-338
+docs/examples/25_admonitions_source.html
+  27508cabf0243d73 312-338
+docs/examples/29_callouts.html
+  27508cabf0243d73 312-338
+docs/examples/06_description_list.html
+  27508cabf0243d73 312-338
+docs/examples/02_header.html
+  27508cabf0243d73 312-338
+docs/examples/12_passthrough_block.html
+  27508cabf0243d73 312-338
+docs/examples/27_toc_sectnums.html
+  27508cabf0243d73 312-338
+docs/examples/20_mixed.html
+  27508cabf0243d73 312-338
+tests/fixtures/33_smart_quotes_verse.adoc
+  27508cabf0243d73 1-29
+docs/examples/28_tables_header_formatters.html
+  27508cabf0243d73 312-338
+src/convert/html5/mod.rs
+  27508cabf0243d73 653,657-673,857-877
+docs/showcase.html
+  27508cabf0243d73 184-187,312-338,430-442,759-760,958,961
+docs/examples/09_example_block.html
+  27508cabf0243d73 312-338
+docs/examples/13_open_block.html
+  27508cabf0243d73 312-338
+docs/examples/11_sidebar_block.html
+  27508cabf0243d73 312-338
+README.md
+  27508cabf0243d73 96-97
+docs/examples/15_inline_quotes.html
+  27508cabf0243d73 312-338
+docs/examples/08_literal_block.html
+  27508cabf0243d73 312-338
+docs/examples/26_inline_extras.html
+  27508cabf0243d73 312-338
+docs/examples/01_paragraph.html
+  27508cabf0243d73 312-338
+docs/examples/23_include_args_part.html
+  27508cabf0243d73 312-338
+docs/examples/32_compat_links_anchors_discrete.html
+  27508cabf0243d73 312-338
+src/convert/html5/assets/adoc.css
+  27508cabf0243d73 305-331
+docs/examples/33_smart_quotes_verse.html
+  27508cabf0243d73 1-687
+docs/examples/05_ordered_list.html
+  27508cabf0243d73 312-338
+docs/examples/07_listing_block.html
+  27508cabf0243d73 312-338
+docs/examples/14_table.html
+  27508cabf0243d73 312-338
+docs/examples/19_line_breaks.html
+  27508cabf0243d73 312-338
+docs/examples/10_quote_block.html
+  27508cabf0243d73 312-338
+src/parser/inline.rs
+  27508cabf0243d73 80-85,274-333,363-370
+docs/examples/21_block_metadata.html
+  27508cabf0243d73 312-338
+docs/examples/22_preprocessor_part.html
+  27508cabf0243d73 312-338
+docs/examples/30_table_cols.html
+  27508cabf0243d73 312-338
+docs/examples/31_asciidoc_cells_and_span.html
+  27508cabf0243d73 312-338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "834b79f947aafc0c6b8203ef3a778f4a2d3c1680",
+  "prompts": {
+    "27508cabf0243d73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a551f18-7fc0-498d-a398-cc37082d3a8e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Graham Brooks",
+      "messages": [],
+      "total_additions": 1883,
+      "total_deletions": 23,
+      "accepted_lines": 2010,
+      "overriden_lines": 0,
+      "messages_url": "https://usegitai.com/cas/ce87c9418483a1953fb43fc01de7d45ded31cabcb0c8b0d3819213df015b2ddd"
+    }
+  }
+}
