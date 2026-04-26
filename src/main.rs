@@ -5,7 +5,7 @@ use std::io::Write;
 
 use std::io::Read;
 
-use adoc::ast::{AttributeValue, Attributes, Converter, Document};
+use adoc::ast::{AttributeValue, Attributes, Document, SourceMap};
 use adoc::convert::html5::{
     Html5Converter, Html5Options, Stylesheet, BUILTIN_CSS, BUILTIN_FILENAME,
 };
@@ -84,8 +84,11 @@ fn main() -> miette::Result<()> {
     let input_ref: Option<&Utf8Path> = cli.inputs.first().map(Utf8PathBuf::as_path);
 
     // Build the AST either by parsing source or by deserializing JSON.
-    let doc: Document = if cli.from_ast {
-        load_ast_input(input_ref)?
+    // Also capture the SourceMap for diagnostics — the preprocessor
+    // populates it as it walks includes; the AST-from-stdin path has
+    // no source map.
+    let (doc, source_map): (Document, SourceMap) = if cli.from_ast {
+        (load_ast_input(input_ref)?, SourceMap::new())
     } else {
         let input = input_ref.ok_or_else(|| miette!("input required"))?;
         let source = fs::read_to_string(input.as_std_path())
@@ -95,7 +98,8 @@ fn main() -> miette::Result<()> {
             .with_base_dir(base_dir)
             .with_safe_mode(map_safe_mode(cli.safe_mode));
         let lines = preproc.run(&source, input).map_err(|e| miette!("{e}"))?;
-        parse_with(&lines, cli_attrs.clone()).map_err(|e| miette!("{e}"))?
+        let doc = parse_with(&lines, cli_attrs.clone()).map_err(|e| miette!("{e}"))?;
+        (doc, preproc.source_map())
     };
 
     let out_path = resolve_output_path(&cli, input_ref);
@@ -114,12 +118,14 @@ fn main() -> miette::Result<()> {
     let base_dir = preprocessor_base_dir(&cli, input_ref);
     let stylesheet = resolve_stylesheet(&doc.attributes, &base_dir).map_err(|e| miette!("{e}"))?;
 
-    let output_html = match cli.backend {
+    let (output_html, diagnostics) = match cli.backend {
         Backend::Html5 => {
             let converter = Html5Converter::with_options(Html5Options {
                 stylesheet: stylesheet.clone(),
             });
-            converter.convert(&doc).map_err(|e| miette!("{e}"))?
+            converter
+                .convert_with_diagnostics(&doc)
+                .map_err(|e| miette!("{e}"))?
         }
     };
 
@@ -129,7 +135,33 @@ fn main() -> miette::Result<()> {
         copy_stylesheet(&stylesheet, &doc.attributes, &base_dir, out_path.as_deref())?;
     }
 
+    // Render any diagnostics collected during conversion (dangling
+    // xrefs etc.) to stderr through miette's default handler so users
+    // get colour, source snippets, and span underlines. `--quiet`
+    // suppresses them.
+    if !cli.quiet {
+        render_diagnostics(diagnostics, &source_map);
+    }
+
     Ok(())
+}
+
+fn render_diagnostics(diagnostics: adoc::diag::Diagnostics, source_map: &SourceMap) {
+    use std::io::IsTerminal;
+    let mut stderr = std::io::stderr().lock();
+    let to_terminal = std::io::stderr().is_terminal();
+    let handler = if to_terminal {
+        miette::GraphicalReportHandler::new()
+    } else {
+        miette::GraphicalReportHandler::new_themed(miette::GraphicalTheme::unicode_nocolor())
+    };
+    let mut buf = String::new();
+    for diag in diagnostics {
+        let report = diag.into_report(source_map);
+        buf.clear();
+        let _ = handler.render_report(&mut buf, report.as_ref());
+        let _ = std::io::Write::write_all(&mut stderr, buf.as_bytes());
+    }
 }
 
 /// Read a serialized [`Document`] from `path` if given, otherwise from stdin.

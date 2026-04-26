@@ -25,7 +25,7 @@
 use camino::{Utf8Path, Utf8PathBuf};
 use std::fs;
 
-use crate::ast::{AttributeValue, Attributes, Location, SourceId};
+use crate::ast::{AttributeValue, Attributes, Location, SourceId, SourceMap};
 
 #[derive(Debug, Clone)]
 pub struct PreprocessedLine {
@@ -72,6 +72,9 @@ pub struct Preprocessor {
     base_dir: Utf8PathBuf,
     safe_mode: SafeMode,
     sources: Vec<Utf8PathBuf>,
+    /// Source-text-by-id, kept around so diagnostics can render
+    /// span-pointing snippets after the pipeline runs.
+    source_contents: Vec<String>,
     max_include_depth: u32,
 }
 
@@ -88,6 +91,7 @@ impl Preprocessor {
             base_dir: Utf8PathBuf::from("."),
             safe_mode: SafeMode::default(),
             sources: Vec::new(),
+            source_contents: Vec::new(),
             max_include_depth: DEFAULT_MAX_INCLUDE_DEPTH,
         }
     }
@@ -115,6 +119,18 @@ impl Preprocessor {
         &self.sources
     }
 
+    /// Build a [`SourceMap`] from the registered sources and their text.
+    /// Consumed by the diagnostics renderer so error spans can resolve
+    /// to file path + snippet. Call after [`run`] or [`run_file`].
+    pub fn source_map(&self) -> SourceMap {
+        let mut map = SourceMap::new();
+        for (i, path) in self.sources.iter().enumerate() {
+            let content = self.source_contents.get(i).cloned().unwrap_or_default();
+            map.push(path.as_str().to_string(), content);
+        }
+        map
+    }
+
     /// Process a top-level source string. `top_path` is recorded for
     /// `SourceId(0)` and used as the base for resolving relative
     /// `include::` paths. For non-file input, pass a synthetic path
@@ -125,7 +141,8 @@ impl Preprocessor {
         top_path: &Utf8Path,
     ) -> Result<Vec<PreprocessedLine>, PreprocessError> {
         self.sources.clear();
-        let top_id = self.register_source(top_path.to_owned());
+        self.source_contents.clear();
+        let top_id = self.register_source(top_path.to_owned(), source.to_string());
         let mut output = Vec::new();
         let mut state = ProcessState::default();
         state.include_chain.push(top_path.to_owned());
@@ -145,9 +162,10 @@ impl Preprocessor {
         self.run(&source, path)
     }
 
-    fn register_source(&mut self, path: Utf8PathBuf) -> SourceId {
+    fn register_source(&mut self, path: Utf8PathBuf, content: String) -> SourceId {
         let id = SourceId(self.sources.len() as u32);
         self.sources.push(path);
+        self.source_contents.push(content);
         id
     }
 
@@ -316,7 +334,7 @@ impl Preprocessor {
         let parsed_args = parse_include_args(args);
         let filtered = apply_include_args(&raw_source, &parsed_args);
 
-        let source_id = self.register_source(resolved.clone());
+        let source_id = self.register_source(resolved.clone(), raw_source.clone());
         state.include_chain.push(resolved.clone());
         let owned = resolved;
         self.process_source(&filtered, source_id, &owned, state, output)?;

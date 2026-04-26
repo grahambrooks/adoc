@@ -428,6 +428,69 @@ impl Location {
             column: 0,
         }
     }
+
+    /// `(byte_offset, byte_length)` — the form miette consumes for span
+    /// labels.
+    pub fn span(&self) -> (usize, usize) {
+        let start = self.byte_start as usize;
+        let end = self.byte_end as usize;
+        (start, end.saturating_sub(start))
+    }
+}
+
+/// One source file the preprocessor pulled in. The `path` is what was
+/// resolved to disk (or a synthetic `<input>` for stdin / string input);
+/// `content` is the raw bytes the loader read, kept around so miette can
+/// render diagnostic snippets.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SourceFile {
+    pub path: String,
+    pub content: String,
+}
+
+/// Maps every [`SourceId`] in a document to its file path and full
+/// source text. Built by the preprocessor as it processes the top
+/// source plus everything pulled in via `include::`. Diagnostics use
+/// it to render span-pointing snippets — the ID alone is meaningless
+/// without this map.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SourceMap {
+    sources: Vec<SourceFile>,
+}
+
+impl SourceMap {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Append a file to the map. Returns the [`SourceId`] assigned to it,
+    /// which is the index in source-registration order — `SourceId(0)`
+    /// for the top-level input.
+    pub fn push(&mut self, path: String, content: String) -> SourceId {
+        let id = SourceId(self.sources.len() as u32);
+        self.sources.push(SourceFile { path, content });
+        id
+    }
+
+    pub fn get(&self, id: SourceId) -> Option<&SourceFile> {
+        self.sources.get(id.0 as usize)
+    }
+
+    pub fn path_of(&self, id: SourceId) -> Option<&str> {
+        self.get(id).map(|s| s.path.as_str())
+    }
+
+    pub fn content_of(&self, id: SourceId) -> Option<&str> {
+        self.get(id).map(|s| s.content.as_str())
+    }
+
+    pub fn len(&self) -> usize {
+        self.sources.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sources.is_empty()
+    }
 }
 
 pub trait Converter {

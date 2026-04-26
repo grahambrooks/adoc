@@ -32,6 +32,7 @@ mod tables;
 use std::fmt::Write;
 
 use crate::ast::{inlines_to_plain, AttributeValue, Block, ConvertError, Converter, Document};
+use crate::diag::Diagnostics;
 
 use self::blocks::render_block;
 use self::ctx::{render_toc, validate_xrefs, RenderCtx, TocPlacement};
@@ -86,14 +87,35 @@ impl Html5Converter {
     }
 }
 
+impl Html5Converter {
+    /// Render `doc` and return the HTML alongside any diagnostics
+    /// (warnings) produced during conversion. The `Converter::convert`
+    /// trait method discards the diagnostics for callers that only
+    /// want the HTML — use this entry point when you want to render
+    /// span-pointing warnings (dangling xrefs, etc.) to the user.
+    pub fn convert_with_diagnostics(
+        &self,
+        doc: &Document,
+    ) -> Result<(String, Diagnostics), ConvertError> {
+        let ctx = RenderCtx::new(doc);
+        let mut diagnostics = Diagnostics::new();
+        validate_xrefs(doc, &ctx.ids, &mut diagnostics);
+        let html = self.render_html(doc, &ctx)?;
+        Ok((html, diagnostics))
+    }
+}
+
 impl Converter for Html5Converter {
     fn convert(&self, doc: &Document) -> Result<String, ConvertError> {
-        let ctx = RenderCtx::new(doc);
-        // Validate cross-references against the registry before rendering
-        // so dangling-xref warnings show up in the order they appear in
-        // the source. Output isn't suppressed — the `<a href>` is still
-        // emitted, since users may build the missing anchor downstream.
-        validate_xrefs(doc, &ctx.ids);
+        let (html, _diagnostics) = self.convert_with_diagnostics(doc)?;
+        Ok(html)
+    }
+}
+
+impl Html5Converter {
+    /// The actual rendering. Split out from the public entry points so
+    /// `convert` and `convert_with_diagnostics` share one implementation.
+    fn render_html(&self, doc: &Document, ctx: &RenderCtx) -> Result<String, ConvertError> {
         let mut out = String::new();
         out.push_str("<!doctype html>\n<html lang=\"en\">\n<head>\n");
         out.push_str(r#"<meta charset="utf-8">"#);

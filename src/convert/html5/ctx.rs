@@ -11,7 +11,9 @@ use std::fmt::Write;
 
 use crate::ast::{
     inlines_to_plain, AttributeValue, Block, DelimitedContent, Document, IdRegistry, Inline,
+    Location,
 };
+use crate::diag::{Diagnostic, Diagnostics};
 
 use super::escape::{escape, escape_attr};
 
@@ -206,69 +208,83 @@ pub(crate) fn is_truthy(v: Option<&AttributeValue>) -> bool {
         || matches!(v, Some(AttributeValue::String(s)) if !s.is_empty() && !s.eq_ignore_ascii_case("false"))
 }
 
-/// Walk every inline in the document and emit a `tracing::warn!` for
-/// each xref whose target id isn't in the registry. Run once during
-/// `convert()`; the inline renderer stays target-blind.
+/// Walk every inline in the document and append a [`Diagnostic`] for
+/// each `<<…>>` / `xref:…[]` whose target id isn't in the registry.
+/// Run once during `convert()`; the inline renderer stays target-blind.
 ///
-/// Run at warn level so users get a readable diagnostic stream when
-/// they invoke with `RUST_LOG=warn` (or the CLI's `-v` flag); the
-/// rendered HTML still emits the dangling href so output is unchanged.
-pub(crate) fn validate_xrefs(doc: &Document, ids: &IdRegistry) {
-    walk_validate_blocks(&doc.blocks, ids);
+/// Diagnostics are span-pointing where possible: each xref is attributed
+/// to its containing block's [`Location`], so miette can render a
+/// snippet of the surrounding source. Output is unaffected — the
+/// rendered HTML still emits the dangling href.
+pub(crate) fn validate_xrefs(doc: &Document, ids: &IdRegistry, diags: &mut Diagnostics) {
+    walk_validate_blocks(&doc.blocks, ids, diags);
 }
 
-fn walk_validate_blocks(blocks: &[Block], ids: &IdRegistry) {
+fn walk_validate_blocks(blocks: &[Block], ids: &IdRegistry, diags: &mut Diagnostics) {
     for b in blocks {
         match b {
             Block::Section(s) => {
-                walk_validate_inlines(&s.title, ids);
-                walk_validate_blocks(&s.blocks, ids);
+                walk_validate_inlines(&s.title, ids, &s.location, diags);
+                walk_validate_blocks(&s.blocks, ids, diags);
             }
-            Block::Paragraph(p) => walk_validate_inlines(&p.inlines, ids),
+            Block::Paragraph(p) => walk_validate_inlines(&p.inlines, ids, &p.location, diags),
             Block::List(l) => {
                 for item in &l.items {
-                    walk_validate_inlines(&item.principal, ids);
-                    walk_validate_blocks(&item.blocks, ids);
+                    walk_validate_inlines(&item.principal, ids, &l.location, diags);
+                    walk_validate_blocks(&item.blocks, ids, diags);
                 }
             }
             Block::DescriptionList(d) => {
                 for item in &d.items {
-                    walk_validate_inlines(&item.term, ids);
-                    walk_validate_blocks(&item.description, ids);
+                    walk_validate_inlines(&item.term, ids, &d.location, diags);
+                    walk_validate_blocks(&item.description, ids, diags);
                 }
             }
             Block::Delimited(d) => {
                 if let DelimitedContent::Blocks { blocks } = &d.content {
-                    walk_validate_blocks(blocks, ids);
+                    walk_validate_blocks(blocks, ids, diags);
                 }
             }
             Block::Table(t) => {
                 for row in &t.rows {
                     for cell in &row.cells {
-                        walk_validate_inlines(&cell.inlines, ids);
-                        walk_validate_blocks(&cell.blocks, ids);
+                        walk_validate_inlines(&cell.inlines, ids, &t.location, diags);
+                        walk_validate_blocks(&cell.blocks, ids, diags);
                     }
                 }
             }
             Block::Colist(c) => {
                 for item in &c.items {
-                    walk_validate_inlines(&item.inlines, ids);
+                    walk_validate_inlines(&item.inlines, ids, &c.location, diags);
                 }
             }
-            Block::DiscreteHeading(d) => walk_validate_inlines(&d.title, ids),
+            Block::DiscreteHeading(d) => walk_validate_inlines(&d.title, ids, &d.location, diags),
         }
     }
 }
 
-fn walk_validate_inlines(inlines: &[Inline], ids: &IdRegistry) {
+fn walk_validate_inlines(
+    inlines: &[Inline],
+    ids: &IdRegistry,
+    container: &Location,
+    diags: &mut Diagnostics,
+) {
     for i in inlines {
         match i {
             Inline::Xref { target, text } => {
                 if !target.is_empty() && !ids.contains(target) {
-                    tracing::warn!(target = %target, "dangling xref");
+                    diags.push(
+                        Diagnostic::warning(
+                            "adoc::xref::dangling",
+                            format!("cross-reference target `{target}` not found"),
+                            container.clone(),
+                        )
+                        .with_label("no anchor with this id is defined")
+                        .with_help(suggest_ids(target, ids)),
+                    );
                 }
                 if let Some(t) = text {
-                    walk_validate_inlines(t, ids);
+                    walk_validate_inlines(t, ids, container, diags);
                 }
             }
             Inline::Strong { children }
@@ -276,11 +292,24 @@ fn walk_validate_inlines(inlines: &[Inline], ids: &IdRegistry) {
             | Inline::Monospace { children }
             | Inline::Subscript { children }
             | Inline::Superscript { children }
-            | Inline::Highlight { children } => walk_validate_inlines(children, ids),
+            | Inline::Highlight { children } => {
+                walk_validate_inlines(children, ids, container, diags)
+            }
             Inline::Link { text, .. } | Inline::Footnote { text, .. } => {
-                walk_validate_inlines(text, ids);
+                walk_validate_inlines(text, ids, container, diags);
             }
             _ => {}
         }
     }
+}
+
+/// Build a help string for a dangling xref. Lists up to a handful of
+/// known ids so the user can spot a typo.
+fn suggest_ids(_target: &str, ids: &IdRegistry) -> String {
+    let mut sample: Vec<&str> = ids.ids().take(8).collect();
+    if sample.is_empty() {
+        return "no ids are defined in this document".to_string();
+    }
+    sample.sort_unstable();
+    format!("known ids include: {}", sample.join(", "))
 }

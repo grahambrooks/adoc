@@ -16,5 +16,6 @@
 
 pub mod ast;
 pub mod convert;
+pub mod diag;
 pub mod parser;
 pub mod preprocessor;
