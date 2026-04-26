@@ -1,0 +1,21 @@
+= Include with indent= and Footnote Section
+
+== indent=0 strips leading whitespace
+
+[source,rust]
+----
+include::35_include_indent_part.adoc[indent=0]
+----
+
+== indent=2 re-indents to two spaces
+
+[source,rust]
+----
+include::35_include_indent_part.adoc[indent=2]
+----
+
+== Footnotes
+
+A short claim.footnote:[Source for the claim.]
+
+A second claim.footnote:[A second source — with _emphasis_ inside.]

@@ -606,15 +606,37 @@ mark {
 }
 sub, sup { font-size: 0.78em; line-height: 0; }
 
-.footnote {
-  font-size: 0.85em;
-  color: var(--adoc-muted);
-  vertical-align: super;
+/* Inline footnote reference (the converter rewrites the parser's
+   `<span class="footnote">…</span>` into a numbered `<sup>` ref). */
+sup.footnote {
+  font-size: 0.78em;
+  margin: 0 0.05em;
   line-height: 0;
-  margin: 0 0.15em;
 }
-.footnote::before { content: "["; }
-.footnote::after  { content: "]"; }
+sup.footnote a { text-decoration: none; color: var(--adoc-accent); }
+sup.footnote a:hover { text-decoration: underline; }
+
+/* End-of-document footnote section. */
+#footnotes {
+  margin-top: 3em;
+  font-size: 0.9em;
+  color: var(--adoc-muted);
+}
+#footnotes hr {
+  margin: 0 0 1em;
+  border: 0;
+  border-top: 1px solid var(--adoc-border-soft);
+}
+#footnotes .footnote {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+  text-indent: -1.5em;
+}
+#footnotes .footnote a {
+  font-weight: 600;
+  text-decoration: none;
+}
+#footnotes .footnote a:hover { text-decoration: underline; }
 
 /* ---------------------------------------------------------------------
  *  Responsive
@@ -670,7 +692,11 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 <p>Constrained passthrough *keeps stars* and {attrs} verbatim.</p>
 <p>Unconstrained **double stars** also pass through.</p>
 <p>Use <kbd>Ctrl</kbd>+<kbd>C</kbd> to inject HTML literally.</p>
-<p>A <span class="footnote">anchored thought</span> mid-sentence; another with <span class="footnote" id="fn1">an id</span>.</p>
+<p>A <sup class="footnote" id="_footnoteref_1">[<a href="#_footnotedef_1">1</a>]</sup> mid-sentence; another with <sup class="footnote" id="_footnoteref_2">[<a href="#_footnotedef_2">2</a>]</sup>.</p>
+<div id="footnotes"><hr>
+<div class="footnote" id="_footnotedef_1"><a href="#_footnoteref_1">1</a>. anchored thought</div>
+<div class="footnote" id="_footnotedef_2"><a href="#_footnoteref_2">2</a>. an id</div>
+</div>
 <!-- attributes: doctitle=Inline Extras; -->
 </body>
 </html>

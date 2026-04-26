@@ -606,15 +606,37 @@ mark {
 }
 sub, sup { font-size: 0.78em; line-height: 0; }
 
-.footnote {
-  font-size: 0.85em;
-  color: var(--adoc-muted);
-  vertical-align: super;
+/* Inline footnote reference (the converter rewrites the parser's
+   `<span class="footnote">…</span>` into a numbered `<sup>` ref). */
+sup.footnote {
+  font-size: 0.78em;
+  margin: 0 0.05em;
   line-height: 0;
-  margin: 0 0.15em;
 }
-.footnote::before { content: "["; }
-.footnote::after  { content: "]"; }
+sup.footnote a { text-decoration: none; color: var(--adoc-accent); }
+sup.footnote a:hover { text-decoration: underline; }
+
+/* End-of-document footnote section. */
+#footnotes {
+  margin-top: 3em;
+  font-size: 0.9em;
+  color: var(--adoc-muted);
+}
+#footnotes hr {
+  margin: 0 0 1em;
+  border: 0;
+  border-top: 1px solid var(--adoc-border-soft);
+}
+#footnotes .footnote {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+  text-indent: -1.5em;
+}
+#footnotes .footnote a {
+  font-weight: 600;
+  text-decoration: none;
+}
+#footnotes .footnote a:hover { text-decoration: underline; }
 
 /* ---------------------------------------------------------------------
  *  Responsive
@@ -702,7 +724,7 @@ sub, sup { font-size: 0.78em; line-height: 0; }
 <h2><a class="anchor" href="#inline-extras"></a><span class="sectnum">3</span> Inline extras: subscript, superscript, highlight, passthroughs, footnotes</h2>
 <p>Water is H<sub>2</sub>O, Einstein had E=mc<sup>2</sup>, and you can <mark>highlight a phrase</mark> inline with hashes (or with <mark>unconstrained</mark> pairs mid-word).</p>
 <p>A constrained passthrough keeps *stars* and {attrs} literal, while the unconstrained **double stars** also survive verbatim. The <code>...</code> macro emits raw HTML — <kbd>Ctrl</kbd>+<kbd>C</kbd> renders as keyboard keys.</p>
-<p>Footnotes attach inline.footnote:[Here is an anonymous footnote with <em>emphasis</em> inside it.] You can also id a footnote so it can be referenced later: <span class="footnote" id="fn-spec">The AsciiDoc Language specification at <a href="https://docs.asciidoctor.org/asciidoc/latest/">https://docs.asciidoctor.org/asciidoc/latest/</a></span>.</p>
+<p>Footnotes attach inline.footnote:[Here is an anonymous footnote with <em>emphasis</em> inside it.] You can also id a footnote so it can be referenced later: <sup class="footnote" id="_footnoteref_1">[<a href="#_footnotedef_1">1</a>]</sup>.</p>
 </section>
 <section id="inline-macros">
 <h2><a class="anchor" href="#inline-macros"></a><span class="sectnum">4</span> Inline macros: links, xrefs, images</h2>
@@ -961,10 +983,14 @@ adoc --emit-ast docs/showcase.adoc \
 </section>
 <section id="_footnotes_character_pairs_and_a_final_word">
 <h2><a class="anchor" href="#_footnotes_character_pairs_and_a_final_word"></a><span class="sectnum">13</span> Footnotes, character pairs, and a final word</h2>
-<p>A trailing footnote keeps the spec-tour honest: <span class="footnote" id="fn-spec"></span>. The same id from earlier — it appears once in the rendered output and the runtime keeps the body deduplicated.</p>
+<p>A trailing footnote keeps the spec-tour honest: <sup class="footnote" id="_footnoteref_2">[<a href="#_footnotedef_2">2</a>]</sup>. The same id from earlier — it appears once in the rendered output and the runtime keeps the body deduplicated.</p>
 <p>© 2026 The adoc Authors. All rights reserved ®. “Smart quotes” and 'curly apostrophes' aren't in scope yet, so they render as ASCII — which is intentional, not an oversight.</p>
 <p>If something here doesn't render the way the https://github.com/grahambrooks/adoc[AsciiDoc Language specification] says it should, please open an issue — the spec is the oracle, this document is just the proof.</p>
 </section>
+<div id="footnotes"><hr>
+<div class="footnote" id="_footnotedef_1"><a href="#_footnoteref_1">1</a>. The AsciiDoc Language specification at <a href="https://docs.asciidoctor.org/asciidoc/latest/">https://docs.asciidoctor.org/asciidoc/latest/</a></div>
+<div class="footnote" id="_footnotedef_2"><a href="#_footnoteref_2">2</a>. </div>
+</div>
 <!-- attributes: author=Alice Author; author_2=Bob Builder; authorinitials=AA; authors=Alice Author, Bob Builder; description=A single AsciiDoc document exercising every feature the adoc processor implements today.; doctitle=The adoc Showcase: Every Supported Feature in One Document; edition=2; email=alice@example.com; email_2=bob@example.com; firstname=Alice; homepage=https://github.com/grahambrooks/adoc; keywords=asciidoc, adoc, html5, showcase; lang=en; lastname=Author; prism-theme=prism; product=adoc; product-version=0.1.0; revdate=2026-04-25; revnumber=1.0.0; revremark=First public showcase; sectanchors=true; sectnums=true; source-highlighter=prism; toc=true; -->
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js"></script>

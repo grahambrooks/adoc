@@ -110,8 +110,29 @@ impl Converter for Html5Converter {
             render_toc(&mut out, &ctx);
         }
 
+        let body_start = out.len();
         for block in &doc.blocks {
             render_block(&mut out, block, &ctx)?;
+        }
+
+        // After the body is rendered, walk it and turn each inline
+        // `<span class="footnote">…</span>` into a numbered `<sup>` ref,
+        // then append a `<div id="footnotes">` section gathering the
+        // bodies. Footnotes inside footnotes are rare and not handled.
+        let body = out.split_off(body_start);
+        let (rewritten, footnotes) = number_footnotes(&body);
+        out.push_str(&rewritten);
+        if !footnotes.is_empty() {
+            out.push_str(r#"<div id="footnotes">"#);
+            out.push_str("<hr>\n");
+            for (i, body) in footnotes.iter().enumerate() {
+                let n = i + 1;
+                let _ = writeln!(
+                    out,
+                    r##"<div class="footnote" id="_footnotedef_{n}"><a href="#_footnoteref_{n}">{n}</a>. {body}</div>"##
+                );
+            }
+            out.push_str("</div>\n");
         }
 
         if !doc.attributes.is_empty() {
@@ -135,6 +156,55 @@ impl Converter for Html5Converter {
         out.push_str("</body>\n</html>\n");
         Ok(out)
     }
+}
+
+/// Walk the rendered body string, replacing each inline footnote span
+/// with a numbered `<sup>` reference and collecting the bodies. Returns
+/// `(rewritten_body, footnote_bodies)` where the bodies appear in
+/// document order.
+///
+/// Recognises both the anonymous and id'd forms emitted by the inline
+/// renderer:
+/// * `<span class="footnote">body</span>`
+/// * `<span class="footnote" id="...">body</span>`
+///
+/// Doesn't try to dedupe by id — every span turns into its own
+/// numbered reference. v1 limitation.
+fn number_footnotes(body: &str) -> (String, Vec<String>) {
+    const PREFIX: &str = r#"<span class="footnote""#;
+    const CLOSE: &str = "</span>";
+    let mut out = String::with_capacity(body.len());
+    let mut bodies: Vec<String> = Vec::new();
+    let mut i = 0;
+    while i < body.len() {
+        let Some(rel) = body[i..].find(PREFIX) else {
+            out.push_str(&body[i..]);
+            break;
+        };
+        let span_start = i + rel;
+        out.push_str(&body[i..span_start]);
+        // Find the end of the opening tag — the first `>` after the prefix.
+        let after_prefix = &body[span_start + PREFIX.len()..];
+        let Some(open_end_rel) = after_prefix.find('>') else {
+            // Malformed; bail out and forward the rest verbatim.
+            out.push_str(&body[span_start..]);
+            break;
+        };
+        let body_start = span_start + PREFIX.len() + open_end_rel + 1;
+        let Some(close_rel) = body[body_start..].find(CLOSE) else {
+            out.push_str(&body[span_start..]);
+            break;
+        };
+        let inner = &body[body_start..body_start + close_rel];
+        let n = bodies.len() + 1;
+        bodies.push(inner.to_string());
+        let _ = write!(
+            out,
+            r##"<sup class="footnote" id="_footnoteref_{n}">[<a href="#_footnotedef_{n}">{n}</a>]</sup>"##
+        );
+        i = body_start + close_rel + CLOSE.len();
+    }
+    (out, bodies)
 }
 
 /// Pick a recognised `:source-highlighter:` value, normalised to lowercase.

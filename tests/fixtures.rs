@@ -471,6 +471,7 @@ fn ast_roundtrips_through_serde_json() {
         "32_compat_links_anchors_discrete.adoc",
         "33_smart_quotes_verse.adoc",
         "34_video_audio.adoc",
+        "35_include_indent.adoc",
     ];
     for name in fixtures {
         let (doc, html_a) = render(name);
@@ -556,9 +557,17 @@ fn inline_subscript_superscript_highlight_passthrough_footnote() {
     // pass:[…] is rendered verbatim — angle brackets stay literal.
     assert!(body.contains("<kbd>Ctrl</kbd>"));
 
-    // Footnotes (anonymous + id'd).
-    assert!(body.contains(r#"<span class="footnote">anchored thought</span>"#));
-    assert!(body.contains(r#"<span class="footnote" id="fn1">an id</span>"#));
+    // Footnotes are now rewritten into numbered <sup> refs and gathered
+    // into a `<div id="footnotes">` section at the end of the body.
+    assert!(body.contains(
+        r##"<sup class="footnote" id="_footnoteref_1">[<a href="#_footnotedef_1">1</a>]</sup>"##
+    ));
+    assert!(body.contains(
+        r##"<sup class="footnote" id="_footnoteref_2">[<a href="#_footnotedef_2">2</a>]</sup>"##
+    ));
+    assert!(body.contains(r#"<div id="footnotes">"#));
+    assert!(body.contains(r##"<div class="footnote" id="_footnotedef_1"><a href="#_footnoteref_1">1</a>. anchored thought</div>"##));
+    assert!(body.contains(r##"<div class="footnote" id="_footnotedef_2"><a href="#_footnoteref_2">2</a>. an id</div>"##));
 }
 
 #[test]
@@ -708,6 +717,30 @@ fn block_metadata_orphaned_by_blank_line_is_dropped() {
         })
         .expect("paragraph");
     assert!(para.meta.id.is_none(), "orphan id should not have attached");
+}
+
+#[test]
+fn include_indent_and_footnote_section() {
+    let (_doc, html) = render("35_include_indent.adoc");
+    let body_start = html.find("<body>").expect("body open");
+    let body_end = html.find("</body>").expect("body close");
+    let body = &html[body_start..body_end];
+
+    // indent=0 strips leading whitespace from every non-empty line.
+    assert!(body.contains("fn nested() {\n    let x = 1;\n}"));
+    // indent=2 prepends two spaces to the de-indented lines.
+    assert!(body.contains("  fn nested() {\n      let x = 1;\n  }"));
+
+    // Numbered <sup> footnote refs and the matching footnotes section.
+    assert!(body.contains(
+        r##"<sup class="footnote" id="_footnoteref_1">[<a href="#_footnotedef_1">1</a>]</sup>"##
+    ));
+    assert!(body.contains(
+        r##"<sup class="footnote" id="_footnoteref_2">[<a href="#_footnotedef_2">2</a>]</sup>"##
+    ));
+    assert!(body.contains(r#"<div id="footnotes">"#));
+    assert!(body.contains("Source for the claim."));
+    assert!(body.contains("A second source — with <em>emphasis</em> inside."));
 }
 
 #[test]

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Untitled</title>
+<title>Include with indent= and Footnote Section</title>
 <style>
 /* adoc.css — default stylesheet for HTML5 output from the adoc processor.
  *
@@ -684,9 +684,32 @@ sup.footnote a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
-<p>This paragraph has <strong>strong</strong>, <em>emphasis</em>, and <code>monospace</code> text.</p>
-<p>You can also combine <strong><em>strong emphasis</em></strong> and <code><strong>strong mono</strong></code>.</p>
-<p>Unconstrained forms: <strong>s</strong>trong, <em>e</em>mphasis, <code>m</code>onospace for mid-word.</p>
-<p>Special characters like 1 &lt; 2 and AT&amp;T should be escaped.</p>
+<header>
+<h1>Include with indent= and Footnote Section</h1>
+</header>
+<section id="_indent_0_strips_leading_whitespace">
+<h2>indent=0 strips leading whitespace</h2>
+<pre data-lang="rust"><code class="language-rust">fn nested() {
+    let x = 1;
+}
+</code></pre>
+</section>
+<section id="_indent_2_re_indents_to_two_spaces">
+<h2>indent=2 re-indents to two spaces</h2>
+<pre data-lang="rust"><code class="language-rust">  fn nested() {
+      let x = 1;
+  }
+</code></pre>
+</section>
+<section id="_footnotes">
+<h2>Footnotes</h2>
+<p>A short claim.<sup class="footnote" id="_footnoteref_1">[<a href="#_footnotedef_1">1</a>]</sup></p>
+<p>A second claim.<sup class="footnote" id="_footnoteref_2">[<a href="#_footnotedef_2">2</a>]</sup></p>
+</section>
+<div id="footnotes"><hr>
+<div class="footnote" id="_footnotedef_1"><a href="#_footnoteref_1">1</a>. Source for the claim.</div>
+<div class="footnote" id="_footnotedef_2"><a href="#_footnoteref_2">2</a>. A second source — with <em>emphasis</em> inside.</div>
+</div>
+<!-- attributes: doctitle=Include with indent= and Footnote Section; -->
 </body>
 </html>

@@ -488,6 +488,10 @@ struct IncludeArgs {
     /// Signed offset added to every section header level in the included
     /// content. Final level is clamped to `1..=6`.
     leveloffset: Option<i32>,
+    /// Re-indent the included content. `0` strips all leading whitespace;
+    /// `N>0` strips the common leading whitespace and then prepends N
+    /// spaces to every non-empty line.
+    indent: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -517,6 +521,7 @@ fn parse_include_args(s: &str) -> IncludeArgs {
             "lines" => args.lines = Some(parse_line_ranges(v)),
             "tag" | "tags" => args.tags = Some(parse_tag_selector(v)),
             "leveloffset" => args.leveloffset = parse_leveloffset(v),
+            "indent" => args.indent = v.trim().parse::<u32>().ok(),
             _ => {}
         }
     }
@@ -536,7 +541,43 @@ fn apply_include_args(source: &str, args: &IncludeArgs) -> String {
             current = apply_leveloffset(&current, delta);
         }
     }
+    if let Some(target) = args.indent {
+        current = apply_indent(&current, target);
+    }
     current
+}
+
+/// Re-indent the included text: strip the common leading whitespace from
+/// every non-empty line, then prepend `target` spaces. `target == 0`
+/// means "strip leading whitespace entirely" (the spec's documented
+/// behaviour for `indent=0`).
+fn apply_indent(text: &str, target: u32) -> String {
+    let lines: Vec<&str> = text.split('\n').collect();
+    let common = lines
+        .iter()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| l.bytes().take_while(|b| *b == b' ').count())
+        .min()
+        .unwrap_or(0);
+    let pad = " ".repeat(target as usize);
+    let mut out = String::with_capacity(text.len());
+    for (i, line) in lines.iter().enumerate() {
+        if i > 0 {
+            out.push('\n');
+        }
+        if line.trim().is_empty() {
+            // Preserve blank lines as fully blank (no trailing spaces).
+            continue;
+        }
+        let stripped = if line.len() >= common {
+            &line[common..]
+        } else {
+            line.trim_start()
+        };
+        out.push_str(&pad);
+        out.push_str(stripped);
+    }
+    out
 }
 
 /// Split a comma-separated attrlist body, treating commas inside double
