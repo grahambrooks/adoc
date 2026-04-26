@@ -43,7 +43,7 @@ enum DiagnosticFormat {
 #[command(name = "adoc", version, about = "Rust AsciiDoc processor")]
 struct Cli {
     /// Input AsciiDoc files.
-    #[arg(required_unless_present = "from_ast")]
+    #[arg(required_unless_present_any = ["from_ast", "emit_ast_schema"])]
     inputs: Vec<Utf8PathBuf>,
 
     /// Output file (default: stem + .html, or stdout if neither -o nor -D).
@@ -91,11 +91,48 @@ struct Cli {
     /// diagnostic (one per line) for tooling consumption.
     #[arg(long = "diagnostic-format", default_value = "plain")]
     diagnostic_format: DiagnosticFormat,
+
+    /// Run the full pipeline (preprocess + parse + convert) but don't
+    /// write any output. Diagnostics still print. Exit status reflects
+    /// whether the input is valid: `0` if clean, non-zero on errors,
+    /// or on warnings when paired with `--werror`. Useful for CI
+    /// "compile" checks.
+    #[arg(long = "check")]
+    check: bool,
+
+    /// Treat warnings as errors. With `--check`, makes any diagnostic
+    /// fail the run; without it, the renderer still produces output
+    /// but the process exits non-zero so a build script can decide
+    /// whether to continue.
+    #[arg(long = "werror")]
+    werror: bool,
+
+    /// Emit a JSON Schema for the AST `Document` type to stdout and
+    /// exit. Useful for feeding LLM structured-output modes that need
+    /// a schema to constrain generation.
+    #[arg(long = "emit-ast-schema")]
+    emit_ast_schema: bool,
+
+    /// Emit a JSON array of block-level chunks suitable for retrieval
+    /// pipelines: one entry per top-level block carrying its
+    /// containing-section path, plain text, and content hash.
+    #[arg(long = "emit-chunks")]
+    emit_chunks: bool,
 }
 
 fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     init_tracing(cli.verbose, cli.quiet);
+
+    // `--emit-ast-schema` is content-free — it only needs the static
+    // type information from the AST module. Short-circuit before any
+    // input is read so the user doesn't need to pass an `input.adoc`
+    // they don't care about.
+    if cli.emit_ast_schema {
+        let schema = ast_json_schema()?;
+        let out_path = resolve_output_path(&cli, None);
+        return write_output(out_path.as_deref(), schema.as_bytes(), true);
+    }
 
     let cli_attrs = parse_cli_attributes(&cli.attributes)?;
     let input_ref: Option<&Utf8Path> = cli.inputs.first().map(Utf8PathBuf::as_path);
@@ -126,15 +163,17 @@ fn main() -> miette::Result<()> {
 
     let out_path = resolve_output_path(&cli, input_ref);
 
-    // `--emit-ast` short-circuits the converter and writes JSON.
+    // Short-circuit emit modes — these all read the AST and write
+    // exactly one thing to stdout (or to -o) without rendering HTML.
     if cli.emit_ast {
         let json =
             serde_json::to_string_pretty(&doc).map_err(|e| miette!("AST serialize failed: {e}"))?;
-        return write_output(
-            out_path.as_deref(),
-            json.as_bytes(),
-            /*trailing_newline=*/ true,
-        );
+        return write_output(out_path.as_deref(), json.as_bytes(), true);
+    }
+    if cli.emit_chunks {
+        let chunks = adoc::chunks::to_json_pretty(&doc)
+            .map_err(|e| miette!("chunks serialize failed: {e}"))?;
+        return write_output(out_path.as_deref(), chunks.as_bytes(), true);
     }
 
     let base_dir = preprocessor_base_dir(&cli, input_ref);
@@ -151,18 +190,28 @@ fn main() -> miette::Result<()> {
         }
     };
 
-    write_output(out_path.as_deref(), output_html.as_bytes(), false)?;
-
-    if is_truthy(doc.attributes.get("copycss")) {
-        copy_stylesheet(&stylesheet, &doc.attributes, &base_dir, out_path.as_deref())?;
+    // `--check` skips writing the output and the stylesheet copy. The
+    // pipeline still ran end-to-end so any pre-existing parse /
+    // preprocess error has already aborted; we only get here on a
+    // successful run, and exit status below reflects diagnostic count.
+    if !cli.check {
+        write_output(out_path.as_deref(), output_html.as_bytes(), false)?;
+        if is_truthy(doc.attributes.get("copycss")) {
+            copy_stylesheet(&stylesheet, &doc.attributes, &base_dir, out_path.as_deref())?;
+        }
     }
 
-    // Render any diagnostics collected during conversion (dangling
-    // xrefs etc.) to stderr through miette's default handler so users
-    // get colour, source snippets, and span underlines. `--quiet`
-    // suppresses them.
+    // Render diagnostics first so the user sees them before we
+    // possibly fail the run.
+    let warning_count = diagnostics.len();
     if !cli.quiet {
         render_diagnostics(diagnostics, &source_map, cli.diagnostic_format);
+    }
+
+    if cli.werror && warning_count > 0 {
+        return Err(miette!(
+            "{warning_count} warning(s) treated as errors (--werror)"
+        ));
     }
 
     Ok(())
@@ -171,6 +220,16 @@ fn main() -> miette::Result<()> {
 /// Promote a [`adoc::preprocessor::PreprocessError`] into a `miette`
 /// report. Span-carrying variants become rich source-pointing reports;
 /// the message-only fallback uses the existing flat-string form.
+/// Build a pretty-printed JSON Schema for the AST `Document` type via
+/// the `schemars` derive on every node. Designed to be fed into LLM
+/// structured-output / tool-use modes that constrain generated JSON
+/// to a schema (OpenAI `response_format`, Anthropic tool input
+/// schemas, etc.).
+fn ast_json_schema() -> miette::Result<String> {
+    let schema = schemars::schema_for!(Document);
+    serde_json::to_string_pretty(&schema).map_err(|e| miette!("schema serialize failed: {e}"))
+}
+
 fn preprocess_error_to_report(
     err: adoc::preprocessor::PreprocessError,
     source_map: &SourceMap,

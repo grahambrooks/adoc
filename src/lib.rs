@@ -15,6 +15,7 @@
 //! for the future stdio-based extension model.
 
 pub mod ast;
+pub mod chunks;
 pub mod convert;
 pub mod diag;
 pub mod parser;

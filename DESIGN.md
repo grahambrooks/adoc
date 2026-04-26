@@ -154,6 +154,9 @@ The original phasing assumed a strict left-to-right walk; in practice the block 
 | Workspace skeleton, CLI shell, end-to-end pipeline | done |
 | Stylesheet resolution (five modes) and `:copycss:` | done |
 | `--emit-ast` / `--from-ast` wiring; AST roundtrips through `serde_json` (verified by a per-fixture render → JSON → parse-back → render byte-identity test) | done |
+| `--emit-ast-schema` (JSON Schema for the AST `Document` type via `schemars`) — designed for LLM structured-output modes | done |
+| `--emit-chunks` — block-level chunk manifest with section path, plain text, and SHA-256 content hash for retrieval / RAG pipelines | done |
+| `--check` (run without writing output) and `--werror` (treat warnings as errors) for CI lint loops | done |
 | Multi-input handling — currently only the first input is processed | **not started** |
 
 ### Header & block parser

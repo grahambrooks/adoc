@@ -70,6 +70,10 @@ Options:
       --base-dir <DIR>          Base directory for includes
       --emit-ast                Emit serialized AST (JSON) to stdout
       --from-ast                Read serialized AST from stdin or input file
+      --emit-ast-schema         Emit JSON Schema for the AST and exit
+      --emit-chunks             Emit block-level retrieval chunks (JSON) and exit
+      --check                   Run the pipeline without writing output
+      --werror                  Treat warnings as errors (non-zero exit)
       --diagnostic-format <F>   plain|json  (default: plain)
   -v, --verbose                 Increase log verbosity (repeatable)
   -q, --quiet                   Suppress warnings
@@ -78,6 +82,54 @@ Options:
 ```
 
 Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O error.
+
+### Using `adoc` in AI document pipelines
+
+A handful of features make this tool a good fit for genai workflows where an LLM produces or modifies content and a build script validates it.
+
+**Lint loop (generate → validate → fix).** `--check` runs the full pipeline without writing output; `--diagnostic-format=json` emits one NDJSON object per warning so the LLM can patch byte spans:
+
+```bash
+adoc draft.adoc --check --diagnostic-format=json 2> diags.ndjson
+```
+
+Each diagnostic carries a stable `code` (`adoc::xref::dangling`, `adoc::preprocess::include_cycle`, …), a `filename`, and `labels[].span.{offset,length}`. `--werror` flips the exit status to non-zero so a CI step can refuse to publish until warnings are zero:
+
+```bash
+adoc draft.adoc --check --werror   # exits 1 if any warning fires
+```
+
+**Structured-output target (skip prose generation).** `--emit-ast-schema` prints a JSON Schema for the [`Document`] type so models with structured-output modes (OpenAI `response_format`, Anthropic tool-use, …) can be constrained to produce valid AST directly:
+
+```bash
+adoc --emit-ast-schema > ast-schema.json   # feed to the model
+echo "$model_output" | adoc --from-ast -o out.html
+```
+
+The AST round-trips through `serde_json` (`--emit-ast | jq … | --from-ast`) so transformation pipelines can manipulate the tree without touching the parser.
+
+**Retrieval chunks for RAG.** `--emit-chunks` walks the document and produces one entry per leaf block — paragraphs, lists, tables, listings, admonitions, callout descriptions — with the containing-section path, plain-text body, and a SHA-256 content hash:
+
+```bash
+adoc handbook.adoc --emit-chunks --quiet > chunks.json
+```
+
+```jsonc
+[
+  {
+    "section_path": ["_methods", "_setup"],
+    "section_title": "Setup",
+    "block_index": 2,
+    "kind": "paragraph",
+    "text": "Each run starts from a clean checkout...",
+    "hash": "sha256:9f3c...e1"
+  }
+]
+```
+
+Two re-runs over the same source produce identical hashes; an edit to a single block changes only that block's hash, so an embedding-index can re-embed only the changed entries. `section_path` is the chain of section ids — the same identifiers anchored sections render to in HTML, so a chunk and its source render share `#`-fragment links.
+
+**Sandboxing untrusted generated content.** `--safe-mode safe --base-dir <dir>` rejects any `include::` that escapes the directory tree or uses an absolute path, so a hallucinated `include::../../etc/passwd[]` is denied at the preprocessor — even if the LLM produces it. `secure` disables `include::` entirely.
 
 ## What works today
 

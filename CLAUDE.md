@@ -27,16 +27,39 @@ The binary is `adoc`, defined by `src/main.rs` alongside the library at `src/lib
 
 ## Architecture
 
+### LLM / RAG-friendly entry points
+
+Three CLI flags turn the same parse pipeline into a tooling target without going through HTML rendering:
+
+| Flag | What it produces |
+| --- | --- |
+| `--emit-ast` | The full AST as `serde_json` pretty JSON. Round-trips with `--from-ast`. |
+| `--emit-ast-schema` | JSON Schema (draft-07) for the `Document` type via `schemars`. No input needed. Designed for structured-output modes. |
+| `--emit-chunks` | One JSON entry per leaf block — section path, plain text, SHA-256 content hash. The retrieval-pipeline shape. |
+
+Plus two CI-loop flags:
+
+| Flag | Behaviour |
+| --- | --- |
+| `--check` | Runs preprocess + parse + convert (so xref validation runs) but skips writing output. Exit code reflects success. |
+| `--werror` | Any diagnostic fails the run with a non-zero exit. Composes with `--check`. |
+
+When adding a feature, consider whether it needs a chunk-level representation. The `adoc::chunks` module is the canonical place for retrieval-shape extraction.
+
+## Architecture
+
 Single Cargo crate. Pipeline: **Loader → Preprocessor → Parser → Document (AST) → Converter → Writer**.
 
 The pipeline is realised as four sibling modules under `src/`:
 
 | Module | Role |
 | --- | --- |
-| `adoc::ast` | AST types (`Document`, `Block`, `Inline`), `Location`, `Converter` trait, `Attributes`. No I/O. All types `serde`-serializable. |
-| `adoc::preprocessor` | Line-level: `include::`, `ifdef`/`ifndef`/`ifeval`/`endif`, attribute entries. Produces `PreprocessedLine` with source spans. |
+| `adoc::ast` | AST types (`Document`, `Block`, `Inline`), `Location`, `Converter` trait, `Attributes`, `IdRegistry`, `SourceMap`. No I/O. All types `serde`-serializable + `schemars::JsonSchema`-derived. |
+| `adoc::preprocessor` | Line-level: `include::`, `ifdef`/`ifndef`/`ifeval`/`endif`, attribute entries. Produces `PreprocessedLine` with source spans; exposes `source_map()` for diagnostics. |
 | `adoc::parser` | Hand-written recursive-descent block parser + inline parser with the spec's six-group substitution pipeline. Consumes preprocessed lines, produces `Document`. |
 | `adoc::convert::html5` | Implements `adoc::ast::Converter` for HTML5. Owns the built-in stylesheet asset (`assets/adoc.css`). |
+| `adoc::chunks` | Block-level retrieval chunks (`Chunk` + `collect`/`to_json_pretty`) for AI/RAG pipelines. |
+| `adoc::diag` | `Diagnostic` / `Diagnostics` types — span-pointing warnings + errors that resolve through a `SourceMap` to `miette::Report` for rendering. |
 
 The `src/main.rs` binary depends on the library through `adoc::*` paths and wires the pipeline.
 

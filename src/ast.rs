@@ -8,14 +8,14 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Document {
     pub header: Option<Header>,
     pub attributes: Attributes,
     pub blocks: Vec<Block>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Header {
     pub title: Vec<Inline>,
     pub authors: Vec<Author>,
@@ -23,13 +23,13 @@ pub struct Header {
     pub location: Location,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Author {
     pub name: String,
     pub email: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Revision {
     pub number: Option<String>,
     pub date: Option<String>,
@@ -38,7 +38,7 @@ pub struct Revision {
 
 pub type Attributes = BTreeMap<String, AttributeValue>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(untagged)]
 pub enum AttributeValue {
     Bool(bool),
@@ -54,7 +54,7 @@ impl AttributeValue {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Block {
     Section(Section),
@@ -75,7 +75,7 @@ pub enum Block {
 /// The serialized form skips empty fields, so a metadata-free block round-trips
 /// through JSON as `"meta": {}` (or omits the field entirely with future
 /// `#[serde(skip_serializing_if = "BlockMeta::is_empty")]` on the parent).
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct BlockMeta {
     /// Explicit block ID (`[#myid]` shorthand or `id="myid"` attribute).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -112,7 +112,7 @@ impl BlockMeta {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Section {
     pub level: u8,
     pub title: Vec<Inline>,
@@ -122,7 +122,7 @@ pub struct Section {
     pub meta: BlockMeta,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Paragraph {
     pub inlines: Vec<Inline>,
     pub location: Location,
@@ -130,7 +130,7 @@ pub struct Paragraph {
     pub meta: BlockMeta,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct List {
     pub marker: ListMarker,
     pub items: Vec<ListItem>,
@@ -139,21 +139,21 @@ pub struct List {
     pub meta: BlockMeta,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ListMarker {
     Unordered,
     Ordered,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ListItem {
     pub depth: u8,
     pub principal: Vec<Inline>,
     pub blocks: Vec<Block>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct DescriptionList {
     pub items: Vec<DescriptionListItem>,
     pub location: Location,
@@ -161,13 +161,13 @@ pub struct DescriptionList {
     pub meta: BlockMeta,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct DescriptionListItem {
     pub term: Vec<Inline>,
     pub description: Vec<Block>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct DelimitedBlock {
     pub style: DelimitedStyle,
     pub content: DelimitedContent,
@@ -176,7 +176,7 @@ pub struct DelimitedBlock {
     pub meta: BlockMeta,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DelimitedStyle {
     Listing,
@@ -188,7 +188,7 @@ pub enum DelimitedStyle {
     Open,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "form", rename_all = "snake_case")]
 pub enum DelimitedContent {
     /// Raw text with substitutions suppressed (listing, literal, passthrough).
@@ -197,7 +197,7 @@ pub enum DelimitedContent {
     Blocks { blocks: Vec<Block> },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Table {
     pub rows: Vec<TableRow>,
     /// Column specifications parsed from `cols="…"` on the block-attribute
@@ -213,7 +213,7 @@ pub struct Table {
 /// One entry in the `cols=` spec. A spec like `"1,2,<3"` produces three of
 /// these — the width number is a relative weight (0 ⇒ unspecified) and
 /// `h_align` carries the optional `<`/`^`/`>` from the spec.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ColumnSpec {
     #[serde(default, skip_serializing_if = "is_zero_u32")]
     pub width: u32,
@@ -225,7 +225,7 @@ fn is_zero_u32(n: &u32) -> bool {
     *n == 0
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum HAlign {
     Left,
@@ -235,7 +235,7 @@ pub enum HAlign {
 
 /// A `[discrete]` heading: semantically a leaf — same syntax as a section
 /// title but flat in the document tree.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct DiscreteHeading {
     pub level: u8,
     pub title: Vec<Inline>,
@@ -247,7 +247,7 @@ pub struct DiscreteHeading {
 /// Callout list — the `<N> description` siblings of a `[source]` / listing /
 /// literal block. Each item carries the marker number that pairs it with a
 /// `<N>` callout in the preceding block.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Colist {
     pub items: Vec<ColistItem>,
     pub location: Location,
@@ -255,13 +255,13 @@ pub struct Colist {
     pub meta: BlockMeta,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ColistItem {
     pub number: u32,
     pub inlines: Vec<Inline>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct TableRow {
     pub cells: Vec<TableCell>,
     #[serde(default, skip_serializing_if = "RowKind::is_default")]
@@ -272,7 +272,9 @@ pub struct TableRow {
 /// the default; header is set by the `[%header]` option or the
 /// "first-row-then-blank-line" heuristic. Footer is reserved for `[%footer]`
 /// (parser support pending).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum RowKind {
     Header,
@@ -287,7 +289,7 @@ impl RowKind {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct TableCell {
     pub inlines: Vec<Inline>,
     /// Recursively-parsed blocks for `a|` (AsciiDoc) cells. Empty for any
@@ -324,7 +326,7 @@ fn is_one_u32(n: &u32) -> bool {
 /// `AsciiDoc` cells re-parse their content as nested AsciiDoc blocks; the
 /// parser does not yet honour that — `a|` cells currently degrade to
 /// default style. `Header` forces `<th>` regardless of row kind.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CellStyle {
     AsciiDoc,
@@ -341,7 +343,7 @@ pub enum CellStyle {
 /// internally-tagged JSON (`{"kind": "text", "value": "..."}`) — serde
 /// requires struct or unit variants for that tagging mode, since the tag
 /// is merged into the variant's serialized object.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Inline {
     Text {
@@ -406,10 +408,10 @@ pub enum Inline {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct SourceId(pub u32);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Location {
     pub source: SourceId,
     pub byte_start: u32,
@@ -442,7 +444,7 @@ impl Location {
 /// resolved to disk (or a synthetic `<input>` for stdin / string input);
 /// `content` is the raw bytes the loader read, kept around so miette can
 /// render diagnostic snippets.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct SourceFile {
     pub path: String,
     pub content: String,
@@ -453,7 +455,7 @@ pub struct SourceFile {
 /// source plus everything pulled in via `include::`. Diagnostics use
 /// it to render span-pointing snippets — the ID alone is meaningless
 /// without this map.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct SourceMap {
     sources: Vec<SourceFile>,
 }

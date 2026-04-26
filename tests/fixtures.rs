@@ -1259,6 +1259,72 @@ fn callouts_listing_markers_and_colist() {
     assert_eq!(colist_count, 0);
 }
 
+#[test]
+fn chunks_collect_skips_section_nodes_and_hashes_blocks() {
+    use adoc::chunks;
+
+    let src = r#"= Doc
+
+Intro paragraph.
+
+== Methods
+
+A paragraph in methods.
+
+* one
+* two
+
+== Conclusion
+
+Wrap up.
+"#;
+    let mut pre = adoc::preprocessor::Preprocessor::default();
+    let lines = pre.run(src, Utf8Path::new("<input>")).unwrap();
+    let doc = adoc::parser::parse(&lines).unwrap();
+
+    let cs = chunks::collect(&doc);
+    // Four chunks: intro paragraph + methods paragraph + methods list +
+    // conclusion paragraph. Section nodes themselves are descended
+    // into, not emitted.
+    assert_eq!(cs.len(), 4);
+
+    // Preamble blocks have an empty section_path.
+    assert!(cs[0].section_path.is_empty());
+    assert_eq!(cs[0].kind, "paragraph");
+    assert_eq!(cs[0].text, "Intro paragraph.");
+
+    // Section blocks carry the containing-section id chain.
+    assert_eq!(cs[1].section_path, vec!["_methods".to_string()]);
+    assert_eq!(cs[1].section_title, "Methods");
+    assert_eq!(cs[2].kind, "list");
+    assert_eq!(cs[2].text, "one\ntwo");
+
+    // The hash format is deterministic — `sha256:` plus 64 hex chars.
+    for c in &cs {
+        assert!(c.hash.starts_with("sha256:"), "hash={}", c.hash);
+        assert_eq!(c.hash.len(), 7 + 64, "hash={}", c.hash);
+    }
+
+    // Same document, same hashes — the hash is content-derived.
+    let again = chunks::collect(&doc);
+    for (a, b) in cs.iter().zip(again.iter()) {
+        assert_eq!(a.hash, b.hash);
+    }
+}
+
+#[test]
+fn ast_json_schema_is_valid_and_has_document_root() {
+    // The schema is what LLM structured-output modes will be handed,
+    // so make sure it round-trips through serde_json and roots at the
+    // Document type.
+    let schema = schemars::schema_for!(adoc::ast::Document);
+    let pretty = serde_json::to_string_pretty(&schema).expect("serialize schema");
+    assert!(pretty.contains(r#""title": "Document""#));
+    assert!(pretty.contains(r#""$ref": "#));
+    // Re-parse to confirm it's structurally valid JSON.
+    let _: serde_json::Value = serde_json::from_str(&pretty).expect("schema should be valid JSON");
+}
+
 fn render_src(src: &str) -> String {
     let mut pre = adoc::preprocessor::Preprocessor::default();
     let lines = pre.run(src, Utf8Path::new("<input>")).expect("preprocess");

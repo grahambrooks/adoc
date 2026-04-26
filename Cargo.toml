@@ -17,6 +17,8 @@ camino = { version = "1", features = ["serde1"] }
 unicode-segmentation = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+schemars = "0.8"
+sha2 = "0.10"
 
 [dev-dependencies]
 insta = { version = "1", features = ["json"] }
