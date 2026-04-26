@@ -85,7 +85,6 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - Paragraphs and hard line breaks (` +`).
 - Ordered, unordered, and description lists with depth and `+` continuation.
 - All seven delimited block styles: listing, literal, example, quote, sidebar, passthrough, open.
-- Simple tables (one cell per `|` delimiter; column specs and cell formatters are not yet handled).
 - Constrained and unconstrained inline quotes: `*strong*`, `_emphasis_`, `` `monospace` ``, plus `**`/`__`/```` `` ```` forms.
 - Inline macros: `link:`, `mailto:`, `xref:`, `image:`, `anchor:id[]`, `kbd:[Ctrl+C]`, `btn:[OK]`, `menu:File[Save > Save As]`, shorthand `<<xref>>`, and `http(s)`/`ftp` autolinks. `link:{attr}[label]` substitutes attribute references in the URL; `https://url[label]` is also accepted (bare URL with explicit text).
 - Block image — `image::path[alt, width, height]` on its own line renders as `<div class="imageblock">` with optional `.Title` caption.
@@ -102,7 +101,7 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
 - Safe modes — `unsafe` (no checks), `safe` / `server` (rejects absolute include paths and any path that escapes `--base-dir` after canonicalisation), `secure` (disables `include::` entirely).
 - Section IDs — auto-derived from titles (`_` prefix, lowercase, non-alphanumeric collapsed to `_`, deduped with `_2`/`_3`/… suffixes), or supplied explicitly via the `[#id]` shorthand or the legacy `[[id]]` / `[[id, reftext]]` block-anchor line. Anchored blocks render with `id="…"` so `xref:` targets that previously dangled now resolve.
 - Admonitions — paragraph form (`NOTE: text`, `TIP: …`, `IMPORTANT: …`, `WARNING: …`, `CAUTION: …`) and block form (`[NOTE]` on any paragraph or `====` example block) render as `<div class="admonitionblock kw">` with a labelled body. Bundled CSS gives each variant a coloured side-rule.
-- Source blocks with language — `[source,LANG]` on a `----` listing emits `<pre><code class="language-LANG">…</code></pre>` so downstream highlighters (Prism, Highlight.js, Rouge) can take over without conflict.
+- Source blocks with language — `[source,LANG]` on a `----` listing emits `<pre data-lang="LANG"><code class="language-LANG">…</code></pre>`. The `data-lang` attribute drives a small CSS-only language pill in the corner; the `language-LANG` class is the integration point for any client-side highlighter.
 - Inline extras — subscript `~text~`, superscript `^text^`, highlight `#text#` / `##text##`, constrained passthrough `+text+` and unconstrained `++text++` (HTML-escaped, no inline subs), `pass:[…]` macro (raw HTML), and inline footnotes `footnote:[…]` / `footnote:id[…]`. The converter rewrites each inline footnote into a numbered `<sup class="footnote">[<a href="#_footnotedef_N">N</a>]</sup>` ref and gathers the bodies into a `<div id="footnotes">` section at the end of the body, with back-links to the inline ref via `_footnoteref_N` / `_footnotedef_N`.
 - TOC, sectnums, sectanchors — `:toc:` emits a nested `<div id="toc">` with title links above the body; `:sectnums:` prepends `1.2.3` numbering to section headings (and TOC entries); `:sectanchors:` adds a hover-revealed `<a class="anchor">` next to each heading. All three are computed in a single pre-walk.
 - `--emit-ast` / `--from-ast` — the AST round-trips through `serde_json`, locking in the JSON shape as a public contract. The stdio extension model now works:
@@ -111,21 +110,23 @@ Exit codes: `0` success · `1` usage error · `2` parse/convert error · `3` I/O
   ```
   Variants are internally tagged: `{"kind": "text", "value": "hi"}`, `{"kind": "section", "level": 1, "title": [...], …}`, etc. Unit variants serialize as `{"kind": "line_break"}`.
 - Tables — `<thead>`/`<tbody>` split, header rows detected via `[%header]` / `options="header"` or the spec's blank-line-after-first-row heuristic; cell formatters `m|` (monospace), `s|` (strong), `e|` (emphasis), `l|` (literal `<pre>`), `h|` (forced `<th>` even in body rows), and `a|` (AsciiDoc — content recursively parses as nested blocks). `cols="…"` parses widths (`1,2,1`), alignments (`<,^,>`), repeats (`3*<`), and width+alignment combos (`<2,^1,>1`); widths emit a `<colgroup>` with normalised percentages and alignments paint `class="halign-left|center|right"` on each cell. Per-cell formatter prefixes combine span (`2+|`), alignment (`<|` / `^|` / `>|`), and style letter (`a`, `m`, `s`, `e`, `h`, `l`) — e.g. `2+a|`, `^m|`, `<s|` — and rows can begin with the formatter alone (e.g. `a| content` opens a row whose first cell is an AsciiDoc cell).
-- Source-block syntax highlighting — opt-in via `:source-highlighter: prism` or `:source-highlighter: highlightjs`; the converter injects the matching CDN `<link>` / `<script>` tags so any `[source,LANG]` listing gets highlighted in the browser. Themes pick via `:prism-theme:` / `:highlightjs-theme:` (defaults: `prism`, `default`). Unset (or any other value, e.g. `rouge`/`pygments`) keeps the BYO model — just the `language-LANG` class on `<code>`.
+- Source-block syntax highlighting — opt-in via `:source-highlighter: prism` or `:source-highlighter: highlightjs`. The converter loads a light + dark theme pair from the matching CDN with `media="(prefers-color-scheme: …)"`, so code rendering follows the document's color scheme. Defaults: `prism` / `prism-tomorrow` and `github` / `github-dark`. Each side overridable via `:prism-theme:` / `:prism-dark-theme:` / `:highlightjs-theme:` / `:highlightjs-dark-theme:`; set the dark variant to `!:` to suppress it. A small inline `<style>` re-asserts `--adoc-code-bg` / `--adoc-code-fg` on the highlighter's surface so backgrounds match the rest of the document.
 - Source-block callouts — `<1>` / `<2>` markers inside listing or literal blocks render as `<b class="conum">(N)</b>`, and a sibling `<N> description` block — one or more adjacent callout lines after the listing — becomes an `<ol class="colist">` with each `<li value="N">` carrying the matching description. Markers render whether or not a colist follows; a colist after a non-listing block is treated as ordinary text.
 
 ## What's missing
 
 The big-ticket items, in roughly the order they're queued:
 
-- **`include::` argument tail** — `encoding=` and tag wildcards (`*`, `**`). The common arguments (`lines=`, `tags=`, `leveloffset=`, `indent=`) are in.
-- **`:toc-placement:`** — TOC currently always renders at the top.
-- **Doc-wide ID registry + xref validation** — section IDs land on the AST nodes today, but there's no centralised registry yet, so dangling xrefs render silently (the `<a href>` is emitted but the target doesn't exist). Validation belongs with the diagnostics work.
+- **Doc-wide ID registry + xref validation** — section IDs land on AST nodes today, but there's no centralised registry yet, so dangling xrefs render silently (the `<a href>` is emitted but the target doesn't exist). Validation belongs with the diagnostics work.
+- **Real `miette::Diagnostic` errors** with span pointers — every `Location` is already on the AST; the error types just don't carry them. High-leverage UX work.
 - **Tables — remaining bits**: row span (`.3+|`, `2.3+|`) parses today but doesn't influence row layout; multi-line cell continuation; cell repetition (`3*|`); CSV/DSV separators (`format=csv|dsv` with custom separator).
-- **Bibliography entries** (`[[[id]]]`) and the numbered end-of-doc footnote section.
-- **TOC, discrete headings, `sectnums`, `sectanchors`.**
-- **`--emit-ast` / `--from-ast`** wiring for the stdio extension model.
-- **Real `miette::Diagnostic` errors** with span pointers (locations are already plumbed; error types just don't carry them yet).
+- **Index terms** (`(((primary)))` / `(((primary, secondary)))`) — invisible markers for technical-book indexes.
+- **Bibliography entries** (`[[[id]]]`) and the citation cross-reference form.
+- **`<<id>>` macro suppression inside backticks** — currently spec-compliant but counterintuitive; users expect `\`\<<x>>\`` to render literal `<<x>>` without escaping.
+- **`include::` argument tail** — `encoding=` and tag wildcards (`*`, `**`). Common arguments (`lines=`, `tags=`, `leveloffset=`, `indent=`) are in.
+- **`:toc-placement:`** — TOC currently always renders at the top of `<main id="content">`.
+- **`:doctype: book` / `:doctype: manpage`** — wrapper differences; default behaviour matches the `article` doctype.
+- **Stem / math** (`stem:[]`, `latexmath`, `asciimath`) — deliberately out of v1 scope; would need MathJax/KaTeX integration along the same pattern as `:source-highlighter:`.
 
 See [DESIGN.md](DESIGN.md) for the full inventory and rationale.
 
