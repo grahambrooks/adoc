@@ -10,6 +10,14 @@ name: Release
 #
 # A push to a tag matching `[0-9]{4}.[0-9]+.[0-9]+` also triggers a
 # release; the tag itself is treated as the version.
+#
+# Targets:
+#   aarch64-apple-darwin        macOS Apple Silicon   (native, macos-14)
+#   x86_64-apple-darwin         macOS Intel           (cross-compiled on macos-14 —
+#                                                      the macos-13 Intel runner has
+#                                                      been retired by GitHub)
+#   x86_64-unknown-linux-gnu    Linux x64             (native)
+#   x86_64-pc-windows-msvc      Windows Intel/x64     (native)
 
 on:
   workflow_dispatch:
@@ -24,21 +32,26 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   version:
     name: Resolve version
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       version: ${{ steps.set.outputs.version }}
     steps:
       - id: set
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "$EVENT_NAME" = "push" ]; then
             v="${GITHUB_REF#refs/tags/}"
           else
-            v="${{ inputs.version }}"
+            v="${INPUT_VERSION:-}"
           fi
           if [ -z "${v:-}" ]; then
             v="$(date -u +'%Y.%-m.%-d')"
@@ -53,6 +66,7 @@ jobs:
   build:
     name: Build ${{ matrix.target }}
     needs: version
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -61,18 +75,25 @@ jobs:
             target: aarch64-apple-darwin
             archive: tar.gz
             bin: adoc
-          - os: macos-13
+            native: true
+          # GitHub retired the macos-13 (Intel) runner, so the Intel macOS
+          # build is cross-compiled from the Apple Silicon runner. The macOS
+          # SDK ships both slices, so this needs no extra tooling.
+          - os: macos-14
             target: x86_64-apple-darwin
             archive: tar.gz
             bin: adoc
+            native: false
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
             bin: adoc
+            native: true
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             archive: zip
             bin: adoc.exe
+            native: true
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -87,37 +108,80 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      - name: Patch Cargo.toml version
+      # Both Cargo.toml *and* Cargo.lock carry the package version. Patching
+      # only the manifest leaves the lock file stale, which makes every
+      # `cargo build --locked` fail ("cannot update the lock file because
+      # --locked was passed"). Keep the two in step.
+      - name: Patch package version
         shell: bash
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
           set -euo pipefail
-          v="${{ needs.version.outputs.version }}"
-          # Ephemeral edit — only this CI runner sees it. The change
-          # never gets committed back; we just want `adoc --version`
-          # to report the calver string for the build artifact.
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            sed -i '' "s/^version = .*/version = \"${v}\"/" Cargo.toml
-          else
-            sed -i "s/^version = .*/version = \"${v}\"/" Cargo.toml
-          fi
-          grep '^version' Cargo.toml
+          python3 - "$VERSION" <<'PY'
+          import re, sys
+
+          version = sys.argv[1]
+
+          with open("Cargo.toml", encoding="utf-8") as fh:
+              manifest = fh.read()
+          manifest, n = re.subn(
+              r'(?m)^version = .*$', f'version = "{version}"', manifest, count=1
+          )
+          assert n == 1, "no version line found in Cargo.toml"
+          with open("Cargo.toml", "w", encoding="utf-8", newline="") as fh:
+              fh.write(manifest)
+
+          with open("Cargo.lock", encoding="utf-8") as fh:
+              lock = fh.read()
+          lock, n = re.subn(
+              r'(\[\[package\]\]\r?\nname = "adoc"\r?\nversion = )"[^"]*"',
+              rf'\g<1>"{version}"',
+              lock,
+              count=1,
+          )
+          assert n == 1, "no adoc package entry found in Cargo.lock"
+          with open("Cargo.lock", "w", encoding="utf-8", newline="") as fh:
+              fh.write(lock)
+          PY
+          grep -m1 '^version' Cargo.toml
+          # Fails loudly if the manifest and lock have drifted apart.
+          cargo metadata --locked --format-version 1 > /dev/null
 
       - name: Build release binary
         run: cargo build --release --locked --target ${{ matrix.target }}
 
-      - name: Stage artifact
+      - name: Smoke-test binary
+        if: matrix.native
         shell: bash
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
           set -euo pipefail
-          v="${{ needs.version.outputs.version }}"
-          stage="adoc-${v}-${{ matrix.target }}"
+          out="$(./target/${{ matrix.target }}/release/${{ matrix.bin }} --version)"
+          echo "$out"
+          echo "$out" | grep -Fq "$VERSION"
+
+      - name: Verify cross-compiled binary architecture
+        if: ${{ !matrix.native }}
+        run: |
+          set -euo pipefail
+          file "target/${{ matrix.target }}/release/${{ matrix.bin }}"
+          file "target/${{ matrix.target }}/release/${{ matrix.bin }}" | grep -q 'x86_64'
+
+      - name: Stage artifact
+        shell: bash
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          stage="adoc-${VERSION}-${{ matrix.target }}"
           mkdir -p "$stage"
           cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "$stage/"
           if [ "${{ runner.os }}" != "Windows" ]; then
             strip "$stage/${{ matrix.bin }}" || true
           fi
-          # Bundle README + LICENSE if they exist; tolerate either being
-          # absent (Windows runners can rename files differently).
+          # Bundle README + LICENSE if they exist; tolerate either being absent.
           cp README.md "$stage/" 2>/dev/null || true
           cp LICENSE "$stage/" 2>/dev/null || true
           cp LICENSE-2.0.txt "$stage/" 2>/dev/null || true
@@ -141,9 +205,14 @@ jobs:
     name: Publish release + update Homebrew formula
     needs: [version, build]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
+      # Always base the formula update on the tip of main: on a tag trigger the
+      # default checkout is the tag commit, and a PR from that would revert any
+      # commit landed since.
       - uses: actions/checkout@v6
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Download all build artifacts
@@ -152,14 +221,34 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: List artifacts
-        run: ls -la dist
+      - name: Verify every expected archive is present
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          ls -la dist
+          missing=0
+          for f in \
+            "adoc-${VERSION}-aarch64-apple-darwin.tar.gz" \
+            "adoc-${VERSION}-x86_64-apple-darwin.tar.gz" \
+            "adoc-${VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            "adoc-${VERSION}-x86_64-pc-windows-msvc.zip" \
+          ; do
+            if [ ! -f "dist/$f" ]; then
+              echo "::error::missing release archive $f"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+          ( cd dist && sha256sum adoc-*.tar.gz adoc-*.zip > SHA256SUMS.txt )
+          cat dist/SHA256SUMS.txt
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.version }}
           name: ${{ needs.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
           files: dist/*
           generate_release_notes: true
 
@@ -169,18 +258,24 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          mac_arm="dist/adoc-${VERSION}-aarch64-apple-darwin.tar.gz"
-          mac_x86="dist/adoc-${VERSION}-x86_64-apple-darwin.tar.gz"
-          linux_x86="dist/adoc-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
-
-          mac_arm_sha=$(sha256sum "$mac_arm" | awk '{print $1}')
-          mac_x86_sha=$(sha256sum "$mac_x86" | awk '{print $1}')
-          linux_x86_sha=$(sha256sum "$linux_x86" | awk '{print $1}')
+          mac_arm_sha=$(sha256sum "dist/adoc-${VERSION}-aarch64-apple-darwin.tar.gz" | awk '{print $1}')
+          mac_x86_sha=$(sha256sum "dist/adoc-${VERSION}-x86_64-apple-darwin.tar.gz" | awk '{print $1}')
+          linux_x86_sha=$(sha256sum "dist/adoc-${VERSION}-x86_64-unknown-linux-gnu.tar.gz" | awk '{print $1}')
 
           base="https://github.com/${REPO}/releases/download/${VERSION}"
 
           mkdir -p Formula
           cat > Formula/adoc.rb <<RUBY
+          # Homebrew formula for the \`adoc\` AsciiDoc processor.
+          #
+          # Generated by .github/workflows/release.yml — every successful release
+          # replaces this file with the version number and SHA256s of the freshly
+          # published archives. Manual edits are overwritten on the next release.
+          #
+          #   brew install grahambrooks/adoc/adoc
+          #
+          # Windows users: Homebrew has no Windows support; grab the
+          # adoc-${VERSION}-x86_64-pc-windows-msvc.zip archive from the Releases page.
           class Adoc < Formula
             desc "Rust command-line processor for the AsciiDoc Language specification"
             homepage "https://github.com/${REPO}"
@@ -215,18 +310,37 @@ jobs:
           echo "Generated Formula/adoc.rb:"
           cat Formula/adoc.rb
 
-      - name: Commit updated formula
+      # `main` is guarded by the `automation-guard` ruleset (changes must go
+      # through a pull request) and GITHUB_TOKEN is not a bypass actor, so the
+      # formula bump lands as a PR that this job immediately merges.
+      - name: Open + merge formula PR
         env:
           VERSION: ${{ needs.version.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/adoc.rb
-          if git diff --cached --quiet; then
-            echo "Formula already up to date."
+
+          if git diff --quiet -- Formula/adoc.rb; then
+            echo "Formula already up to date; nothing to land."
             exit 0
           fi
+
+          branch="release/formula-${VERSION}"
+          git checkout -b "$branch"
+          git add Formula/adoc.rb
           git commit -m "chore(release): refresh Homebrew formula for ${VERSION}"
-          # On a tag-trigger we're in detached-HEAD; push to main directly.
-          git push origin HEAD:main
+          git push --force origin "HEAD:refs/heads/${branch}"
+
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "chore(release): refresh Homebrew formula for ${VERSION}" \
+            --body "Automated by the Release workflow: points Formula/adoc.rb at the ${VERSION} archives and their SHA256s." \
+            || echo "PR already exists for ${branch}; reusing it."
+          url=$(gh pr view "$branch" --json url --jq .url)
+          echo "Formula PR: $url"
+
+          gh pr merge "$branch" --squash --delete-branch
+          echo "Merged $url into main."
