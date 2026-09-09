@@ -104,7 +104,7 @@ The workflow:
 
 1. Builds the release binary for `aarch64-apple-darwin`, `x86_64-apple-darwin`, `x86_64-unknown-linux-gnu`, and `x86_64-pc-windows-msvc`. Both macOS targets build on the `macos-14` (Apple Silicon) runner — GitHub retired the `macos-13` Intel runner, so Intel macOS is cross-compiled. Each runner ephemerally patches the version in **both** `Cargo.toml` and `Cargo.lock` (patching only the manifest makes `cargo build --locked` fail) so `adoc --version` reports the calver string for that build.
 2. Uploads each archive (`adoc-<version>-<target>.{tar.gz|zip}`) plus `SHA256SUMS.txt` to a GitHub Release tagged with the calver string.
-3. Regenerates `Formula/adoc.rb` with the new URLs and SHA256s. `main` is guarded by the `automation-guard` ruleset (changes must arrive via PR, and `GITHUB_TOKEN` is not a bypass actor), so the workflow pushes a `release/formula-<version>` branch, opens a PR, and squash-merges it — `brew install grahambrooks/adoc/adoc` then picks up the latest version.
+3. Regenerates `Formula/adoc.rb` with the new URLs and SHA256s. `main` is guarded by the `automation-guard` ruleset (changes must arrive via PR, and `GITHUB_TOKEN` is not a bypass actor), so the workflow pushes a `release/formula-<version>` branch, opens a PR, and squash-merges it. This needs **Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"** enabled; without it the release still publishes but the branch is left for a human to PR.
 
 Pushing a calver-shaped tag (`git tag 2026.4.26 && git push --tags`) also triggers the same workflow.
 
