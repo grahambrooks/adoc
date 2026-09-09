@@ -316,11 +316,7 @@ impl<'a> InlineParser<'a> {
             }
             // The first content char must not be whitespace.
             let after_open = &rem[open.len()..];
-            if after_open
-                .chars()
-                .next()
-                .map_or(true, |c| c.is_whitespace())
-            {
+            if after_open.chars().next().is_none_or(|c| c.is_whitespace()) {
                 continue;
             }
             // Find the closing pair somewhere ahead.
@@ -472,18 +468,14 @@ fn find_closing(rem: &str, marker: &str, start: usize, constrained: bool) -> Opt
                 return None;
             }
             let inner = &hay[..i];
-            if inner
-                .chars()
-                .next_back()
-                .map_or(true, |c| c.is_whitespace())
-            {
+            if inner.chars().next_back().is_none_or(|c| c.is_whitespace()) {
                 i += 1;
                 continue;
             }
             if constrained {
                 // Char after the closing marker must not be a word char.
                 let after = &hay[i + mb.len()..];
-                if after.chars().next().map_or(true, |c| !is_word_char(c)) {
+                if after.chars().next().is_none_or(|c| !is_word_char(c)) {
                     return Some(i);
                 }
                 i += 1;
