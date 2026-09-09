@@ -34,7 +34,7 @@ Three CLI flags turn the same parse pipeline into a tooling target without going
 | Flag | What it produces |
 | --- | --- |
 | `--emit-ast` | The full AST as `serde_json` pretty JSON. Round-trips with `--from-ast`. |
-| `--emit-ast-schema` | JSON Schema (2020-12) for the `Document` type via `schemars`. No input needed. Designed for structured-output modes. The dialect is part of the published interface — `tests/schema.rs` pins it, so a `schemars` bump that moves it fails CI rather than changing it silently. |
+| `--emit-ast-schema` | JSON Schema (2020-12) for the `Document` type via `schemars`. No input needed. Designed for structured-output modes. The dialect is part of the published interface — `tests/schema.rs` pins it, so a `schemars` bump that moves it fails CI rather than changing it silently. (This table read "draft-07" until 2026-09-08; that had been stale since the `schemars` 0.8 → 0.9 upgrade, which is where 2020-12 came in.) |
 | `--emit-chunks` | One JSON entry per leaf block — section path, plain text, SHA-256 content hash. The retrieval-pipeline shape. |
 
 Plus two CI-loop flags:
