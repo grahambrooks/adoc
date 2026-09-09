@@ -1,0 +1,19 @@
+Cargo.lock
+  s_3a697279dd5c36::t_cde34b2f81b74d 556,597,744
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "956fbd14a8ee590a0b9a6e974f3decc487cbd901",
+  "prompts": {},
+  "sessions": {
+    "s_3a697279dd5c36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "509d6695-3057-4828-8b96-e0081fe2107f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Graham Brooks <graham@grahambrooks.com>"
+    }
+  }
+}
