@@ -15,20 +15,26 @@ A Rust command-line processor for the [AsciiDoc Language specification](https://
 
 ### Homebrew (macOS / Linux)
 
+The tap lives in this repository rather than a separate
+`homebrew-adoc` repo, so Homebrew needs the remote spelled out — and,
+since Homebrew 6, third-party formulae must be trusted before they will
+load:
+
 ```bash
-brew install grahambrooks/adoc/adoc
+brew trust --formula grahambrooks/adoc/adoc
+brew tap grahambrooks/adoc https://github.com/grahambrooks/adoc
+brew install adoc
 ```
 
-That single command taps this repository and installs a pre-built
-binary for your platform. The tap is the same `Formula/adoc.rb` that
-lives in this repo; the [release workflow](.github/workflows/release.yml)
-keeps it in sync with each calver-tagged release.
+`Formula/adoc.rb` is the tap; the
+[release workflow](.github/workflows/release.yml) keeps it in sync with
+each calver-tagged release, so `brew upgrade adoc` picks up new versions.
 
-`Formula/adoc.rb` always tracks the newest release. To install an
-older version, point Homebrew at the formula as it stood at that tag:
+To install an older version, point Homebrew at the formula as it stood
+at that tag:
 
 ```bash
-brew install https://raw.githubusercontent.com/grahambrooks/adoc/2026.4.26/Formula/adoc.rb
+brew install https://raw.githubusercontent.com/grahambrooks/adoc/2026.9.9/Formula/adoc.rb
 ```
 
 ### Pre-built binaries

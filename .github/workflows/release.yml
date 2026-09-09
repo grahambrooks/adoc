@@ -272,7 +272,9 @@ jobs:
           # replaces this file with the version number and SHA256s of the freshly
           # published archives. Manual edits are overwritten on the next release.
           #
-          #   brew install grahambrooks/adoc/adoc
+          #   brew trust --formula grahambrooks/adoc/adoc
+          #   brew tap grahambrooks/adoc https://github.com/${REPO}
+          #   brew install adoc
           #
           # Windows users: Homebrew has no Windows support; grab the
           # adoc-${VERSION}-x86_64-pc-windows-msvc.zip archive from the Releases page.
@@ -333,13 +335,19 @@ jobs:
           git commit -m "chore(release): refresh Homebrew formula for ${VERSION}"
           git push --force origin "HEAD:refs/heads/${branch}"
 
+          # `gh pr create` fails if a PR for this branch already exists (a rerun),
+          # which is fine — `gh pr view` below picks it up either way.
           gh pr create \
             --base main \
             --head "$branch" \
             --title "chore(release): refresh Homebrew formula for ${VERSION}" \
             --body "Automated by the Release workflow: points Formula/adoc.rb at the ${VERSION} archives and their SHA256s." \
-            || echo "PR already exists for ${branch}; reusing it."
-          url=$(gh pr view "$branch" --json url --jq .url)
+            || true
+
+          if ! url=$(gh pr view "$branch" --json url --jq .url 2>/dev/null); then
+            echo "::error::Could not open a PR for ${branch}. If the log above says \"GitHub Actions is not permitted to create or approve pull requests\", enable Settings → Actions → General → Workflow permissions → \"Allow GitHub Actions to create and approve pull requests\". The ${VERSION} release itself is published; only the Homebrew formula bump is outstanding — open a PR from ${branch} by hand to land it."
+            exit 1
+          fi
           echo "Formula PR: $url"
 
           gh pr merge "$branch" --squash --delete-branch
