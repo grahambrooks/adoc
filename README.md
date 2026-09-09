@@ -24,20 +24,33 @@ binary for your platform. The tap is the same `Formula/adoc.rb` that
 lives in this repo; the [release workflow](.github/workflows/release.yml)
 keeps it in sync with each calver-tagged release.
 
-To pin to a specific version:
+`Formula/adoc.rb` always tracks the newest release. To install an
+older version, point Homebrew at the formula as it stood at that tag:
 
 ```bash
-brew tap grahambrooks/adoc https://github.com/grahambrooks/adoc
-brew install adoc@2026.4.26   # any published tag
+brew install https://raw.githubusercontent.com/grahambrooks/adoc/2026.4.26/Formula/adoc.rb
 ```
 
 ### Pre-built binaries
 
-Each release ships archives for `aarch64-apple-darwin`,
-`x86_64-apple-darwin`, `x86_64-unknown-linux-gnu`, and
-`x86_64-pc-windows-msvc` on the [Releases page]. Pick the archive for
-your target, extract `adoc` (or `adoc.exe`), put it on your `PATH`.
-Versions are calver `YYYY.M.D` — e.g. `2026.4.26`.
+Each release ships an archive per platform on the [Releases page]:
+
+| Platform | Archive |
+| --- | --- |
+| macOS, Apple Silicon | `adoc-<version>-aarch64-apple-darwin.tar.gz` |
+| macOS, Intel | `adoc-<version>-x86_64-apple-darwin.tar.gz` |
+| Linux, x86-64 | `adoc-<version>-x86_64-unknown-linux-gnu.tar.gz` |
+| Windows, Intel/x64 | `adoc-<version>-x86_64-pc-windows-msvc.zip` |
+
+Extract `adoc` (or `adoc.exe` on Windows) and put it on your `PATH`.
+Versions are calver `YYYY.M.D`. Every release also carries a
+`SHA256SUMS.txt` listing the checksum of each archive.
+
+Homebrew has no Windows support — on Windows take the `.zip` directly:
+
+```powershell
+Expand-Archive adoc-<version>-x86_64-pc-windows-msvc.zip -DestinationPath .
+```
 
 [Releases page]: https://github.com/grahambrooks/adoc/releases
 
