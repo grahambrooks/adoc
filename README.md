@@ -43,19 +43,21 @@ Each release ships an archive per platform on the [Releases page]:
 
 | Platform | Archive |
 | --- | --- |
-| macOS, Apple Silicon | `adoc-<version>-aarch64-apple-darwin.tar.gz` |
-| macOS, Intel | `adoc-<version>-x86_64-apple-darwin.tar.gz` |
-| Linux, x86-64 | `adoc-<version>-x86_64-unknown-linux-gnu.tar.gz` |
-| Windows, Intel/x64 | `adoc-<version>-x86_64-pc-windows-msvc.zip` |
+| macOS, Apple Silicon | `adoc-<tag>-aarch64-apple-darwin.tar.gz` |
+| macOS, Intel | `adoc-<tag>-x86_64-apple-darwin.tar.gz` |
+| Linux, x86-64 | `adoc-<tag>-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux, arm64 | `adoc-<tag>-aarch64-unknown-linux-gnu.tar.gz` |
+| Windows, Intel/x64 | `adoc-<tag>-x86_64-pc-windows-msvc.zip` |
 
-Extract `adoc` (or `adoc.exe` on Windows) and put it on your `PATH`.
-Versions are calver `YYYY.M.D`. Every release also carries a
-`SHA256SUMS.txt` listing the checksum of each archive.
+Extract `adoc` (or `adoc.exe` on Windows) — it sits at the root of the
+archive — and put it on your `PATH`. Tags are calver `vYYYY.M.D`
+(releases up to `2026.9.9` were tagged without the `v`). Every
+release also carries a `SHA256SUMS` listing the checksum of each archive.
 
 Homebrew has no Windows support — on Windows take the `.zip` directly:
 
 ```powershell
-Expand-Archive adoc-<version>-x86_64-pc-windows-msvc.zip -DestinationPath .
+Expand-Archive adoc-<tag>-x86_64-pc-windows-msvc.zip -DestinationPath .
 ```
 
 [Releases page]: https://github.com/grahambrooks/adoc/releases

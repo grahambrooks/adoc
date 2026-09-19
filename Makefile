@@ -60,8 +60,9 @@ ci: fmt-check lint test ## Run the checks expected to pass in CI
 # `make release` bumps `Cargo.toml` to today's UTC calver version
 # (YYYY.M.D, with no leading zeros — Cargo's SemVer parser rejects
 # `2026.04.26` but accepts `2026.4.26`), commits the bump, tags it,
-# and pushes both the branch and the tag. The tag push triggers the
-# `Release` workflow under `.github/workflows/release.yml` which
+# as `v<version>`, and pushes both the branch and the tag. The tag push
+# triggers the standard release-kit v2 workflow
+# (`.github/workflows/release.yml`, configured by `.release.env`) which
 # builds binaries, publishes a GitHub Release, and refreshes
 # `Formula/adoc.rb`.
 #
@@ -91,8 +92,8 @@ release: ## Cut a calver release: bump Cargo.toml, commit, tag, and push (trigge
 		echo "error: not on main (current branch: $$branch); releases are cut from main." >&2; \
 		exit 1; \
 	fi; \
-	if git rev-parse "refs/tags/$$v" >/dev/null 2>&1; then \
-		echo "error: tag $$v already exists. Delete it first or wait until tomorrow." >&2; \
+	if git rev-parse "refs/tags/v$$v" >/dev/null 2>&1; then \
+		echo "error: tag v$$v already exists. Delete it first or wait until tomorrow." >&2; \
 		exit 1; \
 	fi; \
 	echo "==> Bumping Cargo.toml version to $$v"; \
@@ -108,9 +109,9 @@ release: ## Cut a calver release: bump Cargo.toml, commit, tag, and push (trigge
 	echo "==> Committing and tagging"; \
 	git add Cargo.toml Cargo.lock; \
 	git commit -m "release: $$v"; \
-	git tag "$$v"; \
-	echo "==> Pushing main and tag $$v (this triggers the Release workflow)"; \
+	git tag "v$$v"; \
+	echo "==> Pushing main and tag v$$v (this triggers the release workflow)"; \
 	git push origin main; \
-	git push origin "$$v"; \
+	git push origin "v$$v"; \
 	echo "==> Release $$v triggered."; \
 	echo "    Watch: https://github.com/grahambrooks/adoc/actions"

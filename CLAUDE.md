@@ -98,15 +98,13 @@ The `crate::ast::inlines_to_plain` helper is the single canonical AST → plain-
 
 ## Releasing
 
-Cut a calver release (`YYYY.M.D`) by triggering the **Release** workflow under the GitHub Actions tab. Leave the `version` input blank to use today's UTC date, or supply an explicit value.
+Releases use the standard **release-kit v2** workflow: `.github/workflows/release.yml` and `scripts/release.py` are byte-identical across grahambrooks' Rust tools — never edit them here; everything adoc-specific lives in `.release.env`. The **tag is the version**: cut a release with `make release` (bumps, tags `vYYYY.M.D`, pushes), or push a `v`-prefixed calver tag yourself (`git tag v2026.4.26 && git push origin v2026.4.26`). Releases before the switch were tagged without the `v` (e.g. `2026.9.9`); those tags no longer trigger anything. To re-run a tag, use **Actions → release → Run workflow** with the existing tag.
 
 The workflow:
 
-1. Builds the release binary for `aarch64-apple-darwin`, `x86_64-apple-darwin`, `x86_64-unknown-linux-gnu`, and `x86_64-pc-windows-msvc`. Both macOS targets build on the `macos-14` (Apple Silicon) runner — GitHub retired the `macos-13` Intel runner, so Intel macOS is cross-compiled. Each runner ephemerally patches the version in **both** `Cargo.toml` and `Cargo.lock` (patching only the manifest makes `cargo build --locked` fail) so `adoc --version` reports the calver string for that build.
-2. Uploads each archive (`adoc-<version>-<target>.{tar.gz|zip}`) plus `SHA256SUMS.txt` to a GitHub Release tagged with the calver string.
-3. Regenerates `Formula/adoc.rb` with the new URLs and SHA256s. `main` is guarded by the `automation-guard` ruleset (changes must arrive via PR, and `GITHUB_TOKEN` is not a bypass actor), so the workflow pushes a `release/formula-<version>` branch, opens a PR, and squash-merges it. This needs **Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"** enabled; without it the release still publishes but the branch is left for a human to PR.
-
-Pushing a calver-shaped tag (`git tag 2026.4.26 && git push --tags`) also triggers the same workflow.
+1. Stamps the tag's version into `Cargo.toml`/`Cargo.lock` on each runner and builds `adoc` for `aarch64-apple-darwin`, `x86_64-apple-darwin` (cross-compiled on Apple Silicon), `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, and `x86_64-pc-windows-msvc`.
+2. Uploads each archive (`adoc-v<version>-<target>.tar.gz`, `.zip` on Windows, with `adoc` at the archive root) to the GitHub Release for the tag, then a `SHA256SUMS`.
+3. Regenerates `Formula/adoc.rb` from `SHA256SUMS` and bumps `Cargo.toml` to the released version in one PR that it opens and squash-merges (`main` is guarded by the `automation-guard` ruleset). This needs **Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"** enabled.
 
 A release does not require any source-code change. Manual `Cargo.toml` version bumps belong with feature work, not the release cycle.
 

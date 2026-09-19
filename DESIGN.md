@@ -251,11 +251,9 @@ The current `adoc::ast` types cover what the parser produces. The remaining cons
 
 ## Releasing
 
-Calver (`YYYY.M.D`) releases are cut by the [`Release` workflow](.github/workflows/release.yml). The workflow accepts an explicit version input or defaults to today's UTC date, builds for `aarch64-apple-darwin` / `x86_64-apple-darwin` / `x86_64-unknown-linux-gnu` / `x86_64-pc-windows-msvc`, attaches the archives to a GitHub Release, and refreshes `Formula/adoc.rb` so `brew install grahambrooks/adoc/adoc` resolves to the latest published version.
+Calver releases are cut by pushing a `vYYYY.M.D` tag (`make release` does it), which runs the standard release-kit v2 [`release` workflow](.github/workflows/release.yml), configured by `.release.env`. It builds for `aarch64-apple-darwin` / `x86_64-apple-darwin` / `x86_64-unknown-linux-gnu` / `aarch64-unknown-linux-gnu` / `x86_64-pc-windows-msvc`, attaches the archives and a `SHA256SUMS` to the GitHub Release, and refreshes `Formula/adoc.rb` so `brew install grahambrooks/adoc/adoc` resolves to the latest published version.
 
-The workflow patches `Cargo.toml`'s version line ephemerally on each runner so `adoc --version` reports the calver string for the artifact, but it does not commit that change — `Cargo.toml` stays at its development value between releases. Triggering a release therefore does not require a source-code change.
-
-The Homebrew tap is the same `Formula/adoc.rb` that lives in this repo. The release job rewrites the file with new URLs / SHA256s and commits it back to `main` with a `chore(release):` message, so the tap is always in sync with the most recent release.
+The workflow stamps the tag's version into `Cargo.toml` on each runner so `adoc --version` reports the calver string for the artifact, and after publishing lands that version bump — together with the regenerated formula — on `main` through a pull request it opens and merges, so the tap is always in sync with the most recent release.
 
 ## Dependencies
 
