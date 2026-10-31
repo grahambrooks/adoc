@@ -36,6 +36,10 @@ pub(crate) fn render_block(
             Ok(())
         }
         Block::DiscreteHeading(d) => render_discrete_heading(out, d),
+        Block::ThematicBreak(_) => {
+            out.push_str("<hr>\n");
+            Ok(())
+        }
     }
 }
 

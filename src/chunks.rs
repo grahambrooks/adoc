@@ -102,6 +102,7 @@ fn block_kind(b: &Block) -> &'static str {
         Block::Table(_) => "table",
         Block::Colist(_) => "colist",
         Block::DiscreteHeading(_) => "discrete_heading",
+        Block::ThematicBreak(_) => "thematic_break",
     }
 }
 
@@ -170,6 +171,7 @@ fn block_plain_text(b: &Block) -> String {
             .collect::<Vec<_>>()
             .join("\n"),
         Block::DiscreteHeading(d) => inlines_to_plain(&d.title),
+        Block::ThematicBreak(_) => String::new(),
         Block::Section(s) => inlines_to_plain(&s.title),
     }
 }

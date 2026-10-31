@@ -68,6 +68,9 @@ pub enum Block {
     /// open a new section: the renderer emits the heading and the surrounding
     /// blocks remain siblings of the heading rather than being nested under it.
     DiscreteHeading(DiscreteHeading),
+    /// A thematic break: `'''` (or the Markdown-style `---`, `***`,
+    /// `- - -`, `* * *`) alone on a line. Renders as `<hr>`.
+    ThematicBreak(ThematicBreak),
 }
 
 /// Metadata attached to a block via `.Title` and `[...]` lines.
@@ -235,6 +238,13 @@ pub enum HAlign {
 
 /// A `[discrete]` heading: semantically a leaf — same syntax as a section
 /// title but flat in the document tree.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ThematicBreak {
+    pub location: Location,
+    #[serde(default, skip_serializing_if = "BlockMeta::is_empty")]
+    pub meta: BlockMeta,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct DiscreteHeading {
     pub level: u8,
@@ -598,6 +608,7 @@ fn rewrite_xref_targets_in_blocks(
             Block::DiscreteHeading(d) => {
                 rewrite_xref_targets_in_inlines(&mut d.title, title_to_id, existing_ids);
             }
+            Block::ThematicBreak(_) => {}
         }
     }
 }
@@ -726,6 +737,7 @@ impl IdRegistry {
                 self.add_meta(&d.meta);
                 self.walk_inlines(&d.title);
             }
+            Block::ThematicBreak(t) => self.add_meta(&t.meta),
         }
     }
 

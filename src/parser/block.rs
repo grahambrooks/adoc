@@ -194,6 +194,12 @@ fn parse_section(
     }
 }
 
+/// The spec's thematic breaks: `'''` and the Markdown-style forms. Four or
+/// more dashes or asterisks are block delimiters, not breaks.
+fn is_thematic_break(text: &str) -> bool {
+    matches!(text.trim(), "'''" | "---" | "***" | "- - -" | "* * *")
+}
+
 fn parse_one_block(cursor: &mut Cursor, attrs: &mut Attributes, meta: BlockMeta) -> Option<Block> {
     let line = cursor.peek()?;
     let text = line.text.as_str();
@@ -205,6 +211,15 @@ fn parse_one_block(cursor: &mut Cursor, attrs: &mut Attributes, meta: BlockMeta)
     }
     if text.trim_start() == "|===" {
         return Some(Block::Table(parse_table(cursor, attrs, meta)));
+    }
+    // Before lists: `* * *` and `- - -` would otherwise read as list items.
+    if is_thematic_break(text) {
+        let location = line.location.clone();
+        cursor.advance();
+        return Some(Block::ThematicBreak(crate::ast::ThematicBreak {
+            location,
+            meta,
+        }));
     }
     if let Some(marker) = list_marker(text) {
         return Some(parse_list_kind(cursor, attrs, marker, meta));

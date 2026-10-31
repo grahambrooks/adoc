@@ -259,6 +259,7 @@ fn walk_validate_blocks(blocks: &[Block], ids: &IdRegistry, diags: &mut Diagnost
                 }
             }
             Block::DiscreteHeading(d) => walk_validate_inlines(&d.title, ids, &d.location, diags),
+            Block::ThematicBreak(_) => {}
         }
     }
 }
