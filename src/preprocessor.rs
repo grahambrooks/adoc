@@ -287,6 +287,10 @@ impl Preprocessor {
                 if !state.emitting() {
                     return Ok(());
                 }
+                // The spec substitutes attribute references in the target
+                // (`include::{includedir}/part.adoc[]`), using the attributes
+                // defined at this point, header entries included.
+                let target = substitute_attr_refs(&target, &self.attributes);
                 self.handle_include(&target, &args, source_path, location, state, output)
             }
         }
@@ -1258,6 +1262,39 @@ mod tests {
         assert_eq!(p.sources().len(), 2);
         // The included content's lines are tagged with SourceId(1).
         assert_eq!(lines[1].location.source.0, 1);
+    }
+
+    #[test]
+    fn include_target_substitutes_attribute_references() {
+        let dir = tempdir();
+        std::fs::create_dir_all(dir.join("samples")).unwrap();
+        std::fs::write(dir.join("samples/part.adoc"), "from include\n").unwrap();
+        let top = dir.join("top.adoc");
+        std::fs::write(
+            &top,
+            "= Doc\n:sampledir: samples\n\ninclude::{sampledir}/part.adoc[]\n",
+        )
+        .unwrap();
+
+        let mut p = Preprocessor::default();
+        let lines = p.run_file(Utf8Path::from_path(&top).unwrap()).unwrap();
+        assert!(
+            lines.iter().any(|l| l.text == "from include"),
+            "{:?}",
+            lines.iter().map(|l| &l.text).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn include_target_with_undefined_attribute_is_left_as_written() {
+        let dir = tempdir();
+        let top = dir.join("top.adoc");
+        std::fs::write(&top, "include::{nosuch}/part.adoc[]\n").unwrap();
+        let mut p = Preprocessor::default();
+        let err = p
+            .run_file(Utf8Path::from_path(&top).unwrap())
+            .expect_err("missing include target");
+        assert!(err.to_string().contains("{nosuch}"), "{err}");
     }
 
     #[test]
