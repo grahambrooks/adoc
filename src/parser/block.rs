@@ -370,16 +370,7 @@ fn try_parse_block_image(
         return None;
     }
     let args_str = &after_prefix[bracket + 1..after_prefix.len() - 1];
-    let parts: Vec<&str> = args_str.split(',').map(str::trim).collect();
-    let alt = parts.first().copied().unwrap_or("").to_string();
-    let width = parts
-        .get(1)
-        .filter(|s| !s.is_empty())
-        .map(|s| s.to_string());
-    let height = parts
-        .get(2)
-        .filter(|s| !s.is_empty())
-        .map(|s| s.to_string());
+    let (alt, width, height) = inline::image_attributes(target, args_str);
     let location = line.location.clone();
     cursor.advance();
     let mut block_meta = meta.clone();

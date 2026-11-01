@@ -756,6 +756,88 @@ fn utf8_char_len(b: u8) -> usize {
     }
 }
 
+/// The alt text, width and height of an image macro's attribute list, as
+/// Asciidoctor reads it: positional values are alt, width, height in that
+/// order; `alt=`, `width=` and `height=` name them; other named attributes
+/// (`align=`, `role=`, …) are skipped. Values may be quoted. Without an alt,
+/// the target's file name stands in, minus its extension, with `-` and `_`
+/// as spaces.
+pub(crate) fn image_attributes(
+    target: &str,
+    args: &str,
+) -> (String, Option<String>, Option<String>) {
+    let mut positional: Vec<String> = Vec::new();
+    let (mut alt, mut width, mut height) = (None, None, None);
+    for part in split_attribute_list(args) {
+        let part = part.trim();
+        match part.split_once('=') {
+            Some((key, value))
+                if !key.trim().is_empty()
+                    && key
+                        .trim()
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') =>
+            {
+                let value = unquote(value.trim()).to_string();
+                match key.trim() {
+                    "alt" => alt = Some(value),
+                    "width" => width = Some(value),
+                    "height" => height = Some(value),
+                    _ => {}
+                }
+            }
+            _ => positional.push(unquote(part).to_string()),
+        }
+    }
+    let mut positional = positional.into_iter();
+    let alt = alt
+        .or_else(|| positional.next())
+        .filter(|a| !a.is_empty())
+        .unwrap_or_else(|| default_image_alt(target));
+    let width = width.or_else(|| positional.next());
+    let height = height.or_else(|| positional.next());
+    let nonempty = |v: Option<String>| v.filter(|s| !s.is_empty());
+    (alt, nonempty(width), nonempty(height))
+}
+
+/// Split an attribute list on commas outside double or single quotes.
+fn split_attribute_list(args: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut quote: Option<char> = None;
+    let mut start = 0;
+    for (i, c) in args.char_indices() {
+        match (quote, c) {
+            (None, '"' | '\'') => quote = Some(c),
+            (Some(q), c) if c == q => quote = None,
+            (None, ',') => {
+                parts.push(&args[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    parts.push(&args[start..]);
+    parts
+}
+
+fn unquote(s: &str) -> &str {
+    for q in ['"', '\''] {
+        if s.len() >= 2 && s.starts_with(q) && s.ends_with(q) {
+            return &s[1..s.len() - 1];
+        }
+    }
+    s
+}
+
+fn default_image_alt(target: &str) -> String {
+    let name = target.rsplit('/').next().unwrap_or(target);
+    let stem = match name.rfind('.') {
+        Some(dot) if dot > 0 => &name[..dot],
+        _ => name,
+    };
+    stem.replace(['-', '_'], " ")
+}
+
 fn parse_image_macro(rem: &str) -> Option<(Inline, usize)> {
     let prefix = "image:";
     if !rem.starts_with(prefix) {
@@ -778,16 +860,7 @@ fn parse_image_macro(rem: &str) -> Option<(Inline, usize)> {
     let attrs_end = find_unescaped(&after[target_end..], ']')?;
     let attrs_str = &after[target_end + 1..target_end + attrs_end];
     let consumed = prefix.len() + target_end + attrs_end + 1;
-    let parts: Vec<&str> = attrs_str.split(',').map(str::trim).collect();
-    let alt = parts.first().copied().unwrap_or("").to_string();
-    let width = parts
-        .get(1)
-        .filter(|s| !s.is_empty())
-        .map(|s| s.to_string());
-    let height = parts
-        .get(2)
-        .filter(|s| !s.is_empty())
-        .map(|s| s.to_string());
+    let (alt, width, height) = image_attributes(target, attrs_str);
     Some((
         Inline::Image {
             target: target.to_string(),
