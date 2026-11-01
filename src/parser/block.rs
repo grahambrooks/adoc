@@ -453,18 +453,11 @@ fn is_block_boundary(text: &str) -> bool {
 /// Parse inline content that spans multiple source lines.
 /// Post-replacements (line breaks) apply per line; lines are joined with spaces
 /// otherwise.
+/// Parse a paragraph's lines as one run of text, so formatting can span a
+/// line break (`*bold across\nlines*`), as in Asciidoctor. The inline parser
+/// renders each newline as a space and treats ` +` before one as a hard break.
 pub fn parse_inlines_multiline(text: &str, attrs: &Attributes, subs: Subs) -> Vec<Inline> {
-    let mut out: Vec<Inline> = Vec::new();
-    for (idx, line) in text.split('\n').enumerate() {
-        if idx > 0 {
-            out.push(Inline::Text {
-                value: " ".to_string(),
-            });
-        }
-        let parsed = inline::parse(line, attrs, subs);
-        out.extend(parsed);
-    }
-    merge_adjacent_text(out)
+    merge_adjacent_text(inline::parse(text, attrs, subs))
 }
 
 fn merge_adjacent_text(inlines: Vec<Inline>) -> Vec<Inline> {

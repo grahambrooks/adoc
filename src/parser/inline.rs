@@ -103,7 +103,8 @@ impl<'a> InlineParser<'a> {
 
             // Default: consume one UTF-8 character.
             let ch = remaining.chars().next().expect("non-empty");
-            buf.push(ch);
+            // A paragraph's line breaks join its lines with a space.
+            buf.push(if ch == '\n' { ' ' } else { ch });
             self.pos += ch.len_utf8();
         }
         flush(&mut buf, &mut out);
@@ -114,8 +115,8 @@ impl<'a> InlineParser<'a> {
 
     fn try_linebreak(&self, rem: &str) -> Option<usize> {
         // " +" followed by end of input or newline produces a hard line break.
-        // The preprocessor removed newlines, so we match " +" at end only.
-        if rem == " +" {
+        // The newline itself is left to become the usual joining space.
+        if rem == " +" || rem.starts_with(" +\n") {
             Some(2)
         } else {
             None
