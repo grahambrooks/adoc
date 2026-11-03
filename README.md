@@ -50,7 +50,7 @@ Each release ships an archive per platform on the [Releases page]:
 | Windows, Intel/x64 | `adoc-<tag>-x86_64-pc-windows-msvc.zip` |
 
 Extract `adoc` (or `adoc.exe` on Windows) — it sits at the root of the
-archive — and put it on your `PATH`. Tags are calver `vYYYY.M.D`
+archive — and put it on your `PATH`. Tags are calver `vYYYY.M.MICRO`
 (releases up to `2026.9.9` were tagged without the `v`). Every
 release also carries a `SHA256SUMS` listing the checksum of each archive.
 

@@ -6,7 +6,7 @@ EXAMPLES_DIR := docs/examples
 FIXTURES := $(wildcard $(FIXTURE_DIR)/*.adoc)
 EXAMPLES := $(patsubst $(FIXTURE_DIR)/%.adoc,$(EXAMPLES_DIR)/%.html,$(FIXTURES))
 
-.PHONY: help build build-release release release-version check test lint fmt fmt-check examples showcase clean ci
+.PHONY: help build build-release release release-version release-dry release-fetch check test lint fmt fmt-check examples showcase clean ci
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "; printf "Usage: make <target>\n\nTargets:\n"} \
@@ -57,61 +57,43 @@ ci: fmt-check lint test ## Run the checks expected to pass in CI
 
 # --- release cycle ---------------------------------------------------------
 #
-# `make release` bumps `Cargo.toml` to today's UTC calver version
-# (YYYY.M.D, with no leading zeros — Cargo's SemVer parser rejects
-# `2026.04.26` but accepts `2026.4.26`), commits the bump, tags it,
-# as `v<version>`, and pushes both the branch and the tag. The tag push
-# triggers the standard release-kit v2 workflow
-# (`.github/workflows/release.yml`, configured by `.release.env`) which
-# builds binaries, publishes a GitHub Release, and refreshes
-# `Formula/adoc.rb`.
+# CalVer is YYYY.M.MICRO (no leading zero on the month: Cargo's SemVer parser
+# rejects `2026.04.1`). MICRO is one past the highest MICRO already tagged on
+# origin this month, starting at 1 to match auto-managed's monthly tags.
 #
-# Guards:
-#   - working tree must be clean
-#   - current branch must be `main`
-#   - `make ci` (fmt-check + lint + test) must pass with the new
-#     version applied — catches anything clippy notices once the
-#     version string changes, and the test suite re-runs against
-#     the bumped Cargo.toml.
+# The tag is the version (release-kit v2). `make release` only tags origin/main
+# and pushes the tag. The release workflow (`.github/workflows/release.yml`,
+# configured by `.release.env`) stamps the version into Cargo.toml for the
+# build, publishes the GitHub Release, and merges a PR that bumps Cargo.toml and
+# `Formula/adoc.rb`. Nothing is bumped or committed here, so nothing races the
+# bot, and local uncommitted work or the current branch don't matter.
 
-CALVER := $(shell date -u +'%Y.%-m.%-d')
+YEAR  := $(shell date -u +%Y)
+MONTH := $(shell date -u +%-m)
+MICRO  = $(shell last=$$(git tag -l 'v$(YEAR).$(MONTH).*' \
+           | sed -n 's/^v[0-9][0-9]*\.[0-9][0-9]*\.\([0-9][0-9]*\)$$/\1/p' \
+           | sort -n | tail -1); echo $$(( $${last:-0} + 1 )))
+VERSION = $(YEAR).$(MONTH).$(MICRO)
+TAG     = v$(VERSION)
 
-release-version: ## Print the calver string `make release` would use today
-	@echo $(CALVER)
+# Tags come from origin so MICRO reflects what is published, not this clone.
+# A prerequisite rather than a recipe line, so the fetch lands before $(TAG)
+# is expanded.
+release-fetch:
+	@git fetch --quiet origin main --tags
 
-release: ## Cut a calver release: bump Cargo.toml, commit, tag, and push (triggers CI)
-	@set -e; \
-	v='$(CALVER)'; \
-	echo "==> Cutting release $$v"; \
-	if ! git diff --quiet --ignore-submodules HEAD; then \
-		echo "error: working tree has uncommitted changes; commit or stash first." >&2; \
-		exit 1; \
-	fi; \
-	branch="$$(git symbolic-ref --short HEAD)"; \
-	if [ "$$branch" != "main" ]; then \
-		echo "error: not on main (current branch: $$branch); releases are cut from main." >&2; \
-		exit 1; \
-	fi; \
-	if git rev-parse "refs/tags/v$$v" >/dev/null 2>&1; then \
-		echo "error: tag v$$v already exists. Delete it first or wait until tomorrow." >&2; \
-		exit 1; \
-	fi; \
-	echo "==> Bumping Cargo.toml version to $$v"; \
-	if [ "$$(uname)" = "Darwin" ]; then \
-		sed -i '' "s/^version = .*/version = \"$$v\"/" Cargo.toml; \
-	else \
-		sed -i "s/^version = .*/version = \"$$v\"/" Cargo.toml; \
-	fi; \
-	echo "==> Refreshing Cargo.lock and validating"; \
-	cargo check --quiet; \
-	echo "==> Running CI checks against the bumped version"; \
-	$(MAKE) ci; \
-	echo "==> Committing and tagging"; \
-	git add Cargo.toml Cargo.lock; \
-	git commit -m "release: $$v"; \
-	git tag "v$$v"; \
-	echo "==> Pushing main and tag v$$v (this triggers the release workflow)"; \
-	git push origin main; \
-	git push origin "v$$v"; \
-	echo "==> Release $$v triggered."; \
-	echo "    Watch: https://github.com/grahambrooks/adoc/actions"
+release-version: release-fetch ## Print the version `make release` would tag next
+	@echo $(VERSION)
+
+release-dry: release-fetch ## Show what `make release` would do, without doing it
+	@echo 'would tag origin/main ($(shell git rev-parse --short origin/main)) as $(TAG) and push the tag'
+	@echo 'the tag push runs the release workflow: it builds the binaries, publishes'
+	@echo 'a GitHub Release, and merges a PR that bumps Cargo.toml and the formula'
+
+release: release-fetch ## Tag origin/main with the next CalVer and push the tag (triggers the release workflow)
+	@! git rev-parse -q --verify 'refs/tags/$(TAG)' >/dev/null \
+		|| { echo 'release: tag $(TAG) already exists' >&2; exit 1; }
+	@echo '--> tagging origin/main as $(TAG)'
+	git tag -a '$(TAG)' -m 'adoc $(VERSION)' origin/main
+	git push --quiet origin '$(TAG)'
+	@echo 'pushed $(TAG); watch https://github.com/grahambrooks/adoc/actions'
