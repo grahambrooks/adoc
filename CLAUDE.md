@@ -21,7 +21,7 @@ cargo clippy --all-targets -- -D warnings
 cargo fmt
 ```
 
-`make help` lists higher-level targets (`make ci` runs fmt-check + lint + test).
+`make help` lists higher-level targets (`make check` runs fmt-check + lint + test, the same gate as CI; `make ci` is an alias; `make hooks` installs the prek git hooks).
 
 The binary is `adoc`, defined by `src/main.rs` alongside the library at `src/lib.rs`.
 
@@ -98,7 +98,7 @@ The `crate::ast::inlines_to_plain` helper is the single canonical AST → plain-
 
 ## Releasing
 
-Releases use the standard **release-kit v2** workflow: `.github/workflows/release.yml` and `scripts/release.py` are byte-identical across grahambrooks' Rust tools — never edit them here; everything adoc-specific lives in `.release.env`. The **tag is the version**: cut a release with `make release` (tags `origin/main` with the next `vYYYY.M.MICRO` and pushes only the tag; `make release-dry` previews it), or push a `v`-prefixed calver tag yourself (`git tag v2026.11.3 origin/main && git push origin v2026.11.3`). Nothing is bumped locally: the workflow's release PR bumps `Cargo.toml`. Releases before the switch were tagged without the `v` (e.g. `2026.9.9`); those tags no longer trigger anything. To re-run a tag, use **Actions → release → Run workflow** with the existing tag.
+Releases use the standard **release-kit v2** workflow: `.github/workflows/release.yml` and `scripts/release.py` are byte-identical across grahambrooks' Rust tools — never edit them here; everything adoc-specific lives in `.release.env`. The **tag is the version**: cut a release with `make release` (tags `origin/main` with the next `vYYYY.M.D` — today's UTC date, bumping the last number while that tag exists — and pushes only the tag; `make release-dry` previews it), or push a `v`-prefixed calver tag yourself (`git tag v2026.11.3 origin/main && git push origin v2026.11.3`). Nothing is bumped locally: the workflow's release PR bumps `Cargo.toml`. Releases before the switch were tagged without the `v` (e.g. `2026.9.9`); those tags no longer trigger anything. To re-run a tag, use **Actions → release → Run workflow** with the existing tag.
 
 The workflow:
 

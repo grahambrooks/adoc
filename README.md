@@ -50,8 +50,8 @@ Each release ships an archive per platform on the [Releases page]:
 | Windows, Intel/x64 | `adoc-<tag>-x86_64-pc-windows-msvc.zip` |
 
 Extract `adoc` (or `adoc.exe` on Windows) — it sits at the root of the
-archive — and put it on your `PATH`. Tags are calver `vYYYY.M.MICRO`
-(releases up to `2026.9.9` were tagged without the `v`). Every
+archive — and put it on your `PATH`. Tags are calver `vYYYY.M.D`, the release date
+(a second release the same day takes the next free day number; releases up to `2026.9.9` were tagged without the `v`). Every
 release also carries a `SHA256SUMS` listing the checksum of each archive.
 
 Homebrew has no Windows support — on Windows take the `.zip` directly:
@@ -287,11 +287,12 @@ Dependency direction inside the crate: `main → {parser, preprocessor, convert:
 
 ```bash
 make build            # cargo build
-make test             # cargo test
-make lint             # cargo clippy --all-targets -- -D warnings
+make test             # cargo test --workspace --all-features --locked
+make lint             # cargo clippy (as CI), warnings denied
 make fmt              # cargo fmt --all
 make examples         # render tests/fixtures/*.adoc to docs/examples/*.html
-make ci               # fmt-check + lint + test
+make check            # fmt-check + lint + test: the same gate as CI
+make hooks            # install the prek git hooks (make check runs before push)
 ```
 
 Two test corpora work together. The structural suite under `tests/fixtures/` (41+ `.adoc` inputs) drives `tests/fixtures.rs` and asserts *shape* — node counts, presence of particular tags. The conformance suite under `tests/conformance/<entry>/` asserts *byte-identity*: each entry has `input.adoc`, `expected.ast.json`, and `expected.html` (rendered with no stylesheet so CSS edits don't dominate diffs). Bless intentional changes with `ADOC_CONFORMANCE_BLESS=1 cargo test --test conformance`. Add a conformance entry alongside any new spec feature.
