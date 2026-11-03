@@ -40,13 +40,13 @@ impl<'a> InlineParser<'a> {
                 break;
             }
 
-            if self.subs.post_replacements {
-                if let Some(consumed) = self.try_linebreak(remaining) {
-                    flush(&mut buf, &mut out);
-                    out.push(Inline::LineBreak);
-                    self.pos += consumed;
-                    continue;
-                }
+            if self.subs.post_replacements
+                && let Some(consumed) = self.try_linebreak(remaining)
+            {
+                flush(&mut buf, &mut out);
+                out.push(Inline::LineBreak);
+                self.pos += consumed;
+                continue;
             }
 
             if self.subs.macros {
@@ -64,12 +64,12 @@ impl<'a> InlineParser<'a> {
                 }
             }
 
-            if self.subs.attributes {
-                if let Some((resolved, consumed)) = self.try_attribute_ref(remaining) {
-                    buf.push_str(&resolved);
-                    self.pos += consumed;
-                    continue;
-                }
+            if self.subs.attributes
+                && let Some((resolved, consumed)) = self.try_attribute_ref(remaining)
+            {
+                buf.push_str(&resolved);
+                self.pos += consumed;
+                continue;
             }
 
             if self.subs.quotes {
@@ -93,12 +93,12 @@ impl<'a> InlineParser<'a> {
                 }
             }
 
-            if self.subs.replacements {
-                if let Some((replacement, consumed)) = self.try_replacement(remaining) {
-                    buf.push_str(replacement);
-                    self.pos += consumed;
-                    continue;
-                }
+            if self.subs.replacements
+                && let Some((replacement, consumed)) = self.try_replacement(remaining)
+            {
+                buf.push_str(replacement);
+                self.pos += consumed;
+                continue;
             }
 
             // Default: consume one UTF-8 character.
@@ -177,18 +177,20 @@ impl<'a> InlineParser<'a> {
     fn try_passthrough(&self, rem: &str, buf: &str) -> Option<(Inline, usize)> {
         // Unconstrained `++text++` — try first so `+` constrained doesn't
         // greedily match a single `+`.
-        if rem.starts_with("++") {
-            if let Some(inner_len) = find_closing(rem, "++", 2, false) {
-                let value = rem[2..2 + inner_len].to_string();
-                return Some((Inline::Passthrough { value }, 2 + inner_len + 2));
-            }
+        if rem.starts_with("++")
+            && let Some(inner_len) = find_closing(rem, "++", 2, false)
+        {
+            let value = rem[2..2 + inner_len].to_string();
+            return Some((Inline::Passthrough { value }, 2 + inner_len + 2));
         }
         // Constrained `+text+` — single `+` with word-boundary rule.
-        if rem.starts_with('+') && !rem.starts_with("++") && is_constrained_open(rem, "+", buf) {
-            if let Some(inner_len) = find_closing(rem, "+", 1, true) {
-                let value = rem[1..1 + inner_len].to_string();
-                return Some((Inline::Passthrough { value }, 1 + inner_len + 1));
-            }
+        if rem.starts_with('+')
+            && !rem.starts_with("++")
+            && is_constrained_open(rem, "+", buf)
+            && let Some(inner_len) = find_closing(rem, "+", 1, true)
+        {
+            let value = rem[1..1 + inner_len].to_string();
+            return Some((Inline::Passthrough { value }, 1 + inner_len + 1));
         }
         None
     }
@@ -729,16 +731,16 @@ fn substitute_attrs(s: &str, attrs: &Attributes) -> String {
     let bytes = s.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
-        if bytes[i] == b'{' {
-            if let Some(close_rel) = s[i + 1..].find('}') {
-                let name = &s[i + 1..i + 1 + close_rel];
-                if is_attribute_name(name) {
-                    if let Some(AttributeValue::String(v)) = attrs.get(name) {
-                        out.push_str(v);
-                        i += 1 + close_rel + 1;
-                        continue;
-                    }
-                }
+        if bytes[i] == b'{'
+            && let Some(close_rel) = s[i + 1..].find('}')
+        {
+            let name = &s[i + 1..i + 1 + close_rel];
+            if is_attribute_name(name)
+                && let Some(AttributeValue::String(v)) = attrs.get(name)
+            {
+                out.push_str(v);
+                i += 1 + close_rel + 1;
+                continue;
             }
         }
         let ch_len = utf8_char_len(bytes[i]);

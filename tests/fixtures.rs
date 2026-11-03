@@ -511,8 +511,11 @@ fn toc_sectnums_sectanchors() {
     assert!(body.contains("<ul>"));
 
     // TOC entries link to each section's id and carry the sectnum prefix.
-    assert!(body
-        .contains(r##"<a href="#_introduction"><span class="sectnum">1</span> Introduction</a>"##));
+    assert!(
+        body.contains(
+            r##"<a href="#_introduction"><span class="sectnum">1</span> Introduction</a>"##
+        )
+    );
     assert!(body.contains(r##"<a href="#_methods"><span class="sectnum">2</span> Methods</a>"##));
     assert!(body.contains(r##"<a href="#_setup"><span class="sectnum">2.1</span> Setup</a>"##));
     assert!(
@@ -1078,9 +1081,11 @@ fn derived_header_attributes_link_substitution_anchors_discrete_blockimage() {
             _ => None,
         })
         .expect("expected a section containing the discrete heading");
-    assert!(section_blocks
-        .iter()
-        .any(|b| matches!(b, Block::DiscreteHeading(d) if d.level == 2)));
+    assert!(
+        section_blocks
+            .iter()
+            .any(|b| matches!(b, Block::DiscreteHeading(d) if d.level == 2))
+    );
 }
 
 #[test]

@@ -176,17 +176,16 @@ fn parse_author_line(text: &str) -> Vec<Author> {
 }
 
 fn parse_one_author(part: &str) -> Author {
-    if let Some(lt) = part.find('<') {
-        if let Some(gt) = part.rfind('>') {
-            if gt > lt {
-                let name = part[..lt].trim().to_string();
-                let email = part[lt + 1..gt].trim().to_string();
-                return Author {
-                    name,
-                    email: if email.is_empty() { None } else { Some(email) },
-                };
-            }
-        }
+    if let Some(lt) = part.find('<')
+        && let Some(gt) = part.rfind('>')
+        && gt > lt
+    {
+        let name = part[..lt].trim().to_string();
+        let email = part[lt + 1..gt].trim().to_string();
+        return Author {
+            name,
+            email: if email.is_empty() { None } else { Some(email) },
+        };
     }
     Author {
         name: part.to_string(),

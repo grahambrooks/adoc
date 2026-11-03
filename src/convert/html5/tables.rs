@@ -6,7 +6,7 @@
 use std::fmt::Write;
 
 use crate::ast::{
-    inlines_to_plain, CellStyle, ColumnSpec, ConvertError, HAlign, RowKind, Table, TableCell,
+    CellStyle, ColumnSpec, ConvertError, HAlign, RowKind, Table, TableCell, inlines_to_plain,
 };
 
 use super::blocks::{render_block, render_block_title};

@@ -644,10 +644,10 @@ fn apply_include_args(source: &str, args: &IncludeArgs) -> String {
     } else {
         source.to_string()
     };
-    if let Some(delta) = args.leveloffset {
-        if delta != 0 {
-            current = apply_leveloffset(&current, delta);
-        }
+    if let Some(delta) = args.leveloffset
+        && delta != 0
+    {
+        current = apply_leveloffset(&current, delta);
     }
     if let Some(target) = args.indent {
         current = apply_indent(&current, target);
@@ -765,13 +765,7 @@ fn apply_lines_filter(source: &str, ranges: &[LineRange]) -> String {
         lines.pop();
     }
     let total = lines.len() as i64;
-    let resolve = |n: i64| -> i64 {
-        if n < 0 {
-            total + n + 1
-        } else {
-            n
-        }
-    };
+    let resolve = |n: i64| -> i64 { if n < 0 { total + n + 1 } else { n } };
     let mut keep = vec![false; lines.len()];
     for r in ranges {
         let start = resolve(r.start).max(1);
@@ -1508,7 +1502,11 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        d.push(format!("adoc-preproc-{nanos}-{}", std::process::id()));
+        // Tests run in parallel and the clock can be coarse (µs on macOS), so a
+        // per-process counter keeps concurrent calls from sharing a directory.
+        static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let seq = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        d.push(format!("adoc-preproc-{nanos}-{}-{seq}", std::process::id()));
         std::fs::create_dir_all(&d).unwrap();
         d
     }

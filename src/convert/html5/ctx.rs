@@ -10,8 +10,8 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use crate::ast::{
-    inlines_to_plain, AttributeValue, Block, DelimitedContent, Document, IdRegistry, Inline,
-    Location,
+    AttributeValue, Block, DelimitedContent, Document, IdRegistry, Inline, Location,
+    inlines_to_plain,
 };
 use crate::diag::{Diagnostic, Diagnostics};
 
@@ -98,11 +98,7 @@ impl RenderCtx {
     pub(crate) fn section_number(&self, id: Option<&str>) -> Option<&str> {
         let id = id?;
         let n = self.section_numbers.get(id)?;
-        if n.is_empty() {
-            None
-        } else {
-            Some(n.as_str())
-        }
+        if n.is_empty() { None } else { Some(n.as_str()) }
     }
 }
 

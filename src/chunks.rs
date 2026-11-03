@@ -32,7 +32,7 @@
 //!   that produce the same AST shape; changes whenever the parser
 //!   produces different output for the source.
 
-use crate::ast::{inlines_to_plain, Block, DelimitedContent, Document};
+use crate::ast::{Block, DelimitedContent, Document, inlines_to_plain};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 

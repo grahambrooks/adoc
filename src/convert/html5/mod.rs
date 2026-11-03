@@ -31,11 +31,11 @@ mod tables;
 
 use std::fmt::Write;
 
-use crate::ast::{inlines_to_plain, AttributeValue, Block, ConvertError, Converter, Document};
+use crate::ast::{AttributeValue, Block, ConvertError, Converter, Document, inlines_to_plain};
 use crate::diag::Diagnostics;
 
 use self::blocks::render_block;
-use self::ctx::{render_toc, validate_xrefs, RenderCtx, TocPlacement};
+use self::ctx::{RenderCtx, TocPlacement, render_toc, validate_xrefs};
 use self::escape::{escape, escape_attr};
 use self::footnotes::number_footnotes;
 use self::highlighter::{render_highlighter_body, render_highlighter_head};

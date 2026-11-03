@@ -623,17 +623,17 @@ fn rewrite_xref_targets_in_inlines(
             Inline::Xref { target, text } => {
                 // Title-based xref only fires when the target isn't
                 // already a known id — explicit ids take precedence.
-                if !existing_ids.contains(target.as_str()) {
-                    if let Some(id) = title_to_id.get(target.as_str()) {
-                        // Keep the original target as the visible link
-                        // text when no explicit text was supplied.
-                        if text.is_none() {
-                            *text = Some(vec![Inline::Text {
-                                value: target.clone(),
-                            }]);
-                        }
-                        *target = id.clone();
+                if !existing_ids.contains(target.as_str())
+                    && let Some(id) = title_to_id.get(target.as_str())
+                {
+                    // Keep the original target as the visible link
+                    // text when no explicit text was supplied.
+                    if text.is_none() {
+                        *text = Some(vec![Inline::Text {
+                            value: target.clone(),
+                        }]);
                     }
+                    *target = id.clone();
                 }
                 if let Some(t) = text {
                     rewrite_xref_targets_in_inlines(t, title_to_id, existing_ids);

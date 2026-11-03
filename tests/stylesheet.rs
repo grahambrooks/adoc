@@ -2,7 +2,7 @@
 
 use adoc::ast::{Attributes, Converter, Document};
 use adoc::convert::html5::{
-    Html5Converter, Html5Options, Stylesheet, BUILTIN_CSS, BUILTIN_FILENAME,
+    BUILTIN_CSS, BUILTIN_FILENAME, Html5Converter, Html5Options, Stylesheet,
 };
 
 fn empty_doc() -> Document {

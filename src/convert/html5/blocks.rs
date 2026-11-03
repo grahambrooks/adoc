@@ -555,9 +555,5 @@ fn source_language(meta: &BlockMeta) -> Option<&str> {
         return None;
     }
     let lang = meta.positional.first()?.trim();
-    if lang.is_empty() {
-        None
-    } else {
-        Some(lang)
-    }
+    if lang.is_empty() { None } else { Some(lang) }
 }

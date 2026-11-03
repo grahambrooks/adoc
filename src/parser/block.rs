@@ -27,11 +27,11 @@ pub fn parse_blocks(cursor: &mut Cursor, attrs: &mut Attributes, section_level: 
             break;
         }
         // Opportunistic mid-document attribute entries.
-        if let Some(line) = cursor.peek() {
-            if parse_attribute_entry(&line.text).is_some() {
-                consume_attribute_entries(cursor, attrs);
-                continue;
-            }
+        if let Some(line) = cursor.peek()
+            && parse_attribute_entry(&line.text).is_some()
+        {
+            consume_attribute_entries(cursor, attrs);
+            continue;
         }
         // Collect any block metadata (.Title and [attrlist] lines) that
         // immediately precedes the upcoming block. Save the cursor first
@@ -305,10 +305,10 @@ fn build_av_html(kind: &str, target: &str, args_str: &str) -> String {
     if let Some(h) = named.get("height") {
         let _ = write!(tag, " height=\"{}\"", html_escape(h));
     }
-    if kind == "video" {
-        if let Some(poster) = named.get("poster") {
-            let _ = write!(tag, " poster=\"{}\"", html_escape(poster));
-        }
+    if kind == "video"
+        && let Some(poster) = named.get("poster")
+    {
+        let _ = write!(tag, " poster=\"{}\"", html_escape(poster));
     }
     // Boolean flags: convention here is "on by default unless suppressed".
     let want = |name: &str, default_on: bool| {
@@ -433,10 +433,10 @@ const ADMONITION_KEYWORDS: &[&str] = &["NOTE", "TIP", "IMPORTANT", "WARNING", "C
 
 fn strip_admonition_prefix(line: &str) -> Option<(&'static str, &str)> {
     for kw in ADMONITION_KEYWORDS {
-        if let Some(rest) = line.strip_prefix(kw) {
-            if let Some(content) = rest.strip_prefix(": ") {
-                return Some((kw, content));
-            }
+        if let Some(rest) = line.strip_prefix(kw)
+            && let Some(content) = rest.strip_prefix(": ")
+        {
+            return Some((kw, content));
         }
     }
     None
@@ -833,12 +833,11 @@ fn parse_cols_spec(spec: Option<&str>) -> Vec<ColumnSpec> {
         return Vec::new();
     }
     // Single-integer shorthand — N equal columns.
-    if !spec.contains(',') {
-        if let Ok(n) = spec.parse::<u32>() {
-            if n > 0 {
-                return (0..n).map(|_| ColumnSpec::default()).collect();
-            }
-        }
+    if !spec.contains(',')
+        && let Ok(n) = spec.parse::<u32>()
+        && n > 0
+    {
+        return (0..n).map(|_| ColumnSpec::default()).collect();
     }
     let mut cols = Vec::new();
     for raw in spec.split(',') {
@@ -894,10 +893,10 @@ fn parse_cols_spec(spec: Option<&str>) -> Vec<ColumnSpec> {
             // (Already in `digits`.)
         }
         // Optional style letter — consume but ignore.
-        if let Some(&c) = chars.peek() {
-            if matches!(c, 'a' | 'd' | 'e' | 'h' | 'l' | 'm' | 's') {
-                chars.next();
-            }
+        if let Some(&c) = chars.peek()
+            && matches!(c, 'a' | 'd' | 'e' | 'h' | 'l' | 'm' | 's')
+        {
+            chars.next();
         }
         // Trailing junk — skip the segment rather than producing garbage.
         if chars.next().is_some() {
@@ -1108,10 +1107,8 @@ fn group_cells_into_rows(
 }
 
 fn apply_header(mut rows: Vec<TableRow>, header: bool) -> Vec<TableRow> {
-    if header {
-        if let Some(first) = rows.first_mut() {
-            first.kind = RowKind::Header;
-        }
+    if header && let Some(first) = rows.first_mut() {
+        first.kind = RowKind::Header;
     }
     rows
 }
@@ -1501,11 +1498,11 @@ fn parse_cell_format(s: &str) -> Option<CellPrefix> {
 
     // style letter
     let mut style = None;
-    if i < bytes.len() {
-        if let Some(st) = letter_to_style(bytes[i] as char) {
-            style = Some(st);
-            i += 1;
-        }
+    if i < bytes.len()
+        && let Some(st) = letter_to_style(bytes[i] as char)
+    {
+        style = Some(st);
+        i += 1;
     }
 
     if i != bytes.len() {

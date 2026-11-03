@@ -7,13 +7,13 @@ use std::io::Read;
 
 use adoc::ast::{AttributeValue, Attributes, Document, SourceMap};
 use adoc::convert::html5::{
-    Html5Converter, Html5Options, Stylesheet, BUILTIN_CSS, BUILTIN_FILENAME,
+    BUILTIN_CSS, BUILTIN_FILENAME, Html5Converter, Html5Options, Stylesheet,
 };
 use adoc::parser::parse_with;
 use adoc::preprocessor::{Preprocessor, SafeMode as PreprocSafeMode};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
-use miette::{miette, IntoDiagnostic};
+use miette::{IntoDiagnostic, miette};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum Backend {
@@ -432,7 +432,13 @@ mod init_genai {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_nanos();
-            let p = std::env::temp_dir().join(format!("adoc-init-genai-{stamp}"));
+            // Parallel tests + a coarse clock can collide; add pid and a counter.
+            static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+            let seq = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let p = std::env::temp_dir().join(format!(
+                "adoc-init-genai-{stamp}-{}-{seq}",
+                std::process::id()
+            ));
             fs::create_dir_all(&p).unwrap();
             Utf8PathBuf::from_path_buf(p).unwrap()
         }
@@ -595,10 +601,10 @@ fn write_output(
     add_trailing_newline: bool,
 ) -> miette::Result<()> {
     if let Some(path) = out_path {
-        if let Some(parent) = path.parent() {
-            if !parent.as_str().is_empty() {
-                fs::create_dir_all(parent.as_std_path()).into_diagnostic()?;
-            }
+        if let Some(parent) = path.parent()
+            && !parent.as_str().is_empty()
+        {
+            fs::create_dir_all(parent.as_std_path()).into_diagnostic()?;
         }
         fs::write(path.as_std_path(), bytes).into_diagnostic()?;
         if add_trailing_newline {
@@ -794,7 +800,7 @@ fn is_truthy(v: Option<&AttributeValue>) -> bool {
 }
 
 fn init_tracing(verbose: u8, quiet: bool) {
-    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_subscriber::{EnvFilter, fmt};
     let level = if quiet {
         "error"
     } else {
